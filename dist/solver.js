@@ -1,0 +1,297 @@
+import { RecipeGroupModel, RecipeModel, FlowInformation, LinkAlgorithm } from './page.js';
+import { Item, RecipeIoType, Repository } from "./repository.js";
+import { machines, notImplementedMachine, GetSingleBlockMachine, GetParameter } from "./machines.js";
+import { voltageTier } from "./utils.js";
+class LinkCollection {
+    constructor() {
+        this.output = {};
+        this.input = {};
+        this.inputOreDict = {};
+        this.inputOreDictRecipe = {};
+    }
+    AddInput(goods, amount, linkVar) {
+        var _a, _b;
+        if (amount === 0)
+            return;
+        let input = (_a = this.input)[_b = goods.id] || (_a[_b] = {});
+        input[linkVar] = (input[linkVar] || 0) + amount;
+    }
+    AddOutput(goods, amount, linkVar) {
+        var _a, _b;
+        let output = (_a = this.output)[_b = goods.id] || (_a[_b] = {});
+        output[linkVar] = (output[linkVar] || 0) - amount;
+    }
+    AddInputOreDict(oreDict, amount, linkVar, recipe) {
+        var _a, _b, _c, _d;
+        if (amount === 0)
+            return;
+        let inputOreDict = (_a = this.inputOreDict)[_b = oreDict.id] || (_a[_b] = {});
+        inputOreDict[linkVar] = (inputOreDict[linkVar] || 0) + amount;
+        let inputOreDictRecipe = (_c = this.inputOreDictRecipe)[_d = oreDict.id] || (_c[_d] = []);
+        inputOreDictRecipe.push(recipe);
+    }
+    Merge(other) {
+        for (const key in other.output) {
+            this.output[key] = Object.assign(Object.assign({}, this.output[key]), other.output[key]);
+        }
+        for (const key in other.input) {
+            this.input[key] = Object.assign(Object.assign({}, this.input[key]), other.input[key]);
+        }
+        for (const key in other.inputOreDict) {
+            this.inputOreDict[key] = Object.assign(Object.assign({}, this.inputOreDict[key]), other.inputOreDict[key]);
+        }
+        for (const key in other.inputOreDictRecipe) {
+            this.inputOreDictRecipe[key] = [...this.inputOreDictRecipe[key] || [], ...other.inputOreDictRecipe[key]];
+        }
+    }
+}
+function MatchVariablesToConstraints(model, name, variableList) {
+    for (const key in variableList) {
+        if (key === "_amount")
+            continue;
+        model.variables[key][name] = (model.variables[key][name] || 0) + variableList[key];
+    }
+}
+function CreateLinkByAlgorithm(model, algorithm, group, goodsId, collectionKey, collection, matchedOutputs, outputAmount) {
+    var linkName = `link_${group.iid}_${goodsId}`;
+    MatchVariablesToConstraints(model, linkName, collection[collectionKey]);
+    let amount = collection[collectionKey]["_amount"] || -outputAmount["_amount"] || 0;
+    matchedOutputs[goodsId] = true;
+    delete collection[collectionKey];
+    group.actualLinks[goodsId] = algorithm;
+    model.constraints[linkName] = { equal: amount };
+}
+function PreProcessRecipe(recipeModel, model, collection) {
+    let recipe = Repository.current.GetById(recipeModel.recipeId);
+    if (!recipe)
+        return;
+    recipeModel.recipe = recipe;
+    let varName = `recipe_${recipeModel.iid}`;
+    model.variables[varName] = { "obj": 1 };
+    recipeModel.overclockFactor = 1;
+    let gtRecipe = recipe.gtRecipe;
+    let machineInfo = null;
+    if (gtRecipe && gtRecipe.durationTicks > 0) {
+        let crafter = recipeModel.crafter ? Repository.current.GetById(recipeModel.crafter) : null;
+        if (crafter != null && !recipe.recipeType.multiblocks.includes(crafter))
+            crafter = null;
+        let canBeSingleblock = (() => {
+            if (recipe.recipeType.singleblocks.length == 0)
+                return false;
+            const machine = GetSingleBlockMachine(recipe.recipeType);
+            const excluded = (machine === null || machine === void 0 ? void 0 : machine.excludesRecipe) ? machine.excludesRecipe(recipe) : false;
+            return !excluded;
+        })();
+        if (crafter === null && !canBeSingleblock) {
+            for (let i = 0; i < recipe.recipeType.multiblocks.length; ++i) {
+                const item = recipe.recipeType.multiblocks[i];
+                const machine = machines[item.name];
+                const excluded = (machine === null || machine === void 0 ? void 0 : machine.excludesRecipe) ? machine.excludesRecipe(recipe) : false;
+                if (!excluded) {
+                    crafter = item;
+                    break;
+                }
+            }
+            if (crafter === null)
+                crafter = recipe.recipeType.defaultCrafter;
+        }
+        let isSingleblock = !crafter;
+        machineInfo = crafter ? (machines[crafter.name] || notImplementedMachine) : GetSingleBlockMachine(recipe.recipeType);
+        recipeModel.multiblockCrafter = crafter;
+        recipeModel.machineInfo = machineInfo;
+        if (machineInfo.fixedVoltageTier) {
+            recipeModel.voltageTier = GetParameter(machineInfo.fixedVoltageTier, recipeModel);
+        }
+        recipeModel.ValidateChoices(machineInfo, recipeModel);
+        let amperage = gtRecipe.amperage;
+        let actualVoltage = voltageTier[recipeModel.voltageTier].voltage;
+        let machineParallels = Math.max(1, GetParameter(machineInfo.parallels, recipeModel));
+        let energyModifier = GetParameter(machineInfo.power, recipeModel);
+        let maxParallels = machineInfo.ignoreParallelLimit ? machineParallels : Math.max(1, Math.floor(actualVoltage / (gtRecipe.voltage * energyModifier * amperage)));
+        let parallels = Math.min(maxParallels, machineParallels);
+        let tierDifference = recipeModel.voltageTier - gtRecipe.voltageTier;
+        let overclockTiers = isSingleblock ? tierDifference : Math.min(tierDifference, Math.floor(Math.log2(maxParallels / parallels) / 2));
+        let overclockResult = GetParameter(machineInfo.overclocker, recipeModel).calculate(recipeModel, overclockTiers);
+        let speedModifier = GetParameter(machineInfo.speed, recipeModel);
+        //console.log({machineParallels, maxParallels, parallels, overclockTiers, overclockSpeed, overclockPower, energyModifier, speedModifier});
+        // Handle duration rounding. It always truncates decimals, i.e. favoring the player.
+        // In case of subtick processing we assume no rounding is taking place, which is a good approximation for now.
+        // Some machines round after parallels, for example Advanced Assembly Line
+        const durationTicksForRounding = machineInfo.roundAfterParallels ? (gtRecipe.durationTicks / parallels) : gtRecipe.durationTicks;
+        const estimatedDurationTicks = durationTicksForRounding / (overclockResult.overclockSpeed * speedModifier);
+        let speedCorrectionFactor = 1.0;
+        if (estimatedDurationTicks > 1) {
+            const roundedEstimatedDurationTicks = Math.floor(estimatedDurationTicks);
+            speedCorrectionFactor = estimatedDurationTicks / roundedEstimatedDurationTicks;
+        }
+        recipeModel.overclockFactor = overclockResult.overclockSpeed * speedModifier * speedCorrectionFactor * parallels;
+        recipeModel.powerFactor = amperage * overclockResult.overclockPower * energyModifier / speedModifier / speedCorrectionFactor;
+        recipeModel.parallels = parallels;
+        recipeModel.overclockTiers = overclockTiers;
+        recipeModel.overclockName = overclockResult.overclockName;
+        if (recipeModel.fixedCrafterCount) {
+            let crafterName = `fixed_${recipeModel.iid}`;
+            let fixedRecipesPerMinute = recipeModel.fixedCrafterCount * recipeModel.overclockFactor / recipe.gtRecipe.durationMinutes;
+            model.variables[varName][crafterName] = 1;
+            model.constraints[crafterName] = { equal: fixedRecipesPerMinute };
+        }
+    }
+    let recipeItems = (machineInfo === null || machineInfo === void 0 ? void 0 : machineInfo.recipe) ? machineInfo.recipe(recipeModel, recipeModel.choices, recipe.items) : recipe.items;
+    recipeModel.recipeItems = recipeItems;
+    for (const slot of recipeItems) {
+        const goods = slot.goods;
+        let amount = slot.amount * slot.probability;
+        let container = goods instanceof Item && goods.container;
+        if (slot.type == RecipeIoType.OreDictInput) {
+            collection.AddInputOreDict(goods, amount, varName, recipeModel);
+        }
+        else if (container) {
+            if (slot.type == RecipeIoType.ItemOutput) {
+                collection.AddOutput(container.fluid, amount * container.amount, varName);
+                collection.AddOutput(container.empty, amount, varName);
+            }
+            else if (slot.type == RecipeIoType.ItemInput) {
+                collection.AddInput(container.fluid, amount * container.amount, varName);
+                collection.AddInput(container.empty, amount, varName);
+            }
+        }
+        else {
+            if (slot.type == RecipeIoType.ItemOutput || slot.type == RecipeIoType.FluidOutput) {
+                collection.AddOutput(goods, amount, varName);
+            }
+            else if (slot.type == RecipeIoType.ItemInput || slot.type == RecipeIoType.FluidInput) {
+                collection.AddInput(goods, amount, varName);
+            }
+        }
+    }
+}
+function CreateAndMatchLinks(group, model, collection) {
+    for (const child of group.elements) {
+        if (child instanceof RecipeModel) {
+            PreProcessRecipe(child, model, collection);
+        }
+        else if (child instanceof RecipeGroupModel) {
+            let childCollection = new LinkCollection();
+            CreateAndMatchLinks(child, model, childCollection);
+            collection.Merge(childCollection);
+        }
+    }
+    console.log("Raw collection", collection);
+    let matchedOutputs = {};
+    group.actualLinks = Object.assign({}, group.links);
+    for (const key of Object.keys(collection.inputOreDict)) {
+        var oreDict = Repository.current.GetById(key);
+        for (const item of oreDict.items) {
+            let algorithm = group.links[item.id] || LinkAlgorithm.Match;
+            if (collection.output[item.id] === undefined)
+                continue;
+            // Despite the fact that we are ignoring the link, we still need to select the ore dict item to have the same item in production and consumption
+            for (const recipe of collection.inputOreDictRecipe[key])
+                recipe.selectedOreDicts[key] = item;
+            if (algorithm === LinkAlgorithm.Ignore)
+                continue;
+            CreateLinkByAlgorithm(model, algorithm, group, item.id, key, collection.inputOreDict, matchedOutputs, collection.output[item.id]);
+            break;
+        }
+    }
+    for (const key of Object.keys(collection.input)) {
+        var algorithm = group.links[key] || LinkAlgorithm.Match;
+        if (algorithm === LinkAlgorithm.Ignore || collection.output[key] === undefined)
+            continue;
+        CreateLinkByAlgorithm(model, algorithm, group, key, key, collection.input, matchedOutputs, collection.output[key]);
+    }
+    for (const key in matchedOutputs) {
+        var linkName = `link_${group.iid}_${key}`;
+        MatchVariablesToConstraints(model, linkName, collection.output[key]);
+        delete collection.output[key];
+    }
+    return collection;
+}
+function ApplySolutionRecipe(recipeModel, solution) {
+    let flow = new FlowInformation();
+    recipeModel.flow = flow;
+    let name = `recipe_${recipeModel.iid}`;
+    let recipe = recipeModel.recipe;
+    let solutionValue = (solution[name] || 0);
+    recipeModel.recipesPerMinute = solutionValue;
+    recipeModel.crafterCount = 0;
+    for (const item of recipeModel.recipeItems) {
+        var goods = item.goods;
+        if (item.type == RecipeIoType.OreDictInput && recipeModel.selectedOreDicts[item.goods.id])
+            goods = recipeModel.selectedOreDicts[item.goods.id];
+        var isProduction = item.type == RecipeIoType.FluidOutput || item.type == RecipeIoType.ItemOutput;
+        let amount = item.amount * item.probability * solutionValue;
+        let container = goods instanceof Item && goods.container;
+        if (container) {
+            flow.Add(container.fluid, amount * container.amount, isProduction);
+            flow.Add(container.empty, amount, isProduction);
+        }
+        else
+            flow.Add(goods, amount, isProduction);
+    }
+    let gtRecipe = recipe === null || recipe === void 0 ? void 0 : recipe.gtRecipe;
+    if (gtRecipe && gtRecipe.durationTicks > 0) {
+        flow.energy[recipeModel.voltageTier] = gtRecipe.durationMinutes * gtRecipe.voltage * solutionValue * recipeModel.powerFactor;
+        recipeModel.crafterCount = solutionValue * gtRecipe.durationMinutes / recipeModel.overclockFactor;
+    }
+}
+function ApplySolutionGroup(group, solution, model, feasible) {
+    for (const child of group.elements) {
+        if (child instanceof RecipeModel)
+            ApplySolutionRecipe(child, solution);
+        else if (child instanceof RecipeGroupModel)
+            ApplySolutionGroup(child, solution, model, feasible);
+    }
+    let flow = new FlowInformation();
+    group.flow = flow;
+    for (const child of group.elements) {
+        flow.Merge(child.flow);
+    }
+    for (const link in group.actualLinks) {
+        let delta = (flow.input[link] || 0) - (flow.output[link] || 0);
+        if (delta > 0.01) {
+            flow.input[link] = delta;
+            delete flow.output[link];
+        }
+        else if (delta < -0.01) {
+            flow.output[link] = -delta;
+            delete flow.input[link];
+        }
+        else {
+            delete flow.input[link];
+            delete flow.output[link];
+        }
+    }
+}
+export function SolvePage(page) {
+    try {
+        let model = {
+            optimize: "obj",
+            opType: "min",
+            constraints: {},
+            variables: {},
+        };
+        let timeUnit = page.settings.timeUnit;
+        let timeScale = timeUnit === "hour" ? 1 / 60 : timeUnit === "sec" ? 60 : timeUnit === "tick" ? 20 * 60 : 1;
+        page.timeScale = timeScale;
+        let collection = new LinkCollection();
+        for (const product of page.products) {
+            if (product.amount > 0) {
+                collection.input[product.goodsId] = { "_amount": -product.amount };
+            }
+            else {
+                collection.output[product.goodsId] = { "_amount": product.amount };
+            }
+        }
+        CreateAndMatchLinks(page.rootGroup, model, collection);
+        console.log("Solve model", model);
+        let solution = window.solver.Solve(model);
+        console.log("Solve solution", solution);
+        page.status = solution.feasible ? solution.bounded ? "solved" : "unbounded" : "infeasible";
+        ApplySolutionGroup(page.rootGroup, solution, model, solution.feasible);
+    }
+    catch (error) {
+        console.error("Error solving page", error);
+    }
+}
+//# sourceMappingURL=solver.js.map

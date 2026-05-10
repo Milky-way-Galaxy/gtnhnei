@@ -1,0 +1,1552 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #080b10;
+  --panel: #0f1720;
+  --panel2: #141e2a;
+  --panel3: #1b2635;
+  --panel4: #243245;
+
+  --text: #e8eef7;
+  --muted: #93a4b8;
+  --line: #28384c;
+
+  --accent: #4cc9f0;
+  --accent-soft: rgba(76, 201, 240, 0.14);
+
+  --good: #7ee787;
+  --warn: #ffd166;
+  --danger: #ff7b72;
+
+  --tooltip-bg: #0b1220;
+  --tooltip-line: #4cc9f0;
+  --tooltip-text: #eef6ff;
+  --tooltip-muted: #9fb3c8;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 50% 0%, #152033 0%, #0b1018 46%, #080b10 100%);
+  color: var(--text);
+  font-family: system-ui, monospace, sans-serif;
+  image-rendering: pixelated;
+  overflow: hidden;
+}
+
+body {
+  padding: 4px;
+}
+
+.app {
+  width: 100%;
+  max-width: 100%;
+  height: calc(100vh - 8px);
+  margin: 0;
+  background: linear-gradient(180deg, #101927 0%, #0d1522 100%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+  padding: 6px;
+  background: linear-gradient(180deg, #172235 0%, #111a29 100%);
+  border-bottom: 1px solid var(--line);
+}
+
+.title {
+  font-weight: 900;
+  font-size: 11px;
+  color: white;
+  white-space: nowrap;
+}
+
+button {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel3);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 800;
+}
+
+button:active {
+  background: var(--panel4);
+}
+
+button:disabled {
+  opacity: 0.35;
+}
+
+#search {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0a1320;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 0 8px;
+  outline: none;
+}
+
+#search:focus {
+  border-color: var(--accent);
+}
+
+#status {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  background: #0d1522;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#breadcrumb {
+  display: none;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  background: #0d1522;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+#machineTabs {
+  display: none;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #0d1522;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  max-width: 100%;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 10px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel3);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  max-width: 240px;
+}
+
+.tab.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tabIcon {
+  width: 32px;
+  height: 32px;
+  background-image: url("data/atlas.webp");
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  flex: 0 0 32px;
+}
+
+#main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#grid {
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 38px);
+  gap: 4px;
+  align-content: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.slot {
+  width: 38px;
+  height: 38px;
+  background: var(--panel3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.slot:hover,
+.slot:active,
+.goods:hover,
+.goods:active {
+  background: var(--panel4);
+  outline: 1px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.10);
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  background-image: url("data/atlas.webp");
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  flex: 0 0 32px;
+}
+
+#recipePage {
+  display: none;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.recipe {
+  width: 100%;
+  max-width: 100%;
+  background: #111b2a;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  padding: 8px;
+}
+
+.recipeHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.recipeTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 900;
+  color: white;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.recipeId {
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  display: none;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: start;
+  gap: 5px;
+}
+
+.badge {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #08111f;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.badge.eu {
+  color: var(--good);
+  border-color: rgba(134, 239, 172, 0.35);
+}
+
+.badge.time {
+  color: var(--warn);
+  border-color: rgba(253, 230, 138, 0.35);
+}
+
+.ioBlock {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.label {
+  font-weight: 900;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.ioItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.goods {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px;
+  background: #0b1320;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.goodsName {
+  min-width: 0;
+  max-width: min(260px, calc(100vw - 78px));
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel2);
+  color: var(--muted);
+}
+
+#tip {
+  position: fixed;
+  z-index: 99999;
+  display: none;
+  max-width: min(390px, calc(100vw - 20px));
+  padding: 9px 10px;
+  background: linear-gradient(180deg, #0d1726 0%, #09111d 100%);
+  color: var(--tooltip-text);
+  border: 1px solid var(--tooltip-line);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.28;
+  pointer-events: none;
+  word-break: break-word;
+  box-shadow:
+    0 10px 26px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(76,201,240,0.12) inset;
+}
+
+.badge.tier {
+  color: #4cc9f0;
+  border-color: rgba(76, 201, 240, 0.45);
+  background: rgba(76, 201, 240, 0.10);
+}
+
+.loadMore {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #0d1522;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+#recipePage .loadMore {
+  display: block;
+}
+
+/* Light icon animation: only on hover/active, not always running */
+.slot .icon,
+.goods .icon,
+.tabIcon {
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.slot:hover .icon,
+.goods:hover .icon,
+.tab:hover .tabIcon {
+  transform: scale(1.10);
+  filter: brightness(1.12);
+}
+
+.slot:active .icon,
+.goods:active .icon,
+.tab:active .tabIcon {
+  transform: scale(0.96);
+  filter: brightness(1.25);
+}
+
+/* Subtle tooltip entrance */
+#tip {
+  animation: tooltipPop 90ms ease-out;
+}
+
+@keyframes tooltipPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Reduced motion safety */
+@media (prefers-reduced-motion: reduce) {
+  .slot .icon,
+  .goods .icon,
+  .tabIcon,
+  #tip {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* GTNH-ish icon feedback without permanent heavy animation */
+.slot .icon,
+.goods .icon,
+.tabIcon {
+  transition: transform 110ms ease, filter 110ms ease;
+}
+
+.slot:hover .icon,
+.goods:hover .icon,
+.tab:hover .tabIcon {
+  transform: scale(1.08);
+  filter: brightness(1.12);
+}
+
+.slot:active .icon,
+.goods:active .icon,
+.tab:active .tabIcon {
+  transform: scale(0.94);
+  filter: brightness(1.25);
+}
+
+/* OreDict cycling is handled in JS. Avoid infinite CSS animation for performance. */
+@media (prefers-reduced-motion: reduce) {
+  .slot .icon,
+  .goods .icon,
+  .tabIcon {
+    transition: none;
+  }
+}
+
+/* ===== NEI-style recipe card layout ===== */
+
+.recipe {
+  background: #c7c7c7;
+  color: #111;
+  border-radius: 0;
+  border-top: 3px solid #ffffff;
+  border-left: 3px solid #ffffff;
+  border-right: 3px solid #6b6b6b;
+  border-bottom: 3px solid #6b6b6b;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.recipeHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 6px;
+}
+
+.recipeTitle {
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.recipeId {
+  display: none;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 4px;
+}
+
+.badge {
+  background: #e0e0e0;
+  color: #222;
+  border: 1px solid #777;
+  border-radius: 0;
+  font-size: 11px;
+  padding: 2px 5px;
+}
+
+.badge.tier {
+  color: #111;
+  background: #d7ecff;
+  border-color: #3b82f6;
+}
+
+.badge.eu {
+  color: #111;
+  background: #dcfce7;
+  border-color: #16a34a;
+}
+
+.badge.time {
+  color: #111;
+  background: #fef3c7;
+  border-color: #ca8a04;
+}
+
+.neiRecipeBody {
+  display: grid;
+  grid-template-columns: minmax(126px, auto) 52px minmax(126px, auto);
+  gap: 8px;
+  align-items: center;
+  justify-content: start;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.neiGridWrap {
+  display: grid;
+  grid-template-columns: repeat(3, 42px);
+  gap: 3px;
+  align-content: start;
+}
+
+.neiGridLabel {
+  grid-column: 1 / -1;
+  color: #222;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 1px;
+}
+
+.neiSlot {
+  width: 42px;
+  height: 42px;
+  background: #8f8f8f;
+  border-top: 2px solid #555;
+  border-left: 2px solid #555;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.neiSlot:hover,
+.neiSlot:active {
+  outline: 2px solid #4cc9f0;
+  background: #a9a9a9;
+}
+
+.neiSlot .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.neiAmount {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  text-shadow:
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000;
+  pointer-events: none;
+}
+
+.neiArrow {
+  color: white;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow:
+    2px 2px 0 #555,
+    -1px -1px 0 #888;
+  text-align: center;
+}
+
+.neiMachineLine {
+  text-align: center;
+  color: #333;
+  font-size: 18px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.neiSubLine {
+  text-align: center;
+  color: #333;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.recipe .goods,
+.recipe .ioBlock,
+.recipe .ioItems,
+.recipe .label {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .recipe {
+    padding: 6px;
+  }
+
+  .recipeHead {
+    grid-template-columns: 1fr;
+  }
+
+  .badges {
+    justify-content: start;
+  }
+
+  .neiRecipeBody {
+    grid-template-columns: minmax(126px, auto) 40px minmax(126px, auto);
+    gap: 5px;
+  }
+
+  .neiArrow {
+    font-size: 34px;
+  }
+
+  .neiMachineLine {
+    font-size: 16px;
+  }
+}
+
+/* ===== Better modern NEI layout override ===== */
+
+/* Keep the NEI structure, remove ugly flat grey */
+.recipe {
+  background: linear-gradient(180deg, #111b2a 0%, #0d1624 100%) !important;
+  color: var(--text) !important;
+  border: 1px solid #2b3d55 !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  margin-bottom: 10px !important;
+  box-shadow: none !important;
+}
+
+/* Cleaner recipe header */
+.recipeHead {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+}
+
+.recipeTitle {
+  color: #f3f7ff !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  min-width: 0 !important;
+}
+
+.recipeTitle .tabIcon {
+  width: 32px !important;
+  height: 32px !important;
+  flex: 0 0 32px !important;
+}
+
+.badges {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: end !important;
+  gap: 5px !important;
+}
+
+/* More modern badges */
+.badge {
+  background: #0a1320 !important;
+  color: #9fb3c8 !important;
+  border: 1px solid #2b3d55 !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  padding: 4px 7px !important;
+}
+
+.badge.tier {
+  color: #4cc9f0 !important;
+  background: rgba(76, 201, 240, 0.10) !important;
+  border-color: rgba(76, 201, 240, 0.45) !important;
+}
+
+.badge.eu {
+  color: #7ee787 !important;
+  background: rgba(126, 231, 135, 0.10) !important;
+  border-color: rgba(126, 231, 135, 0.40) !important;
+}
+
+.badge.time {
+  color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.10) !important;
+  border-color: rgba(255, 209, 102, 0.40) !important;
+}
+
+/* Recipe body: input grid | arrow | output grid */
+.neiRecipeBody {
+  display: grid !important;
+  grid-template-columns: minmax(132px, auto) 54px minmax(132px, auto) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  overflow-x: auto !important;
+  padding: 4px 0 2px 0 !important;
+}
+
+/* Dark panels behind input/output grids */
+.neiGridWrap {
+  display: grid !important;
+  grid-template-columns: repeat(3, 42px) !important;
+  gap: 4px !important;
+  align-content: start !important;
+  background: #0a1320 !important;
+  border: 1px solid #26384f !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+  min-width: 150px !important;
+}
+
+/* Label inside grid */
+.neiGridLabel {
+  grid-column: 1 / -1 !important;
+  color: #4cc9f0 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  margin: 0 0 2px 0 !important;
+}
+
+/* Slots: modern, not old ugly gray */
+.neiSlot {
+  width: 42px !important;
+  height: 42px !important;
+  background: #152033 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 9px !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03) !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.neiSlot:hover,
+.neiSlot:active {
+  background: #1d2b41 !important;
+  outline: 1px solid #4cc9f0 !important;
+}
+
+/* Amount like NEI, but cleaner */
+.neiAmount {
+  position: absolute !important;
+  right: 2px !important;
+  bottom: 0 !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-shadow:
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000 !important;
+  pointer-events: none !important;
+}
+
+/* Arrow column */
+.neiArrow {
+  color: #cbd5e1 !important;
+  font-size: 36px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+  text-align: center !important;
+}
+
+/* Center tier/time info */
+.neiMachineLine {
+  text-align: center !important;
+  color: #f3f7ff !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  margin-top: 5px !important;
+}
+
+.neiSubLine {
+  text-align: center !important;
+  color: #9fb3c8 !important;
+  font-size: 11px !important;
+  margin-top: 2px !important;
+}
+
+/* Hide old layout leftovers hard */
+.recipe .goods,
+.recipe .ioBlock,
+.recipe .ioItems,
+.recipe .label {
+  display: none !important;
+}
+
+/* Mobile: reduce ugly horizontal squeeze */
+@media (max-width: 620px) {
+  .recipe {
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+
+  .recipeHead {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .badges {
+    justify-content: start !important;
+  }
+
+  .neiRecipeBody {
+    grid-template-columns: minmax(132px, auto) 42px minmax(132px, auto) !important;
+    gap: 6px !important;
+  }
+
+  .neiGridWrap {
+    grid-template-columns: repeat(2, 42px) !important;
+    min-width: 104px !important;
+    padding: 6px !important;
+  }
+
+  .neiArrow {
+    font-size: 30px !important;
+  }
+
+  .neiMachineLine {
+    font-size: 13px !important;
+  }
+
+  .neiSubLine {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .neiMachineLine,
+  .neiSubLine {
+    display: none !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .neiMachineLine,
+  .neiSubLine {
+    display: none !important;
+  }
+}
+
+/* ===== Complex crafting / shaped crafting cleaner layout ===== */
+
+.recipe {
+  background: linear-gradient(180deg, #111b2a 0%, #0d1624 100%) !important;
+  color: var(--text) !important;
+  border: 1px solid #2b3d55 !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.recipe.compactCrafting {
+  max-width: 100%;
+}
+
+.recipeHead {
+  margin-bottom: 10px !important;
+}
+
+.neiRecipeBody {
+  display: grid !important;
+  grid-template-columns: minmax(0, auto) 44px minmax(0, auto) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  overflow-x: auto !important;
+  padding-bottom: 4px !important;
+}
+
+.neiGridWrap {
+  display: grid !important;
+  grid-template-columns: repeat(var(--nei-cols, 3), 42px) !important;
+  gap: 4px !important;
+  align-content: start !important;
+  background: #0a1320 !important;
+  border: 1px solid #26384f !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.neiGridLabel {
+  grid-column: 1 / -1 !important;
+  color: #4cc9f0 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  margin-bottom: 2px !important;
+}
+
+.neiSlot {
+  width: 42px !important;
+  height: 42px !important;
+  background: #152033 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 42px !important;
+}
+
+.neiSlot.emptySlot {
+  opacity: 0.35 !important;
+}
+
+.neiSlot:hover,
+.neiSlot:active {
+  background: #1d2b41 !important;
+  outline: 1px solid #4cc9f0 !important;
+}
+
+.neiArrowBox {
+  min-width: 44px !important;
+  text-align: center !important;
+}
+
+.neiArrow {
+  color: #cbd5e1 !important;
+  font-size: 32px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+}
+
+.neiMachineLine {
+  color: #f3f7ff !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  margin-top: 4px !important;
+  text-align: center !important;
+}
+
+.neiSubLine {
+  color: #9fb3c8 !important;
+  font-size: 10px !important;
+  margin-top: 2px !important;
+  text-align: center !important;
+}
+
+/* For huge 7x7 / 9x9 recipes, shrink slots slightly so it doesn't become absurd */
+.recipe.bigCrafting .neiGridWrap {
+  grid-template-columns: repeat(var(--nei-cols, 9), 34px) !important;
+  gap: 3px !important;
+  padding: 6px !important;
+}
+
+.recipe.bigCrafting .neiSlot {
+  width: 34px !important;
+  height: 34px !important;
+  flex-basis: 34px !important;
+}
+
+.recipe.bigCrafting .neiSlot .icon {
+  transform: scale(0.875);
+}
+
+.recipe.bigCrafting .neiAmount {
+  font-size: 10px !important;
+}
+
+/* Mobile: keep complex recipes horizontally scrollable, not crushed */
+@media (max-width: 620px) {
+  .neiRecipeBody {
+    grid-template-columns: minmax(0, auto) 34px minmax(0, auto) !important;
+    gap: 6px !important;
+  }
+
+  .neiArrowBox {
+    min-width: 34px !important;
+  }
+
+  .neiArrow {
+    font-size: 26px !important;
+  }
+
+  .recipe.bigCrafting .neiGridWrap {
+    grid-template-columns: repeat(var(--nei-cols, 9), 32px) !important;
+    gap: 3px !important;
+    padding: 5px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot {
+    width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot .icon {
+    transform: scale(0.82);
+  }
+}
+
+/* Better machine tabs: less huge, icon stays visible */
+.tab {
+  max-width: 220px !important;
+  overflow: hidden !important;
+}
+
+.tab span:not(.tabIcon) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.tabIcon {
+  width: 32px !important;
+  height: 32px !important;
+  flex: 0 0 32px !important;
+}
+
+/* ===== Fix big crafting recipes: stack layout, no overlap ===== */
+
+.recipe.bigCrafting .neiRecipeBody {
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  align-items: start !important;
+  justify-content: start !important;
+  overflow-x: hidden !important;
+}
+
+.recipe.bigCrafting .neiGridWrap {
+  width: max-content !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.recipe.bigCrafting .neiArrowBox {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.recipe.bigCrafting .neiArrow {
+  font-size: 28px !important;
+}
+
+.recipe.bigCrafting .neiMachineLine,
+.recipe.bigCrafting .neiSubLine {
+  display: none !important;
+}
+
+.recipe.bigCrafting .neiGridWrap:last-child {
+  margin-top: 0 !important;
+}
+
+/* On very small screens, shrink 9x9 a little more */
+@media (max-width: 420px) {
+  .recipe.bigCrafting .neiGridWrap {
+    grid-template-columns: repeat(var(--nei-cols, 9), 30px) !important;
+    gap: 3px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot {
+    width: 30px !important;
+    height: 30px !important;
+    flex-basis: 30px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot .icon {
+    transform: scale(0.78) !important;
+  }
+}
+
+/* ===== Real slot-position NEI layout ===== */
+
+.recipe {
+  background: linear-gradient(180deg, #111b2a 0%, #0d1624 100%) !important;
+  color: var(--text) !important;
+  border: 1px solid #2b3d55 !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.recipeHead {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+}
+
+.recipeTitle {
+  color: #f3f7ff !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  min-width: 0 !important;
+}
+
+.neiRecipeBody {
+  display: grid !important;
+  grid-template-columns: max-content 46px max-content !important;
+  gap: 10px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 4px 0 !important;
+  max-width: 100% !important;
+}
+
+.neiIoSide {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  width: max-content !important;
+  max-width: none !important;
+  background: #0a1320 !important;
+  border: 1px solid #26384f !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+}
+
+.neiSubGrid {
+  display: grid !important;
+  grid-template-columns: repeat(var(--nei-cols), 36px) !important;
+  gap: 2px !important;
+  width: max-content !important;
+}
+
+.neiGridLabel {
+  color: #4cc9f0 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  margin: 0 !important;
+}
+
+.neiSlot {
+  width: 36px !important;
+  height: 36px !important;
+  background: #152033 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 7px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 36px !important;
+}
+
+.neiSlot.emptySlot {
+  opacity: 0.28 !important;
+}
+
+.neiSlot .icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.neiAmount {
+  position: absolute !important;
+  right: 1px !important;
+  bottom: -1px !important;
+  color: white !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-shadow:
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000 !important;
+  pointer-events: none !important;
+}
+
+.neiArrowBox {
+  min-width: 46px !important;
+  text-align: center !important;
+}
+
+.neiArrow {
+  color: #cbd5e1 !important;
+  font-size: 32px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+}
+
+.neiMachineLine {
+  color: #f3f7ff !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  margin-top: 4px !important;
+  text-align: center !important;
+}
+
+.neiSubLine {
+  color: #9fb3c8 !important;
+  font-size: 10px !important;
+  margin-top: 2px !important;
+  text-align: center !important;
+}
+
+/* Big crafting stays side-by-side like real NEI, but scrolls horizontally if needed */
+.recipe.bigCrafting .neiRecipeBody {
+  grid-template-columns: max-content 46px max-content !important;
+  overflow-x: auto !important;
+}
+
+.recipe.bigCrafting .neiSubGrid {
+  grid-template-columns: repeat(var(--nei-cols), 34px) !important;
+  gap: 2px !important;
+}
+
+.recipe.bigCrafting .neiSlot {
+  width: 34px !important;
+  height: 34px !important;
+  flex-basis: 34px !important;
+}
+
+.recipe.bigCrafting .neiSlot .icon {
+  transform: scale(0.88) !important;
+}
+
+/* Remove previous forced stacked big-crafting rules */
+.recipe.bigCrafting .neiArrowBox {
+  width: auto !important;
+  min-width: 46px !important;
+  display: block !important;
+}
+
+.recipe.bigCrafting .neiMachineLine,
+.recipe.bigCrafting .neiSubLine {
+  display: block !important;
+}
+
+@media (max-width: 620px) {
+  .neiRecipeBody {
+    grid-template-columns: max-content 38px max-content !important;
+    gap: 6px !important;
+  }
+
+  .neiArrowBox {
+    min-width: 38px !important;
+  }
+
+  .neiArrow {
+    font-size: 28px !important;
+  }
+
+  .neiMachineLine,
+  .neiSubLine {
+    display: none !important;
+  }
+
+  .recipe.bigCrafting .neiSubGrid {
+    grid-template-columns: repeat(var(--nei-cols), 32px) !important;
+    gap: 2px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot {
+    width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .recipe.bigCrafting .neiSlot .icon {
+    transform: scale(0.82) !important;
+  }
+}
+
+/* ===== Safe UI polish v1: does not touch recipe logic ===== */
+
+:root {
+  --ui-bg: #070b12;
+  --ui-panel: #0c1421;
+  --ui-panel-2: #111d2d;
+  --ui-panel-3: #17263a;
+  --ui-line: #26384f;
+  --ui-line-soft: rgba(76, 201, 240, 0.18);
+  --ui-accent: #4cc9f0;
+  --ui-accent-2: #7dd3fc;
+  --ui-text: #edf5ff;
+  --ui-muted: #91a4bb;
+}
+
+/* Whole app: cleaner border and depth */
+.app {
+  background: linear-gradient(180deg, #0b1320 0%, #08111d 100%) !important;
+  border: 1px solid var(--ui-line) !important;
+  border-radius: 14px !important;
+}
+
+/* Top bar: less bulky, more modern */
+.topbar {
+  background: linear-gradient(180deg, #101c2d 0%, #0b1422 100%) !important;
+  border-bottom: 1px solid var(--ui-line) !important;
+  gap: 6px !important;
+}
+
+.title {
+  color: var(--ui-text) !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.3px !important;
+}
+
+/* Buttons */
+button {
+  background: #101b2b !important;
+  border: 1px solid #2a3c55 !important;
+  color: var(--ui-text) !important;
+  border-radius: 10px !important;
+}
+
+button:active {
+  background: #182840 !important;
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.28 !important;
+}
+
+/* Search box */
+#search {
+  background: #07111e !important;
+  border: 1px solid #2b3d55 !important;
+  color: var(--ui-text) !important;
+  border-radius: 11px !important;
+}
+
+#search:focus {
+  border-color: var(--ui-accent) !important;
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.13) !important;
+}
+
+/* Status and breadcrumb */
+#status,
+#breadcrumb {
+  background: #08111e !important;
+  color: var(--ui-muted) !important;
+  border-bottom: 1px solid var(--ui-line) !important;
+}
+
+/* Machine tabs area */
+#machineTabs {
+  background: #0a1320 !important;
+  border-bottom: 1px solid var(--ui-line) !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Machine tabs */
+.tab {
+  background: #111d2d !important;
+  border: 1px solid #2b3d55 !important;
+  color: #dbeafe !important;
+  border-radius: 999px !important;
+  height: 38px !important;
+  padding-left: 10px !important;
+  padding-right: 12px !important;
+}
+
+.tab.active {
+  background: linear-gradient(180deg, rgba(76,201,240,0.22), rgba(76,201,240,0.10)) !important;
+  border-color: rgba(76, 201, 240, 0.85) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(76,201,240,0.10) !important;
+}
+
+/* Recipe cards */
+.recipe {
+  background: linear-gradient(180deg, #101b2b 0%, #0b1523 100%) !important;
+  border: 1px solid #26384f !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  margin: 10px 8px 12px 8px !important;
+}
+
+/* Recipe title */
+.recipeTitle {
+  color: #f4f8ff !important;
+  font-size: 16px !important;
+}
+
+/* Badges */
+.badge {
+  background: #07111e !important;
+  border: 1px solid #2a3c55 !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+}
+
+.badge.tier {
+  color: #67e8f9 !important;
+  background: rgba(103, 232, 249, 0.10) !important;
+  border-color: rgba(103, 232, 249, 0.45) !important;
+}
+
+.badge.eu {
+  color: #86efac !important;
+  background: rgba(134, 239, 172, 0.10) !important;
+  border-color: rgba(134, 239, 172, 0.45) !important;
+}
+
+.badge.time {
+  color: #fde68a !important;
+  background: rgba(253, 230, 138, 0.10) !important;
+  border-color: rgba(253, 230, 138, 0.45) !important;
+}
+
+/* Input/output panels */
+.neiIoSide {
+  background: linear-gradient(180deg, #0a1320 0%, #08111e 100%) !important;
+  border: 1px solid #2a3c55 !important;
+  border-radius: 14px !important;
+}
+
+/* Input/output labels */
+.neiGridLabel {
+  color: #67e8f9 !important;
+  font-weight: 950 !important;
+}
+
+/* Slots */
+.neiSlot,
+.slot {
+  background: #142033 !important;
+  border: 1px solid #31445f !important;
+  border-radius: 9px !important;
+}
+
+.neiSlot:hover,
+.neiSlot:active,
+.slot:hover,
+.slot:active {
+  background: #1a2a42 !important;
+  outline: 1px solid var(--ui-accent) !important;
+  box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.10) !important;
+}
+
+/* Arrow */
+.neiArrow {
+  color: #d7e4f5 !important;
+  opacity: 0.92 !important;
+}
+
+/* Tooltip */
+#tip {
+  background: linear-gradient(180deg, #0e1a2a 0%, #07111e 100%) !important;
+  color: #f0f7ff !important;
+  border: 1px solid rgba(76, 201, 240, 0.85) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(76, 201, 240, 0.10) !important;
+}
+
+/* Scrollbar for Chrome/Android/WebKit */
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #07111e;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #2a3c55;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3b5575;
+}
+
+/* Mobile compact polish */
+@media (max-width: 620px) {
+  .app {
+    border-radius: 12px !important;
+  }
+
+  .recipe {
+    margin: 8px 6px 10px 6px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .recipeTitle {
+    font-size: 15px !important;
+  }
+
+  .tab {
+    height: 36px !important;
+    max-width: 230px !important;
+  }
+
+  .badge {
+    padding: 3px 7px !important;
+  }
+}

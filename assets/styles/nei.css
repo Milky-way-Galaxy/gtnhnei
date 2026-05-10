@@ -1,0 +1,91 @@
+#nei
+{
+    border-top-left-radius: 0px;
+}
+
+#nei-content
+{
+    width: 100%;
+    position: relative;
+}
+
+#nei-search
+{
+    flex:1;
+}
+
+.nei-recipe-box
+{
+    border-style: solid;
+    border-width: 2px;
+    border-color: #FFFFFF #8B8B8B #8B8B8B #FFFFFF;
+    background-color: #C6C6C6;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    position: absolute;
+    padding: 0;
+    color: #3F3F3F;
+    text-shadow: none;
+}
+
+.nei-recipe-box:focus {
+    outline: none;
+}
+
+.nei-recipe-items
+{
+    display: flex;
+    height: 100%;
+    align-items: center; 
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.nei-recipe-io
+{
+    display: flex;
+    height: 100%;
+    align-items: center; 
+    flex-direction: row;
+    gap: 20px;
+    flex:0;
+}
+
+.arrow
+{
+    position: relative;
+    width: 48px;
+    height: 32px;
+    background-size: 48px;
+    background-image: url('./../images/Arrow.png')
+}
+
+.nei-items-row
+{
+    --grid-height: 1;
+    position: absolute !important;
+}
+
+.nei-recipe-type
+{
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    height: 36px;
+    width: 100%;
+}
+
+.arrow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}

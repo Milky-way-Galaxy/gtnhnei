@@ -1,0 +1,135 @@
+#main {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    height: 100%;
+}
+
+#menu {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    background-color: rgba(198, 198, 198);
+    color: #3F3F3F;
+    transition: transform 0.15s ease;
+}
+
+.menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border-right: 1px solid #ddd;
+    min-width: 250px;
+}
+
+.menu-header {
+    position: relative;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.menu-links {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    gap: 8px;
+    justify-content: center;
+}
+
+
+.page-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.page-button {
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+    background-color: #A09172;
+    border-color: #E0CA9F #544C3B #544C3B #E0CA9F;
+    border-width: 2px;
+    box-shadow: none;
+    padding: 2px;
+}
+
+.new-page-widget {
+    margin-top: auto;
+}
+
+.new-page-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.new-page-form input {
+    width: 70%;
+}
+
+.new-page-form button {
+    width: 30%;
+}
+
+.active-page {
+    color: white;
+    background-color: #51493A;
+    border-color: #211D17 #332E24 #332E24 #211D17;
+    border-width: 2px;
+    padding: 4px;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+}
+
+.active-page input {
+    flex-grow: 1;
+    background-color: transparent;
+    border: none;
+    color: white;
+}
+
+/* Menu toggle button */
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    padding: 4px 8px;
+}
+
+/* Media query for small screens */
+@media screen and (max-width: 1200px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    #menu {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        z-index: 999;
+    }
+
+    #menu.visible {
+        transform: translateX(0);
+    }
+
+    #recipe-list {
+        margin-left: 0;
+    }
+
+    .status-message {
+        margin-left: 40px;
+    }
+}
+

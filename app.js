@@ -1,0 +1,1491 @@
+import {
+  Repository,
+  Item,
+  Fluid,
+  OreDict,
+  Recipe,
+  RecipeIoType
+} from "./dist/repository.js";
+import { SearchQuery } from "./dist/searchQuery.js";
+
+const search = document.getElementById("search");
+const clear = document.getElementById("clear");
+const navBack = document.getElementById("navBack");
+const navForward = document.getElementById("navForward");
+const status = document.getElementById("status");
+const breadcrumb = document.getElementById("breadcrumb");
+const machineTabs = document.getElementById("machineTabs");
+const grid = document.getElementById("grid");
+const recipePage = document.getElementById("recipePage");
+const tip = document.getElementById("tip");
+
+let repo;
+let allGoods = [];
+let allItems = [];
+let timer = null;
+let tipTimer = null;
+let activeTipAnchor = null;
+let activeTipObj = null;
+let activeTipText = "";
+
+let historyStack = [];
+let forwardStack = [];
+let currentView = { type: "grid" };
+
+let activeMachine = "All";
+let currentRecipes = [];
+let currentRecipeGroups = new Map();
+
+const MAX_GRID_TOTAL = 1200;
+const GRID_PAGE_SIZE = 160;
+const RECIPE_PAGE_SIZE = 8;
+
+const machineIconCache = new Map();
+
+let oreAnimTick = 0;
+const animatedOreIcons = new Set();
+
+function registerOreIcon(el, obj) {
+  if (!(obj instanceof OreDict)) return;
+  animatedOreIcons.add({ el, obj });
+}
+
+setInterval(() => {
+  if (animatedOreIcons.size === 0) return;
+
+  oreAnimTick++;
+
+  for (const entry of Array.from(animatedOreIcons)) {
+    if (!entry.el.isConnected) {
+      animatedOreIcons.delete(entry);
+      continue;
+    }
+
+    const items = entry.obj.items;
+    if (!items || items.length === 0) continue;
+
+    const shown = items[oreAnimTick % items.length];
+    if (shown?.iconId !== undefined) {
+      setIcon(entry.el, shown.iconId);
+    }
+  }
+}, 550);
+
+let currentSearchList = [];
+let renderedGridCount = 0;
+
+let currentRecipeList = [];
+let renderedRecipeCount = 0;
+
+function tierFromEu(eu) {
+  const v = Number(eu);
+  if (!Number.isFinite(v)) return "?";
+
+  if (v <= 8) return "ULV";
+  if (v <= 32) return "LV";
+  if (v <= 128) return "MV";
+  if (v <= 512) return "HV";
+  if (v <= 2048) return "EV";
+  if (v <= 8192) return "IV";
+  if (v <= 32768) return "LuV";
+  if (v <= 131072) return "ZPM";
+  if (v <= 524288) return "UV";
+  if (v <= 2097152) return "UHV";
+  if (v <= 8388608) return "UEV";
+  if (v <= 33554432) return "UIV";
+  if (v <= 134217728) return "UMV";
+  if (v <= 536870912) return "UXV";
+  return "MAX+";
+}
+
+function esc(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function norm(s) {
+  return String(s ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function setIcon(el, iconId) {
+  const ix = iconId % 256;
+  const iy = Math.floor(iconId / 256);
+  el.style.backgroundPosition = `${ix * -32}px ${iy * -32}px`;
+}
+
+function displayObj(obj) {
+  if (obj instanceof OreDict) return obj.items[0] ?? null;
+  return obj;
+}
+
+function nameOf(obj) {
+  if (!obj) return "unknown";
+  if (obj instanceof OreDict) return obj.id;
+  return obj.name ?? obj.id ?? "unknown";
+}
+
+function typeOf(obj) {
+  if (obj instanceof OreDict) return "OreDict";
+  if (obj instanceof Fluid) return "Fluid";
+  return "Item";
+}
+
+function placeTipNearAnchor(anchor, fallbackX = 16, fallbackY = 16) {
+  if (!anchor) {
+    return { x: fallbackX, y: fallbackY };
+  }
+
+  const r = anchor.getBoundingClientRect();
+
+  return {
+    x: r.right,
+    y: r.top + r.height / 2
+  };
+}
+
+function positionTip(anchor, fallbackX = 16, fallbackY = 16) {
+  tip.style.left = "0px";
+  tip.style.top = "0px";
+
+  const margin = 8;
+  const offset = 12;
+  const rect = tip.getBoundingClientRect();
+
+  const p = placeTipNearAnchor(anchor, fallbackX, fallbackY);
+
+  let left = p.x + offset;
+  let top = p.y - rect.height / 2;
+
+  if (left + rect.width > window.innerWidth - margin) {
+    const ar = anchor?.getBoundingClientRect?.();
+    left = ar ? ar.left - rect.width - offset : fallbackX - rect.width - offset;
+  }
+
+  if (top + rect.height > window.innerHeight - margin) {
+    top = window.innerHeight - rect.height - margin;
+  }
+
+  if (top < margin) {
+    top = margin;
+  }
+
+  left = Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin));
+  top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+}
+
+function showTip(obj, text, x = 16, y = 16, anchor = null) {
+  activeTipAnchor = anchor;
+  activeTipObj = obj;
+  activeTipText = text;
+
+  tip.innerHTML = `
+    <div><b>${esc(nameOf(obj))}</b></div>
+    <div style="color:#9fb3c8;font-size:12px;margin-top:4px">${typeOf(obj)} • ${esc(obj.mod ?? "unknown")}</div>
+    <div style="color:#4cc9f0;font-size:12px;margin-top:4px">${esc(text)}</div>
+  `;
+
+  tip.style.display = "block";
+  positionTip(anchor, x, y);
+
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => {
+    tip.style.display = "none";
+    activeTipAnchor = null;
+    activeTipObj = null;
+    activeTipText = "";
+  }, 2600);
+}
+
+function refreshTipPosition() {
+  if (tip.style.display !== "none" && activeTipAnchor) {
+    positionTip(activeTipAnchor);
+  }
+}
+
+window.addEventListener("scroll", refreshTipPosition, true);
+window.addEventListener("resize", refreshTipPosition);
+
+async function load() {
+  const res = await fetch("data/data.bin");
+  if (!res.ok) throw new Error("Failed to fetch data/data.bin");
+
+  const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
+  const buffer = await new Response(stream).arrayBuffer();
+
+  repo = Repository.load(buffer);
+
+  allGoods = [];
+  allItems = [];
+
+  for (const ptr of repo.items) {
+    const item = repo.GetObject(ptr, Item);
+    if (item) {
+      allGoods.push(item);
+      allItems.push(item);
+    }
+  }
+
+  for (const ptr of repo.fluids) {
+    const fluid = repo.GetObject(ptr, Fluid);
+    if (fluid) allGoods.push(fluid);
+  }
+
+  status.textContent = `Loaded ${allGoods.length} items/fluids`;
+  renderSearchGrid(false);
+}
+
+function updateNav() {
+  navBack.disabled = historyStack.length === 0;
+  navForward.disabled = forwardStack.length === 0;
+}
+
+function pushView(next) {
+  historyStack.push(currentView);
+  forwardStack = [];
+  currentView = next;
+  updateNav();
+}
+
+function restoreView(view) {
+  currentView = view;
+
+  if (view.type === "grid") {
+    renderSearchGrid(false);
+  } else if (view.type === "recipes") {
+    renderRecipes(view.obj, view.mode, false);
+  }
+
+  updateNav();
+}
+
+function renderSearchGrid(push = true) {
+  if (push) pushView({ type: "grid" });
+  currentView = { type: "grid" };
+
+  grid.style.display = "grid";
+  recipePage.style.display = "none";
+  machineTabs.style.display = "none";
+  breadcrumb.style.display = "none";
+
+  const q = search.value.trim();
+
+  if (!q) {
+    currentSearchList = allGoods.slice(0, MAX_GRID_TOTAL);
+    status.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
+  } else {
+    const query = new SearchQuery(q);
+    currentSearchList = [];
+
+    for (const obj of allGoods) {
+      if (repo.IsObjectMatchingSearch(obj, query)) {
+        currentSearchList.push(obj);
+        if (currentSearchList.length >= MAX_GRID_TOTAL) break;
+      }
+    }
+
+    status.textContent = `${currentSearchList.length} result(s), capped at ${MAX_GRID_TOTAL}`;
+  }
+
+  grid.innerHTML = "";
+  renderedGridCount = 0;
+
+  if (currentSearchList.length === 0) {
+    grid.innerHTML = `<div class="empty">No results</div>`;
+    updateNav();
+    return;
+  }
+
+  appendGridItems();
+  updateNav();
+}
+
+function appendGridItems() {
+  if (renderedGridCount >= currentSearchList.length) return;
+
+  const frag = document.createDocumentFragment();
+  const end = Math.min(renderedGridCount + GRID_PAGE_SIZE, currentSearchList.length);
+
+  for (let i = renderedGridCount; i < end; i++) {
+    const obj = currentSearchList[i];
+
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.title = nameOf(obj);
+
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    setIcon(icon, obj.iconId);
+
+    slot.appendChild(icon);
+    attachControls(slot, obj);
+    frag.appendChild(slot);
+  }
+
+  renderedGridCount = end;
+
+  const oldMore = grid.querySelector(".loadMore");
+  if (oldMore) oldMore.remove();
+
+  if (renderedGridCount < currentSearchList.length) {
+    const more = document.createElement("div");
+    more.className = "loadMore";
+    more.textContent = `Scroll more to load ${currentSearchList.length - renderedGridCount} more...`;
+    frag.appendChild(more);
+  }
+
+  grid.appendChild(frag);
+}
+
+function recipesFor(obj, mode) {
+  const arr = mode === "Production" ? obj.production : obj.consumption;
+  const out = [];
+
+  for (const ptr of arr) {
+    const recipe = repo.GetObject(ptr, Recipe);
+    if (recipe) out.push(recipe);
+  }
+
+  return out;
+}
+
+function renderRecipes(obj, mode, push = true) {
+  if (push) pushView({ type: "recipes", obj, mode });
+
+  currentView = { type: "recipes", obj, mode };
+  activeMachine = "All";
+  currentRecipes = recipesFor(obj, mode);
+
+  currentRecipeGroups = new Map();
+  currentRecipeGroups.set("All", currentRecipes);
+
+  for (const recipe of currentRecipes) {
+    const m = recipeMachineName(recipe);
+    if (!currentRecipeGroups.has(m)) currentRecipeGroups.set(m, []);
+    currentRecipeGroups.get(m).push(recipe);
+  }
+
+  grid.style.display = "none";
+  recipePage.style.display = "block";
+  machineTabs.style.display = "flex";
+  breadcrumb.style.display = "block";
+
+  breadcrumb.textContent = `${mode} → ${nameOf(obj)}`;
+
+  renderMachineTabs();
+  renderRecipeList();
+  updateNav();
+}
+
+function recipeMachineName(recipe) {
+  return recipe.recipeType?.name ?? "Unknown Machine";
+}
+
+function machineRecipeText(recipe) {
+  if (!recipe) return "";
+
+  const parts = [];
+
+  function walk(x, depth = 0) {
+    if (!x || depth > 2) return;
+
+    if (typeof x === "string") {
+      parts.push(x);
+      return;
+    }
+
+    if (typeof x === "number" || typeof x === "boolean") {
+      return;
+    }
+
+    if (Array.isArray(x)) {
+      for (const v of x.slice(0, 8)) walk(v, depth + 1);
+      return;
+    }
+
+    if (typeof x === "object") {
+      for (const v of Object.values(x).slice(0, 20)) {
+        walk(v, depth + 1);
+      }
+    }
+  }
+
+  walk(recipe.recipeType);
+  walk(recipe.id);
+
+  return parts.join(" ");
+}
+
+function machineModPrefs(machineName, recipe = null) {
+  const text = norm(`${machineName} ${machineRecipeText(recipe)}`);
+  const prefs = [];
+
+  if (text.includes("forestry")) prefs.push("forestry");
+  if (text.includes("gregtech") || text.includes("gt ")) prefs.push("gregtech");
+  if (text.includes("minecraft")) prefs.push("minecraft");
+  if (text.includes("thaumcraft")) prefs.push("thaumcraft");
+  if (text.includes("ender io") || text.includes("enderio")) prefs.push("enderio");
+  if (text.includes("applied energistics") || text.includes("ae2")) prefs.push("appliedenergistics2");
+
+  return prefs;
+}
+
+function machineCandidates(machineName, recipe = null) {
+  const raw = String(machineName ?? "");
+  const target = norm(raw);
+  const text = norm(`${raw} ${machineRecipeText(recipe)}`);
+
+  const names = new Set();
+
+  function add(x) {
+    const n = norm(x);
+    if (n) names.add(n);
+  }
+
+  add(raw);
+  add(raw.replace(/^multiblock\s+/i, ""));
+  add(raw.replace(/^large\s+/i, ""));
+  add(raw.replace(/\s+recipe$/i, ""));
+  add(raw + " Machine");
+
+  /*
+    Manual aliases.
+    These are intentionally conservative.
+    Add exact/common machine names here instead of letting the code guess random outputs.
+  */
+  const aliases = [
+    ["assembly line", [
+      "assembly line",
+      "advanced assembly line",
+      "assembly line machine"
+    ]],
+
+    ["assembler", [
+      "assembler",
+      "assembling machine",
+      "basic assembling machine",
+      "lv assembling machine",
+      "mv assembling machine",
+      "hv assembling machine",
+      "ev assembling machine"
+    ]],
+
+    ["circuit assembler", [
+      "circuit assembler",
+      "basic circuit assembler",
+      "lv circuit assembler",
+      "mv circuit assembler",
+      "hv circuit assembler"
+    ]],
+
+    ["mixer", [
+      "mixer",
+      "basic mixer",
+      "lv mixer",
+      "mv mixer",
+      "hv mixer"
+    ]],
+
+    ["multiblock mixer", [
+      "mixer",
+      "large mixer"
+    ]],
+
+    ["fluid canner", [
+      "fluid canner",
+      "basic fluid canner",
+      "lv fluid canner",
+      "mv fluid canner"
+    ]],
+
+    ["chemical reactor", [
+      "chemical reactor",
+      "basic chemical reactor",
+      "lv chemical reactor",
+      "mv chemical reactor"
+    ]],
+
+    ["large chemical reactor", [
+      "large chemical reactor",
+      "chemical reactor"
+    ]],
+
+    ["distillery", [
+      "distillery",
+      "basic distillery",
+      "lv distillery",
+      "mv distillery"
+    ]],
+
+    ["distillation tower", [
+      "distillation tower",
+      "distillery"
+    ]],
+
+    ["centrifuge", [
+      "centrifuge",
+      "basic centrifuge",
+      "lv centrifuge",
+      "mv centrifuge"
+    ]],
+
+    ["electrolyzer", [
+      "electrolyzer",
+      "basic electrolyzer",
+      "lv electrolyzer",
+      "mv electrolyzer"
+    ]],
+
+    ["arc furnace", [
+      "arc furnace",
+      "electric arc furnace"
+    ]],
+
+    ["electric furnace", [
+      "electric furnace",
+      "furnace"
+    ]],
+
+    ["alloy smelter", [
+      "alloy smelter"
+    ]],
+
+    /*
+      Forestry.
+      There is not really a normal 'Forestry Assembler' name in many packs.
+      Forestry recipes usually use these machine blocks instead.
+    */
+    ["forestry assembler", [
+      "carpenter",
+      "thermionic fabricator",
+      "worktable",
+      "forestry worktable"
+    ]],
+
+    ["carpenter", [
+      "carpenter"
+    ]],
+
+    ["thermionic fabricator", [
+      "thermionic fabricator"
+    ]],
+
+    ["squeezer", [
+      "squeezer"
+    ]],
+
+    ["fermenter", [
+      "fermenter"
+    ]],
+
+    ["forestry centrifuge", [
+      "centrifuge"
+    ]],
+
+    ["moistener", [
+      "moistener"
+    ]],
+
+    ["still", [
+      "still"
+    ]]
+  ];
+
+  for (const [key, vals] of aliases) {
+    if (target.includes(key) || text.includes(key)) {
+      for (const v of vals) add(v);
+    }
+  }
+
+  // Generic useful fallbacks.
+  if (target.includes("assembly line")) add("assembly line");
+  else if (target.includes("assembler")) add("assembling machine");
+
+  if (target.includes("mixer")) add("mixer");
+  if (target.includes("canner")) add("fluid canner");
+  if (target.includes("reactor")) add("chemical reactor");
+  if (target.includes("distillery")) add("distillery");
+  if (target.includes("centrifuge")) add("centrifuge");
+  if (target.includes("electrolyzer")) add("electrolyzer");
+  if (target.includes("compressor")) add("compressor");
+  if (target.includes("macerator")) add("macerator");
+  if (target.includes("extruder")) add("extruder");
+  if (target.includes("furnace")) add("electric furnace");
+
+  return [...names];
+}
+
+function machineItemScore(item, candidates, modPrefs) {
+  const n = norm(item.name);
+  const mod = norm(item.mod ?? "");
+  let score = -999999;
+
+  for (const c of candidates) {
+    if (!c || c.length < 3) continue;
+
+    let s = -999999;
+
+    if (n === c) {
+      s = 10000;
+    } else if (n.endsWith(c)) {
+      s = 8000;
+    } else if (n.includes(c)) {
+      s = 5500;
+    } else if (c.includes(n) && n.length >= 6) {
+      s = 3000;
+    }
+
+    if (s < 0) continue;
+
+    // Prefer expected mod.
+    for (const pref of modPrefs) {
+      if (mod.includes(pref)) s += 1800;
+    }
+
+    // Prefer machine-ish names.
+    if (
+      n.includes("machine") ||
+      n.includes("assembler") ||
+      n.includes("assembling") ||
+      n.includes("assembly line") ||
+      n.includes("mixer") ||
+      n.includes("canner") ||
+      n.includes("reactor") ||
+      n.includes("distillery") ||
+      n.includes("centrifuge") ||
+      n.includes("electrolyzer") ||
+      n.includes("compressor") ||
+      n.includes("macerator") ||
+      n.includes("extruder") ||
+      n.includes("furnace") ||
+      n.includes("fabricator") ||
+      n.includes("carpenter") ||
+      n.includes("squeezer") ||
+      n.includes("fermenter") ||
+      n.includes("moistener") ||
+      n.includes("still")
+    ) {
+      s += 900;
+    }
+
+    // Penalize obvious non-machine stuff.
+    if (
+      n.includes("dust") ||
+      n.includes("ingot") ||
+      n.includes("plate") ||
+      n.includes("cell") ||
+      n.includes("fluid") ||
+      n.includes("bucket") ||
+      n.includes("cover") ||
+      n.includes("circuit") ||
+      n.includes("wire") ||
+      n.includes("cable") ||
+      n.includes("pipe")
+    ) {
+      s -= 2500;
+    }
+
+    score = Math.max(score, s);
+  }
+
+  return score;
+}
+
+function findMachineIcon(machineName, recipe = null) {
+  /*
+    Correct fast mode:
+    The official GTNH calculator uses recipeType.defaultCrafter.iconId.
+    No guessing, no scanning all items, no wrong icons.
+  */
+  const iconId = recipe?.recipeType?.defaultCrafter?.iconId;
+  return iconId === undefined ? null : iconId;
+}
+
+function renderMachineTabs() {
+  const counts = new Map();
+  counts.set("All", currentRecipes.length);
+
+  for (const recipe of currentRecipes) {
+    const m = recipeMachineName(recipe);
+    counts.set(m, (counts.get(m) ?? 0) + 1);
+  }
+
+  machineTabs.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (const [name, count] of counts.entries()) {
+    const b = document.createElement("button");
+    b.className = "tab" + (name === activeMachine ? " active" : "");
+
+    const sampleRecipe = name === "All"
+          ? null
+          : currentRecipes.find(r => recipeMachineName(r) === name);
+
+        const iconId = findMachineIcon(name, sampleRecipe);
+
+    if (iconId !== null && iconId !== undefined) {
+      const ic = document.createElement("span");
+      ic.className = "tabIcon";
+      setIcon(ic, iconId);
+      b.appendChild(ic);
+    }
+
+    const t = document.createElement("span");
+    t.textContent = `${name} (${count})`;
+    b.appendChild(t);
+
+    b.addEventListener("click", () => {
+      if (activeMachine === name) return;
+
+      activeMachine = name;
+
+      for (const tab of machineTabs.querySelectorAll(".tab")) {
+        tab.classList.remove("active");
+      }
+
+      b.classList.add("active");
+
+      recipePage.innerHTML = '<div class="empty">Loading recipes...</div>';
+
+      requestAnimationFrame(() => {
+        renderRecipeList();
+      });
+    });
+
+    frag.appendChild(b);
+  }
+
+  machineTabs.appendChild(frag);
+}
+
+function renderRecipeList() {
+  recipePage.innerHTML = "";
+
+  currentRecipeList = currentRecipeGroups.get(activeMachine) ?? [];
+
+  renderedRecipeCount = 0;
+
+  status.textContent = `${currentView.mode}: ${nameOf(currentView.obj)} — ${currentRecipeList.length}/${currentRecipes.length} recipe(s)`;
+
+  if (currentRecipeList.length === 0) {
+    recipePage.innerHTML = `<div class="empty">No recipes in this machine tab.</div>`;
+    return;
+  }
+
+  requestAnimationFrame(() => appendRecipeCards());
+}
+
+function appendRecipeCards() {
+  if (renderedRecipeCount >= currentRecipeList.length) return;
+
+  const frag = document.createDocumentFragment();
+  const end = Math.min(renderedRecipeCount + RECIPE_PAGE_SIZE, currentRecipeList.length);
+
+  for (let i = renderedRecipeCount; i < end; i++) {
+    frag.appendChild(recipeCardNei(currentRecipeList[i]));
+  }
+
+  renderedRecipeCount = end;
+
+  const oldMore = recipePage.querySelector(".loadMore");
+  if (oldMore) oldMore.remove();
+
+  if (renderedRecipeCount < currentRecipeList.length) {
+    const more = document.createElement("div");
+    more.className = "loadMore";
+    more.textContent = `Scroll more to load ${currentRecipeList.length - renderedRecipeCount} more recipes...`;
+    frag.appendChild(more);
+  }
+
+  recipePage.appendChild(frag);
+}
+
+function openProduction(obj) {
+  recipePage.style.display = "block";
+  grid.style.display = "none";
+  machineTabs.style.display = "none";
+  breadcrumb.style.display = "block";
+  recipePage.innerHTML = '<div class="empty">Loading recipe...</div>';
+  requestAnimationFrame(() => renderRecipes(obj, "Production", true));
+}
+
+function openUsage(obj) {
+  recipePage.style.display = "block";
+  grid.style.display = "none";
+  machineTabs.style.display = "none";
+  breadcrumb.style.display = "block";
+  recipePage.innerHTML = '<div class="empty">Loading usage...</div>';
+  requestAnimationFrame(() => renderRecipes(obj, "Usage", true));
+}
+
+async function copyExactName(obj, x, y, anchor = null) {
+  try {
+    await navigator.clipboard.writeText(nameOf(obj));
+    showTip(obj, "Copied exact name", x, y, anchor);
+  } catch {
+    showTip(obj, "Copy failed", x, y, anchor);
+  }
+}
+
+function attachControls(el, obj) {
+  let tapCount = 0;
+  let tapTimer = null;
+  let holdTimer = null;
+  let held = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
+  let lastTouchTime = 0;
+
+  function clearHold() {
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+  }
+
+  function startHold(x, y) {
+    held = false;
+    moved = false;
+    startX = x;
+    startY = y;
+
+    clearHold();
+
+    holdTimer = setTimeout(() => {
+      held = true;
+      copyExactName(obj, startX, startY, el);
+    }, 560);
+  }
+
+  function moveCheck(x, y) {
+    if (Math.abs(x - startX) > 10 || Math.abs(y - startY) > 10) {
+      moved = true;
+      clearHold();
+    }
+  }
+
+  el.addEventListener("mouseenter", (event) => {
+    showTip(obj, "Left click/tap: recipe • Right click/double tap: usage • Hold: copy", event.clientX, event.clientY, el);
+  });
+
+  el.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    clearHold();
+    openUsage(obj);
+  });
+
+  // Mouse / PC
+  el.addEventListener("mousedown", (event) => {
+    if (event.button !== 0) return;
+    startHold(event.clientX, event.clientY);
+  });
+
+  el.addEventListener("mousemove", (event) => {
+    moveCheck(event.clientX, event.clientY);
+  });
+
+  el.addEventListener("mouseup", clearHold);
+  el.addEventListener("mouseleave", clearHold);
+
+  el.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Ignore Android synthetic click after touch.
+    if (Date.now() - lastTouchTime < 700) return;
+
+    if (held) {
+      held = false;
+      return;
+    }
+
+    // PC left click should be instant. Use right click for usage.
+    openProduction(obj);
+  });
+
+  // Touch / mobile
+  el.addEventListener("touchstart", (event) => {
+    const t = event.touches[0];
+    lastTouchTime = Date.now();
+
+    showTip(obj, "Tap: recipe • Double tap: usage • Hold: copy", t.clientX, t.clientY, el);
+    startHold(t.clientX, t.clientY);
+  }, { passive: true });
+
+  el.addEventListener("touchmove", (event) => {
+    const t = event.touches[0];
+    moveCheck(t.clientX, t.clientY);
+  }, { passive: true });
+
+  el.addEventListener("touchend", (event) => {
+    clearHold();
+
+    if (held) {
+      held = false;
+      tapCount = 0;
+      return;
+    }
+
+    if (moved) {
+      tapCount = 0;
+      return;
+    }
+
+    tapCount++;
+
+    if (tapTimer) clearTimeout(tapTimer);
+
+    tapTimer = setTimeout(() => {
+      const count = tapCount;
+      tapCount = 0;
+      tapTimer = null;
+
+      if (count >= 2) {
+        openUsage(obj);
+      } else {
+        openProduction(obj);
+      }
+    }, 180);
+  }, { passive: true });
+}
+
+function amountText(io) {
+  if (io.goods instanceof Fluid) return `${io.amount} L`;
+  if (io.amount === 1) return "";
+  return `x${io.amount}`;
+}
+
+function ioBox(io) {
+  const box = document.createElement("div");
+  box.className = "goods";
+  box.title = nameOf(io.goods);
+
+  const shown = displayObj(io.goods);
+  const icon = document.createElement("div");
+  icon.className = "icon";
+  if (shown) setIcon(icon, shown.iconId);
+  registerOreIcon(icon, io.goods);
+
+  const text = document.createElement("div");
+  text.className = "goodsName";
+
+  let extra = "";
+  if (io.probability < 1) extra = ` (${Math.round(io.probability * 100)}%)`;
+
+  text.textContent = `${amountText(io)} ${nameOf(io.goods)}${extra}`.trim();
+
+  box.appendChild(icon);
+  box.appendChild(text);
+
+  attachControls(box, io.goods);
+
+  return box;
+}
+
+function ioRow(recipe, label, types) {
+  const block = document.createElement("div");
+  block.className = "ioBlock";
+
+  const l = document.createElement("div");
+  l.className = "label";
+  l.textContent = label;
+
+  const items = document.createElement("div");
+  items.className = "ioItems";
+
+  let count = 0;
+
+  for (const io of recipe.items) {
+    if (types.includes(io.type)) {
+      items.appendChild(ioBox(io));
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    const e = document.createElement("div");
+    e.className = "goodsName";
+    e.textContent = "none";
+    items.appendChild(e);
+  }
+
+  block.appendChild(l);
+  block.appendChild(items);
+
+  return block;
+}
+
+function formatDuration(gt) {
+  if (!gt) return null;
+  const sec = gt.durationSeconds;
+  if (sec === undefined || sec === null) return null;
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}m ${s}s`;
+}
+
+function recipeCard(recipe) {
+  const card = document.createElement("div");
+  card.className = "recipe";
+
+  const head = document.createElement("div");
+  head.className = "recipeHead";
+
+  const left = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "recipeTitle";
+
+  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+  if (machineIcon !== null && machineIcon !== undefined) {
+    const ic = document.createElement("span");
+    ic.className = "tabIcon";
+    setIcon(ic, machineIcon);
+    title.appendChild(ic);
+  }
+
+  const titleText = document.createElement("span");
+  titleText.textContent = recipeMachineName(recipe);
+  title.appendChild(titleText);
+
+  const id = document.createElement("div");
+  id.className = "recipeId";
+  id.textContent = recipe.id ?? "";
+
+  left.appendChild(title);
+  left.appendChild(id);
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+
+  if (recipe.gtRecipe) {
+    const gt = recipe.gtRecipe;
+
+    const tier = document.createElement("span");
+    tier.className = "badge tier";
+    tier.textContent = tierFromEu(gt.voltage);
+    badges.appendChild(tier);
+
+    const eu = document.createElement("span");
+    eu.className = "badge eu";
+    eu.textContent = `${gt.voltage ?? "?"} EU/t`;
+    badges.appendChild(eu);
+
+    const amp = document.createElement("span");
+    amp.className = "badge";
+    amp.textContent = `${gt.amperage ?? "?"}A`;
+    badges.appendChild(amp);
+
+    const dur = formatDuration(gt);
+    if (dur) {
+      const time = document.createElement("span");
+      time.className = "badge time";
+      time.textContent = dur;
+      badges.appendChild(time);
+    }
+  }
+
+  head.appendChild(left);
+  head.appendChild(badges);
+
+  card.appendChild(head);
+
+  card.appendChild(ioRow(recipe, "Input", [
+    RecipeIoType.ItemInput,
+    RecipeIoType.OreDictInput,
+    RecipeIoType.FluidInput
+  ]));
+
+  card.appendChild(ioRow(recipe, "Output", [
+    RecipeIoType.ItemOutput,
+    RecipeIoType.FluidOutput
+  ]));
+
+  return card;
+}
+
+grid.addEventListener("scroll", () => {
+  if (currentView.type !== "grid") return;
+
+  const nearBottom = grid.scrollTop + grid.clientHeight > grid.scrollHeight - 260;
+  if (nearBottom) appendGridItems();
+});
+
+recipePage.addEventListener("scroll", () => {
+  if (currentView.type !== "recipes") return;
+
+  const nearBottom = recipePage.scrollTop + recipePage.clientHeight > recipePage.scrollHeight - 320;
+  if (nearBottom) appendRecipeCards();
+});
+
+
+
+
+function inputItemTypes() {
+  return [
+    RecipeIoType.ItemInput,
+    RecipeIoType.OreDictInput
+  ];
+}
+
+function inputFluidTypes() {
+  return [
+    RecipeIoType.FluidInput
+  ];
+}
+
+function outputItemTypes() {
+  return [
+    RecipeIoType.ItemOutput
+  ];
+}
+
+function outputFluidTypes() {
+  return [
+    RecipeIoType.FluidOutput
+  ];
+}
+
+function amountShort(io) {
+  const amount = Number(io.amount ?? 0);
+
+  if (io.goods instanceof Fluid) {
+    if (amount >= 1000000) return `${Math.round(amount / 100000) / 10}M`;
+    if (amount >= 1000) return `${Math.round(amount / 100) / 10}k`;
+    return String(amount);
+  }
+
+  if (amount <= 1) return "";
+  return String(amount);
+}
+
+function makeEmptySlot() {
+  const slot = document.createElement("div");
+  slot.className = "neiSlot emptySlot";
+  return slot;
+}
+
+function makeNeiSlot(io) {
+  const slot = document.createElement("div");
+  slot.className = "neiSlot";
+  slot.title = `${amountText(io)} ${nameOf(io.goods)}`.trim();
+
+  const shown = displayObj(io.goods);
+  const icon = document.createElement("div");
+  icon.className = "icon";
+
+  if (shown) setIcon(icon, shown.iconId);
+
+  if (typeof registerOreIcon === "function") {
+    registerOreIcon(icon, io.goods);
+  }
+
+  slot.appendChild(icon);
+
+  const amt = amountShort(io);
+  if (amt) {
+    const amount = document.createElement("div");
+    amount.className = "neiAmount";
+    amount.textContent = amt;
+    slot.appendChild(amount);
+  }
+
+  attachControls(slot, io.goods);
+  return slot;
+}
+
+function makeSlotGrid(recipe, label, types, dimensionOffset) {
+  const dims = recipe.recipeType?.dimensions;
+  if (!dims) return null;
+
+  const dimX = Number(dims[dimensionOffset] ?? 0);
+  const dimY = Number(dims[dimensionOffset + 1] ?? 0);
+
+  if (dimX <= 0 || dimY <= 0) return null;
+
+  const count = dimX * dimY;
+  const bySlot = new Map();
+
+  for (const io of recipe.items) {
+    if (!types.includes(io.type)) continue;
+
+    const slot = Number(io.slot ?? -1);
+    if (slot < 0 || slot >= count) continue;
+
+    bySlot.set(slot, io);
+  }
+
+  if (bySlot.size === 0) return null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "neiSubGrid";
+  wrap.style.setProperty("--nei-cols", String(dimX));
+
+  if (label) {
+    const title = document.createElement("div");
+    title.className = "neiGridLabel";
+    title.textContent = label;
+    wrap.appendChild(title);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const io = bySlot.get(i);
+    wrap.appendChild(io ? makeNeiSlot(io) : makeEmptySlot());
+  }
+
+  return wrap;
+}
+
+function makeIoSide(recipe, label, itemTypes, fluidTypes, dimensionOffset) {
+  const side = document.createElement("div");
+  side.className = "neiIoSide";
+
+  const title = document.createElement("div");
+  title.className = "neiGridLabel";
+  title.textContent = label;
+  side.appendChild(title);
+
+  const itemGrid = makeSlotGrid(recipe, "", itemTypes, dimensionOffset);
+  const fluidGrid = makeSlotGrid(recipe, "", fluidTypes, dimensionOffset + 2);
+
+  if (itemGrid) side.appendChild(itemGrid);
+  if (fluidGrid) side.appendChild(fluidGrid);
+
+  if (!itemGrid && !fluidGrid) {
+    side.appendChild(makeEmptySlot());
+  }
+
+  return side;
+}
+
+function addBadges(recipe, badges) {
+  let tierText = "";
+  let euText = "";
+  let ampText = "";
+  let timeText = "";
+
+  if (recipe.gtRecipe) {
+    const gt = recipe.gtRecipe;
+
+    tierText = tierFromEu(gt.voltage);
+    euText = `${gt.voltage ?? "?"} EU/t`;
+    ampText = `${gt.amperage ?? "?"}A`;
+    timeText = formatDuration(gt) ?? "";
+
+    const tier = document.createElement("span");
+    tier.className = "badge tier";
+    tier.textContent = tierText;
+    badges.appendChild(tier);
+
+    const eu = document.createElement("span");
+    eu.className = "badge eu";
+    eu.textContent = euText;
+    badges.appendChild(eu);
+
+    const amp = document.createElement("span");
+    amp.className = "badge";
+    amp.textContent = ampText;
+    badges.appendChild(amp);
+
+    if (timeText) {
+      const time = document.createElement("span");
+      time.className = "badge time";
+      time.textContent = timeText;
+      badges.appendChild(time);
+    }
+  }
+
+  return { tierText, euText, ampText, timeText };
+}
+
+function recipeCardNei(recipe) {
+  const dims = recipe.recipeType?.dimensions;
+  const inputItemX = Number(dims?.[0] ?? 0);
+  const inputItemY = Number(dims?.[1] ?? 0);
+
+  const card = document.createElement("div");
+  card.className = "recipe";
+
+  if (inputItemX >= 7 || inputItemY >= 7) {
+    card.classList.add("bigCrafting");
+  }
+
+  const head = document.createElement("div");
+  head.className = "recipeHead";
+
+  const left = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "recipeTitle";
+
+  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+  if (machineIcon !== null && machineIcon !== undefined) {
+    const ic = document.createElement("span");
+    ic.className = "tabIcon";
+    setIcon(ic, machineIcon);
+    title.appendChild(ic);
+  }
+
+  const titleText = document.createElement("span");
+  titleText.textContent = recipeMachineName(recipe);
+  title.appendChild(titleText);
+
+  left.appendChild(title);
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+  const meta = addBadges(recipe, badges);
+
+  head.appendChild(left);
+  head.appendChild(badges);
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "neiRecipeBody";
+
+  const inputSide = makeIoSide(
+    recipe,
+    "Input",
+    inputItemTypes(),
+    inputFluidTypes(),
+    0
+  );
+
+  const arrowWrap = document.createElement("div");
+  arrowWrap.className = "neiArrowBox";
+
+  const arrow = document.createElement("div");
+  arrow.className = "neiArrow";
+  arrow.textContent = "→";
+
+  const machineLine = document.createElement("div");
+  machineLine.className = "neiMachineLine";
+  machineLine.textContent = meta.timeText ? `${meta.tierText} • ${meta.timeText}` : meta.tierText;
+
+  const subLine = document.createElement("div");
+  subLine.className = "neiSubLine";
+  subLine.textContent = meta.euText ? `${meta.ampText} • ${meta.euText}` : "";
+
+  arrowWrap.appendChild(arrow);
+  arrowWrap.appendChild(machineLine);
+  arrowWrap.appendChild(subLine);
+
+  const outputSide = makeIoSide(
+    recipe,
+    "Output",
+    outputItemTypes(),
+    outputFluidTypes(),
+    4
+  );
+
+  body.appendChild(inputSide);
+  body.appendChild(arrowWrap);
+  body.appendChild(outputSide);
+
+  card.appendChild(body);
+  return card;
+}
+
+search.addEventListener("input", () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => renderSearchGrid(true), 150);
+});
+
+clear.addEventListener("click", () => {
+  search.value = "";
+  renderSearchGrid(true);
+  search.focus();
+});
+
+navBack.addEventListener("click", () => {
+  if (historyStack.length === 0) return;
+  forwardStack.push(currentView);
+  const prev = historyStack.pop();
+  restoreView(prev);
+});
+
+navForward.addEventListener("click", () => {
+  if (forwardStack.length === 0) return;
+  historyStack.push(currentView);
+  const next = forwardStack.pop();
+  restoreView(next);
+});
+
+load().catch(err => {
+  console.error(err);
+  status.textContent = "ERROR: " + err.message;
+});
+
+// Hide tooltip when tapping/clicking empty space
+function hideTip() {
+  tip.style.display = "none";
+  activeTipAnchor = null;
+  activeTipObj = null;
+  activeTipText = "";
+  clearTimeout(tipTimer);
+}
+
+document.addEventListener("pointerdown", (event) => {
+  const keepTooltip =
+    event.target.closest(".slot") ||
+    event.target.closest(".goods") ||
+    event.target.closest(".tab") ||
+    event.target.closest("button") ||
+    event.target.closest("input") ||
+    event.target.closest("#tip");
+
+  if (!keepTooltip) {
+    hideTip();
+  }
+}, true);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    hideTip();
+  }
+});
+
+// Extra tooltip close rule:
+// Only item/recipe icons keep tooltip. Search bar, close button, nav buttons,
+// tabs, blank space, etc. close the tooltip.
+document.addEventListener("pointerdown", (event) => {
+  const isItemIcon =
+    event.target.closest(".slot") ||
+    event.target.closest(".neiSlot") ||
+    event.target.closest(".goods");
+
+  if (!isItemIcon && typeof hideTip === "function") {
+    hideTip();
+  }
+}, true);
+
+search.addEventListener("focus", () => {
+  if (typeof hideTip === "function") hideTip();
+});
+
+clear.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+navBack.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+navForward.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+machineTabs.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);

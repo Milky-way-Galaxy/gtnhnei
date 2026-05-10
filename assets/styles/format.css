@@ -1,0 +1,83 @@
+.fmt-0 {
+    color: #000000;
+}
+
+.fmt-1 {
+    color: #0000AA;
+}
+
+.fmt-2 {
+    color: #00AA00;
+}
+
+.fmt-3 {
+    color: #00AAAA;
+}
+
+.fmt-4 {
+    color: #AA0000;
+}
+
+.fmt-5 {
+    color: #AA00AA;
+}
+
+.fmt-6 {
+    color: #FFAA00;
+}
+
+.fmt-7 {
+    color: #AAAAAA;
+}
+
+.fmt-8 {
+    color: #555555;
+}
+
+.fmt-9 {
+    color: #5555FF;
+}
+
+.fmt-a {
+    color: #55FF55;
+}
+
+.fmt-b {
+    color: #55FFFF;
+}
+
+.fmt-c {
+    color: #FF5555;
+}
+
+.fmt-d {
+    color: #FF55FF;
+}
+
+.fmt-e {
+    color: #FFFF55;
+}
+
+.fmt-f {
+    color: #FFFFFF;
+}
+
+.fmt-k {}
+
+.fmt-l {
+    font-weight: bold;
+}
+
+.fmt-m {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+}
+
+.fmt-n {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+.fmt-o {
+    font-style: italic;
+}

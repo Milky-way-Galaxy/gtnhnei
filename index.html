@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GTNH NEI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <span class="title">GTNH NEI</span>
+      <button id="navBack" disabled>←</button>
+      <button id="navForward" disabled>→</button>
+      <input id="search" placeholder="Search item/fluid">
+      <button id="clear">×</button>
+    </div>
+
+    <div id="status">Loading...</div>
+    <div id="breadcrumb"></div>
+    <div id="machineTabs"></div>
+
+    <div id="main">
+      <div id="grid"></div>
+      <div id="recipePage"></div>
+    </div>
+  </div>
+
+  <div id="tip"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

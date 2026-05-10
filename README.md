@@ -1,5 +1,8 @@
 # GTNH NEI
 
+Website: https://milky-way-galaxy.github.io/gtnhnei/
+
+
 A lightweight NEI-style recipe and usage searcher for GregTech: New Horizons.
 
 Features:

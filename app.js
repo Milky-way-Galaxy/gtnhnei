@@ -240,7 +240,9 @@ async function load() {
   }
 
   status.textContent = `Loaded ${allGoods.length} items/fluids`;
-  renderSearchGrid(false);
+      installAddonIconApi();
+      
+renderSearchGrid(false);
 }
 
 function updateNav() {
@@ -1489,3 +1491,431 @@ navForward.addEventListener("pointerdown", () => {
 machineTabs.addEventListener("pointerdown", () => {
   if (typeof hideTip === "function") hideTip();
 }, true);
+
+
+
+
+
+
+/* === GTNH NEI ADDON ICON API START === */
+function installAddonIconApi() {
+  try {
+    window.GTNHNEI_ICON_API = {
+      ready: true,
+
+      findObjectByName(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const compact = qLower.replace(/[^a-z0-9]/g, "");
+
+        if (!qLower || !Array.isArray(allGoods)) return null;
+
+        function objName(o) {
+          try {
+            return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+          } catch {
+            return String(o?.name || o?.id || "").toLowerCase();
+          }
+        }
+
+        function objCompact(o) {
+          return objName(o).replace(/[^a-z0-9]/g, "");
+        }
+
+        let obj =
+          allGoods.find(o => objName(o) === qLower) ||
+          allGoods.find(o => objCompact(o) === compact) ||
+          allGoods.find(o => objName(o).includes(qLower)) ||
+          allGoods.find(o => objCompact(o).includes(compact));
+
+        // Stronger fallback: use the same GTNH calculator search engine.
+        if (!obj && typeof SearchQuery !== "undefined" && repo) {
+          try {
+            const query = new SearchQuery(q);
+            obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+          } catch {}
+        }
+
+        return obj || null;
+      },
+
+      setIconByName(el, rawName) {
+        const obj = this.findObjectByName(rawName);
+
+        if (!obj || obj.iconId === undefined || obj.iconId === null) {
+          return false;
+        }
+
+        el.classList.add("icon");
+        el.textContent = "";
+
+        try {
+          setIcon(el, obj.iconId);
+          el.dataset.gtnhIconOk = "1";
+          el.dataset.gtnhIconName = String(obj.name || obj.id || rawName);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    };
+
+    window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+    console.log("GTNHNEI_ICON_API ready:", allGoods?.length || 0);
+  } catch (err) {
+    console.warn("Failed to install addon icon API", err);
+  }
+}
+/* === GTNH NEI ADDON ICON API END === */
+
+
+/* === GTNH NEI ICON DEBUG PANEL START === */
+window.addEventListener("gtnhnei-icons-ready", () => {
+  window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "microprocessor") {
+    const api = window.GTNHNEI_ICON_API;
+    if (!api) {
+      alert("GTNHNEI_ICON_API missing");
+      return [];
+    }
+
+    const q = String(rawQuery || "").toLowerCase();
+    const results = [];
+
+    try {
+      for (const obj of allGoods) {
+        let n = "";
+        try {
+          n = String(nameOf(obj) || obj?.name || obj?.id || "");
+        } catch {
+          n = String(obj?.name || obj?.id || "");
+        }
+
+        if (n.toLowerCase().includes(q)) {
+          results.push({
+            name: n,
+            id: obj?.id,
+            iconId: obj?.iconId
+          });
+        }
+
+        if (results.length >= 40) break;
+      }
+    } catch (err) {
+      alert("debug failed: " + err.message);
+      return [];
+    }
+
+    console.table(results);
+    alert(
+      "Found " + results.length + " result(s) for: " + rawQuery + "\n\n" +
+      results.slice(0, 12).map(x => x.name + " | iconId=" + x.iconId).join("\n")
+    );
+
+    return results;
+  };
+});
+/* === GTNH NEI ICON DEBUG PANEL END === */
+
+
+
+/* === GTNH NEI ICON API HARD OVERRIDE v10 START === */
+(function installIconApiHardOverrideV10() {
+  let tries = 0;
+
+  function safeName(o) {
+    try {
+      if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
+    } catch {}
+    return String(o?.name || o?.id || "");
+  }
+
+  function compact(s) {
+    return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function installNow() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof setIcon !== "function"
+      ) {
+        return false;
+      }
+
+      window.GTNHNEI_ICON_API = {
+        ready: true,
+        count: allGoods.length,
+
+        findObjectByName(rawName) {
+          const q = String(rawName || "").trim();
+          const qLower = q.toLowerCase();
+          const qCompact = compact(q);
+
+          if (!qLower) return null;
+
+          let obj =
+            allGoods.find(o => safeName(o).toLowerCase() === qLower) ||
+            allGoods.find(o => compact(safeName(o)) === qCompact) ||
+            allGoods.find(o => safeName(o).toLowerCase().includes(qLower)) ||
+            allGoods.find(o => compact(safeName(o)).includes(qCompact));
+
+          if (!obj && typeof SearchQuery !== "undefined" && typeof repo !== "undefined" && repo) {
+            try {
+              const query = new SearchQuery(q);
+              obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+            } catch {}
+          }
+
+          return obj || null;
+        },
+
+        setIconByName(el, rawName) {
+          const obj = this.findObjectByName(rawName);
+
+          if (!obj || obj.iconId === undefined || obj.iconId === null) {
+            return false;
+          }
+
+          el.classList.add("icon");
+          el.classList.remove("lunaIconFallback");
+          el.textContent = "";
+
+          try {
+            setIcon(el, obj.iconId);
+            el.dataset.gtnhIconOk = "1";
+            el.dataset.gtnhIconName = safeName(obj);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      };
+
+      window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "") {
+        const q = String(rawQuery || "").trim().toLowerCase();
+        const qCompact = compact(q);
+        const results = [];
+
+        for (const obj of allGoods) {
+          const n = safeName(obj);
+          const nLower = n.toLowerCase();
+          const nCompact = compact(n);
+
+          if (!q || nLower.includes(q) || nCompact.includes(qCompact)) {
+            results.push({
+              name: n,
+              id: obj?.id,
+              iconId: obj?.iconId
+            });
+          }
+
+          if (results.length >= 40) break;
+        }
+
+        console.table(results);
+        alert(
+          "Found " + results.length + " result(s) for: " + rawQuery + "\n\n" +
+          results.slice(0, 14).map(x => x.name + " | iconId=" + x.iconId).join("\n")
+        );
+
+        return results;
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+      console.log("GTNHNEI_ICON_API v10 ready:", allGoods.length);
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_ICON_API v10 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installNow() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_ICON_API v10 gave up.");
+    }
+  }, 250);
+})();
+ /* === GTNH NEI ICON API HARD OVERRIDE v10 END === */
+
+
+/* === GTNH NEI MAIN NAV API v17 START === */
+(() => {
+  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+
+  function findByNameV17(name) {
+    try {
+      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+        return window.GTNHNEI_ICON_API.findObjectByName(name);
+      }
+    } catch {}
+
+    try {
+      const q = String(name || "").trim().toLowerCase();
+      const compact = q.replace(/[^a-z0-9]/g, "");
+
+      function n(o) {
+        try {
+          return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+        } catch {
+          return String(o?.name || o?.id || "").toLowerCase();
+        }
+      }
+
+      return (
+        allGoods.find(o => n(o) === q) ||
+        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+        allGoods.find(o => n(o).includes(q)) ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  window.GTNHNEI_MAIN_API = {
+    recipe(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openProduction === "function") {
+          openProduction(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Production", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    usage(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openUsage === "function") {
+          openUsage(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Usage", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    async copy(name) {
+      try {
+        await navigator.clipboard.writeText(String(name || ""));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  console.log("GTNHNEI_MAIN_API v17 ready");
+})();
+ /* === GTNH NEI MAIN NAV API v17 END === */
+
+/* === GTNH NEI MAIN NAV API v17 START === */
+(() => {
+  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+
+  function findByNameV17(name) {
+    try {
+      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+        return window.GTNHNEI_ICON_API.findObjectByName(name);
+      }
+    } catch {}
+
+    try {
+      const q = String(name || "").trim().toLowerCase();
+      const compact = q.replace(/[^a-z0-9]/g, "");
+
+      function n(o) {
+        try {
+          return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+        } catch {
+          return String(o?.name || o?.id || "").toLowerCase();
+        }
+      }
+
+      return (
+        allGoods.find(o => n(o) === q) ||
+        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+        allGoods.find(o => n(o).includes(q)) ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  window.GTNHNEI_MAIN_API = {
+    recipe(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openProduction === "function") {
+          openProduction(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Production", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    usage(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openUsage === "function") {
+          openUsage(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Usage", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    async copy(name) {
+      try {
+        await navigator.clipboard.writeText(String(name || ""));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  console.log("GTNHNEI_MAIN_API v17 ready");
+})();
+ /* === GTNH NEI MAIN NAV API v17 END === */

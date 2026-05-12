@@ -1,2 +1,13 @@
 backups/
 stable_versions/
+
+# Local-only backups / archives
+backups/
+stable_versions/
+*.backup_*
+
+# local junk
+backups/
+stable_versions/
+*.backup_*
+*.zip

@@ -36,7 +36,7 @@ let activeMachine = "All";
 let currentRecipes = [];
 let currentRecipeGroups = new Map();
 
-const MAX_GRID_TOTAL = 1200;
+const MAX_GRID_TOTAL = 420;
 const GRID_PAGE_SIZE = 160;
 const RECIPE_PAGE_SIZE = 8;
 

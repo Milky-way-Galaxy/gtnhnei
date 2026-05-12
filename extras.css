@@ -1,303 +1,354 @@
-/* =========================================================
-   GTNH NEI Extras v2
-   LunaLoves statue easter egg + safe UI extras.
-   Does not touch recipe logic.
-   ========================================================= */
+/* === GTNH NEI extras clean CSS v30 === */
 
-:root {
-  --luna-bg0: #050914;
-  --luna-bg1: #0b1324;
-  --luna-card: rgba(13, 27, 47, 0.97);
-  --luna-line: rgba(148, 163, 184, 0.20);
-  --luna-cyan: #38bdf8;
-  --luna-pink: #fb8ccf;
-  --luna-purple: #a78bfa;
-  --luna-gold: #fde68a;
-  --luna-green: #86efac;
-  --luna-text: #edf6ff;
-  --luna-muted: #9fb2c9;
-}
-
-#extrasHelp {
+.bootLoader {
   position: fixed;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  z-index: 5000;
-  display: none;
-  padding: 8px 10px;
-  border: 1px solid rgba(56, 189, 248, 0.30);
-  border-radius: 12px;
-  background: rgba(5, 13, 24, 0.88);
-  color: #dbeafe;
-  font-size: 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
-  backdrop-filter: blur(10px);
+  inset: 0;
+  z-index: 999999;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.14), transparent 34%),
+    radial-gradient(circle at 50% 85%, rgba(251, 140, 207, 0.12), transparent 34%),
+    #050914;
+  color: #eaf2ff;
 }
 
-#extrasHelp.show {
+.bootLoader.hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+
+.bootBox {
+  width: min(420px, calc(100vw - 34px));
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: linear-gradient(180deg, rgba(14, 25, 45, 0.96), rgba(5, 10, 22, 0.97));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.bootTitle {
+  font-size: 24px;
+  font-weight: 950;
+  margin-bottom: 8px;
+}
+
+.bootMsg {
+  color: #aebbd2;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.bootBar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.bootBar::before {
+  content: "";
   display: block;
-  animation: extrasHelpIn 160ms ease-out;
+  width: 45%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #fb8ccf);
+  animation: bootMove 1.1s ease-in-out infinite;
 }
 
-@keyframes extrasHelpIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes bootMove {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(240%); }
 }
 
 #lunaEggOverlay {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: 99990;
   display: none;
-  align-items: center;
-  justify-content: center;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px;
-  background:
-    radial-gradient(circle at 50% 16%, rgba(251, 140, 207, 0.18), transparent 34%),
-    radial-gradient(circle at 80% 82%, rgba(56, 189, 248, 0.14), transparent 34%),
-    rgba(0, 0, 0, 0.74);
-  backdrop-filter: blur(9px);
+  background: rgba(3, 7, 18, 0.86);
+  backdrop-filter: blur(7px);
 }
 
 #lunaEggOverlay.show {
-  display: flex;
-  animation: lunaFadeIn 180ms ease-out;
+  display: block;
 }
 
-@keyframes lunaFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.lunaEggCard {
-  width: min(540px, calc(100vw - 24px));
-  max-height: calc(100vh - 28px);
-  overflow: auto;
-  border-radius: 24px;
-  border: 1px solid rgba(251, 140, 207, 0.40);
-  background:
-    linear-gradient(180deg, rgba(22, 20, 44, 0.98), rgba(5, 13, 24, 0.98));
-  color: var(--luna-text);
-  box-shadow:
-    0 28px 80px rgba(0,0,0,0.66),
-    0 0 0 1px rgba(251, 140, 207, 0.08),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  padding: 16px;
-  animation: lunaPop 220ms cubic-bezier(.2,.9,.2,1);
-}
-
-@keyframes lunaPop {
-  from { transform: scale(0.96) translateY(8px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.lunaEggTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.lunaEggTitle {
-  font-size: 22px;
-  font-weight: 950;
-  line-height: 1.1;
-  color: #ffffff;
-}
-
-.lunaEggSub {
-  margin-top: 5px;
-  color: var(--luna-muted);
-  font-size: 13px;
-}
-
-.lunaEggClose {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  font-weight: 950;
-}
-
-.lunaStage {
+.lunaPanel {
   position: relative;
-  min-height: 285px;
-  border-radius: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background:
-    radial-gradient(circle at 50% 20%, rgba(251, 140, 207, 0.16), transparent 28%),
-    radial-gradient(circle at 50% 75%, rgba(56, 189, 248, 0.12), transparent 35%),
-    linear-gradient(180deg, rgba(8, 19, 34, 0.96), rgba(3, 7, 18, 0.96));
+  width: min(650px, calc(100vw - 28px));
+  max-width: 650px;
+  margin: 0 auto 24px auto;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(251, 140, 207, 0.45);
+  background: linear-gradient(180deg, rgba(27, 18, 45, 0.97), rgba(5, 12, 26, 0.98));
+  color: #eef5ff;
+  box-sizing: border-box;
   overflow: hidden;
-  display: grid;
-  place-items: center;
 }
 
-.lunaStars {
+.lunaPanel * {
+  box-sizing: border-box;
+}
+
+.lunaClose {
   position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle, rgba(255,255,255,0.85) 0 1px, transparent 1.6px),
-    radial-gradient(circle, rgba(251,140,207,0.90) 0 1px, transparent 1.7px);
-  background-size: 47px 47px, 73px 73px;
-  background-position: 0 0, 17px 19px;
-  opacity: 0.22;
-  animation: lunaStarDrift 13s linear infinite;
+  right: 16px;
+  top: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(8, 20, 38, 0.92);
+  color: #eef5ff;
+  font-size: 24px;
+  font-weight: 900;
 }
 
-@keyframes lunaStarDrift {
-  from { transform: translateY(0); }
-  to { transform: translateY(47px); }
+.lunaHeader {
+  padding-right: 64px;
 }
 
-.lunaStatueBuild {
-  position: relative;
-  width: 250px;
-  height: 250px;
-  display: grid;
-  place-items: center;
-}
-
-.lunaHalo {
-  position: absolute;
-  width: 222px;
-  height: 222px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(251, 140, 207, 0.20), transparent 60%);
-  border: 1px solid rgba(251, 140, 207, 0.20);
-  animation: lunaPulse 2.6s ease-in-out infinite;
-}
-
-@keyframes lunaPulse {
-  0%, 100% { transform: scale(0.96); opacity: 0.65; }
-  50% { transform: scale(1.04); opacity: 1; }
-}
-
-.lunaAvatarFrame {
-  position: relative;
-  width: 154px;
-  height: 154px;
-  border-radius: 30px;
-  padding: 7px;
-  background:
-    linear-gradient(145deg, rgba(251, 140, 207, 0.98), rgba(56, 189, 248, 0.72));
-  box-shadow:
-    0 18px 42px rgba(0,0,0,0.55),
-    0 0 28px rgba(251, 140, 207, 0.20);
-  transform: rotate(-2deg);
-}
-
-#lunaAvatarImg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  border-radius: 24px;
-  image-rendering: auto;
-  background: #111827;
-}
-
-.lunaAvatarFallback {
-  display: none;
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  background: linear-gradient(145deg, #fb8ccf, #a78bfa);
-  color: white;
-  font-size: 48px;
+.lunaHeader h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 25px;
+  line-height: 1.1;
   font-weight: 950;
-  place-items: center;
 }
 
-.lunaStatueBase {
-  position: absolute;
-  left: 38px;
-  right: 38px;
-  bottom: 22px;
-  height: 42px;
-  border-radius: 14px;
-  background:
-    linear-gradient(180deg, #475569, #111827);
-  border: 3px solid rgba(226, 232, 240, 0.82);
-  box-shadow: 0 16px 30px rgba(0,0,0,0.45);
+.lunaHeader p,
+.lunaDesc {
+  margin: 8px 0 0 0;
+  color: #aebbd2;
+  line-height: 1.35;
 }
 
-.lunaPlaque {
-  position: absolute;
-  left: 65px;
-  right: 65px;
-  bottom: 34px;
-  height: 20px;
-  border-radius: 7px;
-  background:
-    linear-gradient(180deg, #fef3c7, #f59e0b);
-  color: #1f2937;
-  font-size: 10px;
-  font-weight: 950;
+.lunaPink {
+  color: #fb8ccf;
+  font-weight: 900;
+}
+
+.lunaInfo {
+  display: grid;
+  gap: 5px;
+  margin: 18px 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(251, 140, 207, 0.35);
+  background: rgba(251, 140, 207, 0.055);
+  font-size: 16px;
+}
+
+.lunaInfo b {
+  color: #fb8ccf;
+}
+
+.lunaMachine {
+  width: 100%;
+  max-width: 590px;
+  margin: 18px auto 0 auto;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: linear-gradient(180deg, rgba(16, 30, 54, 0.92), rgba(3, 10, 22, 0.96));
+}
+
+.lunaMachineTop {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.lunaMachineTop h3 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.15;
+}
+
+.lunaMachineTop p {
+  margin: 4px 0 0 0;
+  color: #aebbd2;
+  line-height: 1.25;
+}
+
+.lunaMachineIconBox {
+  width: 58px;
+  height: 58px;
   display: grid;
   place-items: center;
-  letter-spacing: 0.7px;
+  border-radius: 15px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(23, 35, 58, 0.9);
 }
 
-.lunaSpark {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  background: var(--luna-gold);
-  transform: rotate(45deg);
-  box-shadow: 0 0 16px var(--luna-gold);
-  animation: lunaSpark 1.6s ease-in-out infinite;
-}
-
-.lunaSpark.s1 { left: 16%; top: 24%; animation-delay: 0s; }
-.lunaSpark.s2 { right: 18%; top: 30%; animation-delay: 0.4s; }
-.lunaSpark.s3 { left: 28%; bottom: 24%; animation-delay: 0.8s; }
-.lunaSpark.s4 { right: 30%; bottom: 18%; animation-delay: 1.1s; }
-
-@keyframes lunaSpark {
-  0%, 100% { opacity: 0.25; transform: scale(0.8) rotate(45deg); }
-  50% { opacity: 1; transform: scale(1.25) rotate(45deg); }
-}
-
-.lunaEggStats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.lunaEggStat {
-  background: rgba(3, 7, 18, 0.58);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 14px;
-  padding: 10px;
-}
-
-.lunaEggStat b {
-  display: block;
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.lunaEggStat span {
-  display: block;
-  margin-top: 4px;
-  color: var(--luna-muted);
-  font-size: 12px;
-}
-
-.lunaEggActions {
+.lunaStats {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
   flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
 }
 
-.lunaEggActions button {
-  height: 38px;
+.lunaStats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(4, 10, 22, 0.7);
+  color: #dff7ff;
+  font-weight: 850;
+}
+
+.lunaSectionTitle {
+  color: #7dd3fc;
+  font-weight: 950;
+  margin-top: 12px;
+}
+
+.lunaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 74px);
+  gap: 10px;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(1, 7, 18, 0.62);
+}
+
+.lunaSlot,
+.lunaOutput {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: linear-gradient(180deg, rgba(31, 45, 70, 0.95), rgba(12, 22, 40, 0.95));
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+}
+
+.lunaSlot:active,
+.lunaOutput:active {
+  outline: 2px solid rgba(251, 140, 207, 0.85);
+}
+
+.lunaIcon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  display: block;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+/* Critical: do not enlarge .icon / atlas sprite beyond 32x32.
+   If this becomes 44/48/54px, the slot shows multiple atlas icons. */
+.lunaSlot .icon,
+.lunaMachineIconBox .icon {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  background-repeat: no-repeat !important;
+  image-rendering: pixelated !important;
+}
+
+.lunaIconFallback {
+  display: grid;
+  place-items: center;
+  color: #eaf2ff;
+  font-size: 11px;
+  font-weight: 950;
+  text-align: center;
+}
+
+.lunaAmount {
+  position: absolute;
+  right: 5px;
+  bottom: 3px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000;
+}
+
+.lunaArrow {
+  width: fit-content;
+  margin: 16px auto;
+  font-size: 38px;
+  font-weight: 950;
+  color: #eef5ff;
+}
+
+.lunaOutput {
+  width: 92px;
+  height: 92px;
+  margin: 12px auto 0 auto;
+}
+
+.lunaAvatarWrap {
+  width: 68px;
+  height: 68px;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.lunaAvatarWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lunaOutputName {
+  margin: 12px 0 0 0;
+  text-align: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.lunaDesc {
+  text-align: center;
+}
+
+.lunaCopy {
+  display: block;
+  margin: 14px auto 0 auto;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(12, 28, 50, 0.92);
+  color: #eef5ff;
+  font-weight: 900;
 }
 
 .lunaToast {
@@ -319,532 +370,24 @@
 
 .lunaToast.show {
   display: block;
-  animation: lunaToastPop 180ms ease-out;
-}
-
-@keyframes lunaToastPop {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-@media (max-width: 500px) {
-  .lunaEggTitle {
-    font-size: 19px;
-  }
-
-  .lunaEggStats {
-    grid-template-columns: 1fr;
-  }
-
-  .lunaStage {
-    min-height: 260px;
-  }
-}
-
-
-
-
-
-
-/* temple/statue columns */
-.lunaStage::before,
-.lunaStage::after {
-  content: "";
-  position: absolute;
-  bottom: 34px;
-  width: 34px;
-  height: 245px;
-  border-radius: 14px 14px 8px 8px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(226, 232, 240, 0.28) 0 4px,
-      rgba(100, 116, 139, 0.22) 4px 9px
-    ),
-    linear-gradient(180deg, rgba(226, 232, 240, 0.40), rgba(51, 65, 85, 0.60));
-  border: 2px solid rgba(226, 232, 240, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.20),
-    0 16px 30px rgba(0,0,0,0.32);
-  opacity: 0.72;
-}
-
-.lunaStage::before {
-  left: 26px;
-}
-
-.lunaStage::after {
-  right: 26px;
-}
-
-/* statue body area */
-.lunaStatueBuild {
-  width: 315px !important;
-  height: 380px !important;
-  margin-top: 8px;
-}
-
-/* bigger divine glow */
-.lunaHalo {
-  width: 270px !important;
-  height: 270px !important;
-  background:
-    radial-gradient(circle, rgba(251, 140, 207, 0.23), transparent 58%),
-    radial-gradient(circle, rgba(56, 189, 248, 0.15), transparent 70%) !important;
-}
-
-/* portrait becomes a stone bust face, not just flat icon */
-.lunaAvatarFrame {
-  width: 156px !important;
-  height: 156px !important;
-  border-radius: 50% 50% 44% 44% !important;
-  padding: 8px !important;
-  background:
-    linear-gradient(145deg, #fce7f3, #a78bfa 55%, #38bdf8) !important;
-  box-shadow:
-    0 22px 45px rgba(0,0,0,0.55),
-    0 0 34px rgba(251, 140, 207, 0.28),
-    inset 0 1px 0 rgba(255,255,255,0.25) !important;
-  transform: translateY(-42px) rotate(0deg) !important;
-  z-index: 4;
-}
-
-#lunaAvatarImg {
-  border-radius: 50% 50% 43% 43% !important;
-  filter:
-    saturate(1.12)
-    contrast(1.05)
-    drop-shadow(0 0 12px rgba(251, 140, 207, 0.18));
-}
-
-/* bust neck */
-.lunaAvatarFrame::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -42px;
-  width: 80px;
-  height: 52px;
-  transform: translateX(-50%);
-  border-radius: 22px 22px 10px 10px;
-  background:
-    linear-gradient(180deg, #e2e8f0, #64748b);
-  border: 2px solid rgba(226,232,240,0.55);
-  z-index: -1;
-}
-
-/* shoulder block */
-.lunaStatueBuild::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 188px;
-  width: 190px;
-  height: 82px;
-  transform: translateX(-50%);
-  border-radius: 48px 48px 18px 18px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.22), transparent 36%),
-    linear-gradient(180deg, #94a3b8, #334155);
-  border: 3px solid rgba(226,232,240,0.50);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.22),
-    0 20px 34px rgba(0,0,0,0.42);
-  z-index: 2;
-}
-
-/* large statue pedestal */
-.lunaStatueBase {
-  left: 18px !important;
-  right: 18px !important;
-  bottom: 30px !important;
-  height: 92px !important;
-  border-radius: 18px 18px 12px 12px !important;
-  background:
-    linear-gradient(180deg, #94a3b8 0%, #475569 28%, #1e293b 100%) !important;
-  border: 4px solid rgba(226, 232, 240, 0.74) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.28),
-    0 24px 42px rgba(0,0,0,0.50) !important;
-}
-
-/* pedestal steps */
-.lunaStatueBase::before {
-  content: "";
-  position: absolute;
-  left: -18px;
-  right: -18px;
-  bottom: -18px;
-  height: 28px;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, #64748b, #0f172a);
-  border: 3px solid rgba(226,232,240,0.50);
-}
-
-.lunaPlaque {
-  left: 56px !important;
-  right: 56px !important;
-  bottom: 70px !important;
-  height: 28px !important;
-  border-radius: 10px !important;
-  font-size: 12px !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.5),
-    0 7px 18px rgba(0,0,0,0.30);
-}
-
-/* monument label */
-.lunaStatueBuild::after {
-  content: "MONUMENT CLASS: ABSURD";
-  position: absolute;
-  left: 50%;
-  bottom: 36px;
-  transform: translateX(-50%);
-  color: rgba(237,246,255,0.82);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  z-index: 5;
-}
-
-/* more statue sparkles */
-.lunaSpark {
-  background: #fef3c7 !important;
-  box-shadow:
-    0 0 12px #fde68a,
-    0 0 24px rgba(251, 140, 207, 0.32) !important;
-}
-
-/* Make fallback not show the ugly loose L */
-.lunaAvatarFallback {
-  font-size: 0 !important;
-}
-
-.lunaAvatarFallback::before {
-  content: "PFP missing";
-  font-size: 13px;
-}
-
-/* Compact mobile */
-@media (max-width: 500px) {
-  .lunaStage {
-    min-height: 390px !important;
-  }
-
-  .lunaStage::before,
-  .lunaStage::after {
-    width: 24px;
-    height: 215px;
-    bottom: 34px;
-  }
-
-  .lunaStage::before {
-    left: 14px;
-  }
-
-  .lunaStage::after {
-    right: 14px;
-  }
-
-  .lunaStatueBuild {
-    transform: scale(0.88);
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-/* === lunaloves minimal safe layout v29 === */
-
-#lunaEggOverlay,
-.lunaEggOverlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 99990 !important;
-  display: none;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  padding: 14px !important;
-  background: rgba(3, 7, 18, 0.88) !important;
-}
-
-#lunaEggOverlay.show,
-.lunaEggOverlay.show {
-  display: block !important;
-}
-
-.lunaEggPanel {
-  position: relative !important;
-  width: min(650px, calc(100vw - 28px)) !important;
-  max-width: 650px !important;
-  margin: 0 auto 24px auto !important;
-  padding: 20px !important;
-  border-radius: 22px !important;
-  border: 1px solid rgba(251, 140, 207, 0.45) !important;
-  background: linear-gradient(180deg, rgba(27, 18, 45, 0.97), rgba(5, 12, 26, 0.98)) !important;
-  color: #eef5ff !important;
-  box-sizing: border-box !important;
-  overflow-x: hidden !important;
-}
-
-.lunaEggPanel * {
-  box-sizing: border-box !important;
-}
-
-.lunaClose {
-  position: absolute !important;
-  right: 16px !important;
-  top: 16px !important;
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(125, 211, 252, 0.35) !important;
-  background: rgba(8, 20, 38, 0.92) !important;
-  color: #eef5ff !important;
-  font-size: 24px !important;
-  font-weight: 900 !important;
-}
-
-.lunaPink {
-  color: #fb8ccf !important;
-  font-weight: 900 !important;
-}
-
-.lunaRecipeMachine {
-  width: 100% !important;
-  max-width: 590px !important;
-  margin: 18px auto 0 auto !important;
-  padding: 18px !important;
-  border-radius: 22px !important;
-  border: 1px solid rgba(125, 211, 252, 0.22) !important;
-  background: linear-gradient(180deg, rgba(16, 30, 54, 0.92), rgba(3, 10, 22, 0.96)) !important;
-  overflow: hidden !important;
-}
-
-.lunaMachineHead,
-.lunaMachineHeader {
-  display: grid !important;
-  grid-template-columns: 72px 1fr !important;
-  gap: 14px !important;
-  align-items: center !important;
-  margin-bottom: 12px !important;
-}
-
-.lunaMachineIcon,
-.lunaMachineRealIcon {
-  width: 58px !important;
-  height: 58px !important;
-  min-width: 58px !important;
-  min-height: 58px !important;
-  max-width: 58px !important;
-  max-height: 58px !important;
-  display: grid !important;
-  place-items: center !important;
-  border-radius: 15px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(148, 163, 184, 0.25) !important;
-}
-
-/* DO NOT set background-size/background-position/background-image on .lunaRealIcon. */
-
-.lunaRecipeGrid,
-.lunaInputGrid {
-  display: grid !important;
-  grid-template-columns: repeat(3, 74px) !important;
-  gap: 10px !important;
-  justify-content: center !important;
-  width: fit-content !important;
-  max-width: 100% !important;
-  margin: 12px auto !important;
-  padding: 12px !important;
-  border-radius: 18px !important;
-  border: 1px solid rgba(148, 163, 184, 0.22) !important;
-  background: rgba(1, 7, 18, 0.62) !important;
-}
-
-.lunaRecipeSlot,
-.lunaOutputSlot,
-.lunaClickableItem {
-  position: relative !important;
-  width: 74px !important;
-  height: 74px !important;
-  min-width: 74px !important;
-  min-height: 74px !important;
-  max-width: 74px !important;
-  max-height: 74px !important;
-  display: grid !important;
-  place-items: center !important;
-  overflow: hidden !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(148, 163, 184, 0.28) !important;
-  background: linear-gradient(180deg, rgba(31, 45, 70, 0.95), rgba(12, 22, 40, 0.95)) !important;
-  cursor: pointer !important;
-  touch-action: manipulation !important;
-  user-select: none !important;
-  -webkit-user-select: none !important;
-}
-
-/* Only size the icon box. Do not touch atlas background properties. */
-.lunaRecipeSlot .lunaRealIcon,
-.lunaOutputSlot .lunaRealIcon,
-.lunaClickableItem .lunaRealIcon {
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
-  min-height: 48px !important;
-  max-width: 48px !important;
-  max-height: 48px !important;
-  overflow: hidden !important;
-  image-rendering: pixelated !important;
-}
-
-.lunaRecipeSlot img,
-.lunaOutputSlot img,
-.lunaClickableItem img {
-  width: 52px !important;
-  height: 52px !important;
-  max-width: 52px !important;
-  max-height: 52px !important;
-  object-fit: contain !important;
-  image-rendering: pixelated !important;
-}
-
-.lunaRecipeSlot .count,
-.lunaOutputSlot .count,
-.lunaCount,
-.lunaAmount {
-  position: absolute !important;
-  right: 5px !important;
-  bottom: 3px !important;
-  color: #fff !important;
-  font-size: 18px !important;
-  font-weight: 950 !important;
-  line-height: 1 !important;
-  text-shadow: 2px 2px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000 !important;
-}
-
-.lunaArrow {
-  display: block !important;
-  width: fit-content !important;
-  margin: 16px auto !important;
-  font-size: 38px !important;
-  font-weight: 950 !important;
-  color: #eef5ff !important;
-}
-
-.lunaOutputBox,
-.lunaOutputWrap {
-  width: fit-content !important;
-  max-width: 100% !important;
-  margin: 14px auto 0 auto !important;
-  padding: 14px !important;
-  border-radius: 18px !important;
-  border: 1px solid rgba(148, 163, 184, 0.22) !important;
-  background: rgba(1, 7, 18, 0.62) !important;
-  text-align: center !important;
-}
-
-.lunaOutputBox .lunaOutputSlot,
-.lunaOutputWrap .lunaOutputSlot {
-  width: 92px !important;
-  height: 92px !important;
-  min-width: 92px !important;
-  min-height: 92px !important;
-  max-width: 92px !important;
-  max-height: 92px !important;
-  margin: 8px auto !important;
-}
-
-.lunaOutputBox .lunaOutputSlot img,
-.lunaOutputWrap .lunaOutputSlot img,
-.lunaOutputSlot img {
-  width: 68px !important;
-  height: 68px !important;
-  max-width: 68px !important;
-  max-height: 68px !important;
-  border-radius: 12px !important;
-  object-fit: cover !important;
-}
-
-.lunaOutputName,
-.lunaItemName {
-  margin-top: 8px !important;
-  color: #fff !important;
-  font-size: 18px !important;
-  font-weight: 950 !important;
-  line-height: 1.15 !important;
-}
-
-.lunaItemDesc {
-  margin-top: 8px !important;
-  color: #aebbd2 !important;
-  font-size: 15px !important;
-  line-height: 1.35 !important;
-}
-
-.lunaCopyButton,
-.lunaEggPanel button:not(.lunaClose) {
-  min-height: 38px !important;
-  padding: 8px 14px !important;
-  border-radius: 12px !important;
-  border: 1px solid rgba(125, 211, 252, 0.35) !important;
-  background: rgba(12, 28, 50, 0.92) !important;
-  color: #eef5ff !important;
-  font-weight: 900 !important;
 }
 
 @media (max-width: 430px) {
-  .lunaEggPanel {
-    padding: 18px !important;
+  .lunaPanel {
+    padding: 18px;
   }
 
-  .lunaRecipeMachine {
-    padding: 16px !important;
+  .lunaMachine {
+    padding: 16px;
   }
 
-  .lunaRecipeGrid,
-  .lunaInputGrid {
-    grid-template-columns: repeat(3, 66px) !important;
-    gap: 8px !important;
+  .lunaGrid {
+    grid-template-columns: repeat(3, 66px);
+    gap: 8px;
   }
 
-  .lunaRecipeSlot,
-  .lunaOutputSlot,
-  .lunaClickableItem {
-    width: 66px !important;
-    height: 66px !important;
-    min-width: 66px !important;
-    min-height: 66px !important;
-    max-width: 66px !important;
-    max-height: 66px !important;
-  }
-
-  .lunaRecipeSlot .lunaRealIcon,
-  .lunaOutputSlot .lunaRealIcon,
-  .lunaClickableItem .lunaRealIcon {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    max-width: 44px !important;
-    max-height: 44px !important;
-  }
-
-  .lunaRecipeSlot img,
-  .lunaOutputSlot img,
-  .lunaClickableItem img {
-    width: 46px !important;
-    height: 46px !important;
-    max-width: 46px !important;
-    max-height: 46px !important;
+  .lunaSlot {
+    width: 66px;
+    height: 66px;
   }
 }

@@ -1,0 +1,264 @@
+/* === GTNH tools horizontal strip v1 === */
+
+.gtnhToolStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.45);
+  background: rgba(4, 10, 20, 0.94);
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gtnhToolStrip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.gtnhToolStrip::-webkit-scrollbar-thumb {
+  background: rgba(103, 232, 249, 0.35);
+  border-radius: 999px;
+}
+
+.gtnhToolBtn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+  font-size: 14px;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gtnhToolBtn.active {
+  border-color: rgba(103, 232, 249, 0.95);
+  color: #7dd3fc;
+  box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.18);
+}
+
+.gtnhToolBtn.disabled {
+  opacity: 0.55;
+}
+
+.gtnhToolBtn:active {
+  transform: translateY(1px);
+}
+
+.gtnhDrop {
+  position: fixed;
+  z-index: 99980;
+  min-width: 190px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  background: rgba(5, 12, 24, 0.98);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+  display: none;
+}
+
+.gtnhDrop.show {
+  display: grid;
+  gap: 6px;
+}
+
+.gtnhDrop button {
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #eaf2ff;
+  padding: 9px 10px;
+  font-weight: 750;
+}
+
+.gtnhDrop button:hover,
+.gtnhDrop button:active {
+  background: rgba(103, 232, 249, 0.12);
+}
+
+.gtnhToast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 99990;
+  display: none;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: rgba(5, 13, 24, 0.96);
+  color: #eaf2ff;
+  font-size: 13px;
+}
+
+.gtnhToast.show {
+  display: block;
+}
+
+/* === GTNH help modal v2 === */
+
+.gtnhSmallHint {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 99990;
+  display: none;
+  width: max-content;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: rgba(5, 13, 24, 0.94);
+  color: #dceeff;
+  font-size: 13px;
+  line-height: 1.25;
+  box-shadow: 0 12px 36px rgba(0,0,0,.35);
+}
+
+.gtnhSmallHint.show {
+  display: block;
+}
+
+.gtnhHelpOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99985;
+  display: none;
+  overflow: auto;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(103, 232, 249, 0.16), transparent 30%),
+    radial-gradient(circle at 85% 20%, rgba(251, 140, 207, 0.14), transparent 30%),
+    rgba(2, 6, 14, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.gtnhHelpOverlay.show {
+  display: block;
+}
+
+.gtnhHelpPanel {
+  width: min(1050px, calc(100vw - 24px));
+  min-height: min(720px, calc(100vh - 36px));
+  margin: 0 auto;
+  border-radius: 24px;
+  border: 1px solid rgba(103, 232, 249, 0.32);
+  background: linear-gradient(180deg, rgba(12, 23, 42, 0.98), rgba(4, 10, 22, 0.98));
+  color: #eaf2ff;
+  box-shadow: 0 24px 70px rgba(0,0,0,.5);
+  padding: 18px;
+}
+
+.gtnhHelpHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.45);
+}
+
+.gtnhHelpHead h2 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 54px);
+  line-height: 1;
+}
+
+.gtnhHelpHead p {
+  margin: 8px 0 0 0;
+  color: #aebbd2;
+  font-size: clamp(14px, 2vw, 18px);
+}
+
+.gtnhHelpClose {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(8, 20, 38, 0.92);
+  color: #eaf2ff;
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.gtnhHelpGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.gtnhHelpCard {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(16, 30, 54, 0.94), rgba(7, 16, 31, 0.94));
+  padding: 16px;
+}
+
+.gtnhHelpCard h3 {
+  margin: 0 0 10px 0;
+  color: #7dd3fc;
+  font-size: 22px;
+}
+
+.gtnhHelpCard p {
+  margin: 7px 0;
+  color: #c9d7eb;
+  line-height: 1.35;
+}
+
+.gtnhHelpCard b {
+  color: #fb8ccf;
+}
+
+.gtnhHelpFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(75, 106, 145, 0.45);
+}
+
+.gtnhHelpFooter button {
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+  .gtnhHelpOverlay {
+    padding: 10px;
+  }
+
+  .gtnhHelpPanel {
+    width: calc(100vw - 20px);
+    min-height: calc(100vh - 20px);
+    border-radius: 20px;
+    padding: 14px;
+  }
+
+  .gtnhHelpGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhHelpClose {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+  }
+}

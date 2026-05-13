@@ -1,0 +1,421 @@
+/* === GTNH calculator shell v1 === */
+
+.gtnhCalcOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99975;
+  display: none;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(103,232,249,.14), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(251,140,207,.13), transparent 30%),
+    rgba(2, 6, 14, .96);
+  color: #eaf2ff;
+}
+
+.gtnhCalcOverlay.show {
+  display: block;
+}
+
+.gtnhCalcPanel {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  overflow: hidden;
+}
+
+.gtnhCalcHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(75,106,145,.55);
+  background: rgba(5, 12, 24, .94);
+}
+
+.gtnhCalcHead h2 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 36px);
+  line-height: 1;
+}
+
+.gtnhCalcHead p {
+  margin: 4px 0 0 0;
+  color: #9fb0c8;
+  font-size: 13px;
+}
+
+.gtnhCalcClose {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(125,211,252,.35);
+  background: rgba(8,20,38,.95);
+  color: #eaf2ff;
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.gtnhCalcTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(75,106,145,.45);
+  background: rgba(4, 10, 20, .92);
+}
+
+.gtnhCalcTabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(75,106,145,.75);
+  background: linear-gradient(180deg, rgba(19,34,58,.96), rgba(8,18,34,.96));
+  color: #eaf2ff;
+  font-weight: 850;
+}
+
+.gtnhCalcTabs button.active {
+  border-color: rgba(103,232,249,.95);
+  color: #7dd3fc;
+}
+
+.gtnhCalcWorkspace {
+  display: grid;
+  grid-template-columns: 330px minmax(430px, 1fr) 430px;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.gtnhCalcCol {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(75,106,145,.55);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(12,23,42,.94), rgba(5,12,24,.96));
+  padding: 14px;
+}
+
+.gtnhCalcCol h3 {
+  margin: 0 0 12px 0;
+  color: #7dd3fc;
+  font-size: 20px;
+}
+
+.gtnhCalcField {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.gtnhCalcField label {
+  color: #c8d7ec;
+  font-weight: 850;
+  font-size: 13px;
+}
+
+.gtnhCalcField input,
+.gtnhCalcField select,
+.gtnhCalcField textarea {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(75,106,145,.75);
+  background: #07111f;
+  color: #eaf2ff;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.gtnhCalcField textarea {
+  min-height: 240px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.gtnhCalcRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gtnhCalcActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.gtnhCalcActions button,
+.gtnhCalcMiniBtn {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(75,106,145,.75);
+  background: linear-gradient(180deg, rgba(19,34,58,.96), rgba(8,18,34,.96));
+  color: #eaf2ff;
+  font-weight: 900;
+}
+
+.gtnhCalcActions button.primary {
+  border-color: rgba(103,232,249,.95);
+  color: #7dd3fc;
+}
+
+.gtnhCalcChecks {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.gtnhCalcChecks label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #c8d7ec;
+  font-size: 14px;
+}
+
+.gtnhCalcChecks input {
+  width: 18px;
+  height: 18px;
+}
+
+.gtnhTreeBox {
+  display: grid;
+  gap: 10px;
+}
+
+.gtnhTreeNode {
+  border: 1px solid rgba(75,106,145,.55);
+  border-radius: 14px;
+  background: rgba(6, 14, 27, .78);
+  padding: 12px;
+}
+
+.gtnhTreeNode b {
+  display: block;
+  font-size: 16px;
+  color: #fff;
+}
+
+.gtnhTreeNode span {
+  display: block;
+  margin-top: 4px;
+  color: #9fb0c8;
+  font-size: 13px;
+}
+
+.gtnhTreeWarn {
+  border-color: rgba(251,191,36,.5);
+}
+
+.gtnhTreeWarn b {
+  color: #fde68a;
+}
+
+.gtnhCodeTabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+
+.gtnhCodeTabs button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(75,106,145,.75);
+  background: #07111f;
+  color: #c8d7ec;
+  font-weight: 800;
+}
+
+.gtnhCodeTabs button.active {
+  color: #7dd3fc;
+  border-color: rgba(103,232,249,.95);
+}
+
+.gtnhCalcToast {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 99990;
+  display: none;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(103,232,249,.45);
+  background: rgba(5,13,24,.96);
+  color: #eaf2ff;
+  font-size: 13px;
+}
+
+.gtnhCalcToast.show {
+  display: block;
+}
+
+@media (max-width: 1000px) {
+  .gtnhCalcWorkspace {
+    grid-template-columns: 300px minmax(360px, 1fr);
+  }
+
+  .gtnhCalcCol[data-calc-panel="code"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .gtnhCalcWorkspace {
+    display: block;
+    overflow: auto;
+  }
+
+  .gtnhCalcCol {
+    display: none;
+    height: calc(100vh - 132px);
+    margin-bottom: 12px;
+  }
+
+  .gtnhCalcOverlay[data-mobile-tab="planner"] .gtnhCalcCol[data-calc-panel="planner"],
+  .gtnhCalcOverlay[data-mobile-tab="tree"] .gtnhCalcCol[data-calc-panel="tree"],
+  .gtnhCalcOverlay[data-mobile-tab="code"] .gtnhCalcCol[data-calc-panel="code"] {
+    display: block;
+  }
+
+  .gtnhCalcHead {
+    padding: 10px;
+  }
+
+  .gtnhCalcClose {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* === calculator real route cards v1 === */
+
+.gtnhRouteList {
+  display: grid;
+  gap: 10px;
+}
+
+.gtnhRouteCard {
+  border: 1px solid rgba(75,106,145,.58);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(12,25,45,.94), rgba(5,13,26,.96));
+  padding: 12px;
+}
+
+.gtnhRouteCard.selected {
+  border-color: rgba(251,140,207,.9);
+  box-shadow: 0 0 0 1px rgba(251,140,207,.22);
+}
+
+.gtnhRouteTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gtnhRouteTitle {
+  font-size: 17px;
+  font-weight: 950;
+  color: #fff;
+}
+
+.gtnhRouteSub {
+  margin-top: 3px;
+  color: #9fb0c8;
+  font-size: 13px;
+}
+
+.gtnhRouteBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.gtnhRouteBadges span {
+  border: 1px solid rgba(75,106,145,.75);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #dceeff;
+  background: rgba(3, 10, 20, .75);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.gtnhRouteIo {
+  display: grid;
+  gap: 5px;
+  color: #c8d7ec;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.gtnhRouteIo b {
+  color: #7dd3fc;
+}
+
+.gtnhRouteActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.gtnhRouteActions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(75,106,145,.75);
+  background: linear-gradient(180deg, rgba(19,34,58,.96), rgba(8,18,34,.96));
+  color: #eaf2ff;
+  font-weight: 850;
+}
+
+.gtnhRouteActions button.primary {
+  border-color: rgba(103,232,249,.95);
+  color: #7dd3fc;
+}
+
+/* === embedded NEI card inside calculator route card === */
+
+.gtnhEmbeddedNeiCard {
+  margin-top: 10px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(75,106,145,.42);
+  background: rgba(2, 8, 18, .45);
+  padding: 8px;
+}
+
+.gtnhEmbeddedNeiCard > * {
+  max-width: 100%;
+}
+
+.gtnhEmbeddedNeiCard .recipeCard,
+.gtnhEmbeddedNeiCard .neiRecipeCard,
+.gtnhEmbeddedNeiCard [class*="recipe"] {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .gtnhEmbeddedNeiCard {
+    padding: 6px;
+  }
+}

@@ -1919,3 +1919,271 @@ window.addEventListener("gtnhnei-icons-ready", () => {
   console.log("GTNHNEI_MAIN_API v17 ready");
 })();
  /* === GTNH NEI MAIN NAV API v17 END === */
+
+/* === GTNHNEI DATA API v1 START === */
+(() => {
+  if (window.__GTNHNEI_DATA_API_V1__) return;
+  window.__GTNHNEI_DATA_API_V1__ = true;
+
+  let tries = 0;
+
+  function installDataApi() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof recipesFor !== "function"
+      ) {
+        return false;
+      }
+
+      function compact(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      function objName(o) {
+        try {
+          if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
+        } catch {}
+        return String(o?.name || o?.id || "");
+      }
+
+      function objType(o) {
+        try {
+          if (typeof typeOf === "function") return String(typeOf(o) || "");
+        } catch {}
+        return String(o?.type || "");
+      }
+
+      function findObjectByName(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const qCompact = compact(q);
+
+        if (!qLower) return null;
+
+        try {
+          if (window.GTNHNEI_ICON_API?.findObjectByName) {
+            const viaIconApi = window.GTNHNEI_ICON_API.findObjectByName(q);
+            if (viaIconApi) return viaIconApi;
+          }
+        } catch {}
+
+        try {
+          return (
+            allGoods.find(o => objName(o).toLowerCase() === qLower) ||
+            allGoods.find(o => compact(objName(o)) === qCompact) ||
+            allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
+            allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
+            null
+          );
+        } catch {
+          return null;
+        }
+      }
+
+      function getMachine(recipe) {
+        try {
+          if (typeof recipeMachineName === "function") {
+            const m = recipeMachineName(recipe);
+            if (m) return String(m);
+          }
+        } catch {}
+
+        return String(
+          recipe?.machine ||
+          recipe?.m ||
+          recipe?.machineName ||
+          recipe?.map ||
+          "Unknown machine"
+        );
+      }
+
+      function getMachineText(recipe) {
+        try {
+          if (typeof machineRecipeText === "function") {
+            const t = machineRecipeText(recipe);
+            if (t) return String(t);
+          }
+        } catch {}
+
+        return getMachine(recipe);
+      }
+
+      function pick(recipe, names) {
+        for (const n of names) {
+          if (recipe && recipe[n] !== undefined && recipe[n] !== null) return recipe[n];
+        }
+        return "";
+      }
+
+      function smallValue(v, depth = 0) {
+        if (depth > 2) return "...";
+
+        if (v === null || v === undefined) return "";
+        if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+          return String(v);
+        }
+
+        if (Array.isArray(v)) {
+          return v.slice(0, 6).map(x => smallValue(x, depth + 1)).filter(Boolean).join(", ");
+        }
+
+        if (typeof v === "object") {
+          const name = objName(v);
+          const amount = pick(v, ["amount", "count", "qty", "n", "size"]);
+          if (name) return amount ? `${amount} ${name}` : name;
+
+          return Object.entries(v)
+            .slice(0, 6)
+            .map(([k, val]) => `${k}: ${smallValue(val, depth + 1)}`)
+            .join(", ");
+        }
+
+        return String(v);
+      }
+
+      function ioGuess(recipe, mode) {
+        const inputKeys = [
+          "I", "in", "input", "inputs", "itemInputs", "fluidInputs",
+          "inputItems", "inputFluids", "ingredients", "consumes"
+        ];
+
+        const outputKeys = [
+          "O", "out", "output", "outputs", "itemOutputs", "fluidOutputs",
+          "outputItems", "outputFluids", "products", "produces"
+        ];
+
+        const keys = mode === "input" ? inputKeys : outputKeys;
+        const found = [];
+
+        for (const k of keys) {
+          if (recipe && recipe[k] !== undefined && recipe[k] !== null) {
+            const text = smallValue(recipe[k]);
+            if (text) found.push(text);
+          }
+        }
+
+        return found.join(" | ");
+      }
+
+      function recipeSummary(recipe, index = 0) {
+        const machine = getMachine(recipe);
+
+        let cardHtml = "";
+        try {
+          if (typeof recipeCardNei === "function") {
+            const node = recipeCardNei(recipe);
+            if (node) {
+              // Remove buttons from embedded calculator preview.
+              // The calculator has its own buttons.
+              node.querySelectorAll("button").forEach(b => b.remove());
+              cardHtml = node.outerHTML;
+            }
+          }
+        } catch (err) {
+          cardHtml = "";
+        }
+
+        return {
+          index,
+          id: String(recipe?.id || recipe?.recipeId || `${machine}:${index}`),
+          machine,
+          machineText: getMachineText(recipe),
+          eut: pick(recipe, ["eut", "EUt", "eu", "EU", "power", "euPerTick"]),
+          duration: pick(recipe, ["dur", "duration", "time", "ticks"]),
+          tier: pick(recipe, ["tier", "voltage", "voltageTier"]),
+          inputText: ioGuess(recipe, "input"),
+          outputText: ioGuess(recipe, "output"),
+          cardHtml,
+          keys: Object.keys(recipe || {}).slice(0, 24)
+        };
+      }
+
+      function recipeListForName(rawName, mode) {
+        const obj = findObjectByName(rawName);
+        if (!obj) {
+          return {
+            ok: false,
+            name: String(rawName || ""),
+            error: "object-not-found",
+            recipes: []
+          };
+        }
+
+        let list = [];
+        try {
+          list = recipesFor(obj, mode) || [];
+        } catch (err) {
+          return {
+            ok: false,
+            name: objName(obj),
+            type: objType(obj),
+            iconId: obj?.iconId,
+            error: String(err?.message || err),
+            recipes: []
+          };
+        }
+
+        return {
+          ok: true,
+          name: objName(obj),
+          type: objType(obj),
+          iconId: obj?.iconId,
+          count: list.length,
+          recipes: list.map((r, i) => recipeSummary(r, i))
+        };
+      }
+
+      window.GTNHNEI_DATA_API = {
+        ready: true,
+        count: allGoods.length,
+
+        find(rawName) {
+          const obj = findObjectByName(rawName);
+          if (!obj) return null;
+          return {
+            name: objName(obj),
+            type: objType(obj),
+            id: obj?.id,
+            iconId: obj?.iconId
+          };
+        },
+
+        production(rawName) {
+          return recipeListForName(rawName, "Production");
+        },
+
+        usage(rawName) {
+          return recipeListForName(rawName, "Usage");
+        },
+
+        openRecipe(rawName) {
+          return window.GTNHNEI_MAIN_API?.recipe?.(rawName) || false;
+        },
+
+        openUsage(rawName) {
+          return window.GTNHNEI_MAIN_API?.usage?.(rawName) || false;
+        }
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-data-api-ready"));
+      console.log("GTNHNEI_DATA_API v1 ready:", allGoods.length);
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_DATA_API v1 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installDataApi() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_DATA_API v1 gave up.");
+    }
+  }, 250);
+})();
+/* === GTNHNEI DATA API v1 END === */

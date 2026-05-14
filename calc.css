@@ -419,3 +419,191 @@
     padding: 6px;
   }
 }
+
+/* === calculator build loading overlay v1 === */
+
+.gtnhCalcBusy {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(1, 6, 14, .72);
+  backdrop-filter: blur(5px);
+}
+
+.gtnhCalcBusy.show {
+  display: flex;
+}
+
+.gtnhCalcBusyBox {
+  width: min(430px, calc(100vw - 34px));
+  border-radius: 22px;
+  border: 1px solid rgba(103,232,249,.42);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(103,232,249,.18), transparent 35%),
+    linear-gradient(180deg, rgba(12,23,42,.98), rgba(3,9,20,.98));
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  padding: 22px;
+  color: #eaf2ff;
+  text-align: center;
+}
+
+.gtnhCalcSpinner {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px auto;
+  border-radius: 50%;
+  border: 5px solid rgba(125,211,252,.18);
+  border-top-color: rgba(125,211,252,.95);
+  animation: gtnhCalcSpin .85s linear infinite;
+}
+
+@keyframes gtnhCalcSpin {
+  to { transform: rotate(360deg); }
+}
+
+.gtnhCalcBusyTitle {
+  font-size: 22px;
+  font-weight: 950;
+  margin-bottom: 6px;
+}
+
+.gtnhCalcBusyText {
+  color: #9fb0c8;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* === live NEI cards inside calculator v1 === */
+
+.gtnhEmbeddedNeiCard {
+  touch-action: manipulation;
+}
+
+.gtnhEmbeddedNeiCard .neiSlot,
+.gtnhEmbeddedNeiCard .slot,
+.gtnhEmbeddedNeiCard [role="button"],
+.gtnhEmbeddedNeiCard [data-name],
+.gtnhEmbeddedNeiCard [title] {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+/* === live NEI cards inside calculator v1 === */
+
+.gtnhEmbeddedNeiCard {
+  touch-action: manipulation;
+}
+
+.gtnhEmbeddedNeiCard .neiSlot,
+.gtnhEmbeddedNeiCard .slot,
+.gtnhEmbeddedNeiCard [role="button"],
+.gtnhEmbeddedNeiCard [data-name],
+.gtnhEmbeddedNeiCard [title] {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+/* === calculator mobile quick actions v1 === */
+
+#gtnhCalcQuickActions {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 100000;
+  display: none;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#gtnhCalcOverlay #gtnhCalcQuickActions {
+  display: flex;
+}
+
+#gtnhCalcQuickActions button {
+  pointer-events: auto;
+  flex: 1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(103,232,249,.55);
+  background: linear-gradient(180deg, rgba(18,35,60,.98), rgba(7,16,31,.98));
+  color: #eaf2ff;
+  font-weight: 950;
+  font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+@media (min-width: 820px) {
+  #gtnhCalcQuickActions {
+    max-width: 420px;
+    left: auto;
+  }
+}
+
+/* Give scroll content enough bottom space so the floating buttons do not cover controls. */
+#gtnhCalcOverlay {
+  padding-bottom: 74px;
+}
+
+/* === calculator park mode + compact build v1 === */
+
+/* kill old ugly bottom quick bar */
+#gtnhCalcQuickActions {
+  display: none !important;
+}
+
+/* undo extra padding added for old quick bar */
+#gtnhCalcOverlay {
+  padding-bottom: 0 !important;
+}
+
+#gtnhCalcReturnPill {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%) translateY(12px);
+  z-index: 100001;
+  display: none;
+  min-height: 42px;
+  max-width: calc(100vw - 28px);
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(103,232,249,.65);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(103,232,249,.20), transparent 45%),
+    linear-gradient(180deg, rgba(16,31,54,.98), rgba(5,12,25,.98));
+  color: #eaf2ff;
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 14px 38px rgba(0,0,0,.45);
+  opacity: 0;
+}
+
+#gtnhCalcReturnPill.show {
+  display: block;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#gtnhCalcCompactBuild {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(103,232,249,.62);
+  background: linear-gradient(180deg, rgba(22,43,72,.96), rgba(7,17,34,.96));
+  color: #7dd3fc;
+  font-weight: 950;
+  font-size: 15px;
+}
+
+/* make tab row horizontally scrollable instead of crushed */
+#gtnhCalcOverlay [data-calc-tab] {
+  flex: 0 0 auto;
+}
+
+#gtnhCalcOverlay [data-calc-tab] {
+  white-space: nowrap;
+}

@@ -3,34 +3,36 @@
 <head>
   <meta name="google-site-verification" content="siKqZRNoAEc6Sj7FrOv6OZ1SjhKerbEaIOl6ADf2qzo" />
   <meta charset="utf-8">
-  <title>GTNH NEI - GregTech New Horizons Recipe Searcher</title>
+  <title>GTNH Workbench - GregTech New Horizons Recipe Searcher</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 
-  <meta name="description" content="GTNH NEI is a mobile-friendly GregTech: New Horizons recipe and usage searcher with NEI-style recipe grids, real shaped recipe slots, machine tabs, and item/fluid search.">
+  <meta name="description" content="GTNH Workbench is a mobile-friendly GregTech: New Horizons recipe and usage searcher with NEI-style recipe grids, real shaped recipe slots, machine tabs, and item/fluid search.">
   <meta name="keywords" content="GTNH, GregTech New Horizons, NEI, recipe search, usage search, GregTech, Minecraft modpack, GTNH calculator">
   <meta name="author" content="Milky-way-Galaxy">
   <meta name="robots" content="index, follow">
 
-  <meta property="og:title" content="GTNH NEI">
+  <meta property="og:title" content="GTNH Workbench">
   <meta property="og:description" content="Mobile-friendly NEI-style recipe and usage searcher for GregTech: New Horizons.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://milky-way-galaxy.github.io/gtnhnei/">
 
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="GTNH NEI">
+  <meta name="twitter:title" content="GTNH Workbench">
   <meta name="twitter:description" content="Mobile-friendly NEI-style recipe and usage searcher for GregTech: New Horizons.">
 
   <link rel="stylesheet" href="extras.css?v=1778628271">
-  <link rel="stylesheet" href="topstrip.css?v=1778660162">
-  <link rel="stylesheet" href="calc.css?v=1778668704">
+  <link rel="stylesheet" href="topstrip.css?v=1778668933">
+  <link rel="stylesheet" href="calc.css?v=1778759800">
+  <link rel="stylesheet" href="flowcalc.css?v=1778759800">
+  <link rel="stylesheet" href="flowlayoutfix.css?v=1778759800">
 </head>
 
 <body>
 
 <div id="bootLoader" class="bootLoader">
   <div class="bootBox">
-    <div class="bootTitle">GTNH NEI</div>
+    <div class="bootTitle">GTNH Workbench</div>
     <div class="bootMsg">Fetching data/data.bin...</div>
     <div class="bootBar"></div>
   </div>
@@ -38,7 +40,7 @@
 
   <div class="app">
     <div class="topbar">
-      <span class="title">GTNH NEI</span>
+      <span class="title">GTNH Workbench</span>
       <button id="navBack" disabled>←</button>
       <button id="navForward" disabled>→</button>
       <input id="search" placeholder="Search item/fluid">
@@ -57,9 +59,12 @@
 
   <div id="tip"></div>
 
-  <script type="module" src="app.js?v=1778668704"></script>
+  <script type="module" src="app.js?v=1778759800"></script>
   <script src="extras.js?v=1778628271" defer></script>
-  <script src="topstrip.js?v=1778660162" defer></script>
-  <script src="calc.js?v=1778668704" defer></script>
+  <script src="topstrip.js?v=1778668933" defer></script>
+  <script src="flowfix.js?v=1778759800"></script>
+  <script src="calc.js?v=1778759800" defer></script>
+  <script src="flowcalc.js?v=1778759800"></script>
+  <script src="flowlayoutfix.js?v=1778759800"></script>
 </body>
 </html>

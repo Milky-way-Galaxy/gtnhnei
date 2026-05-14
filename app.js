@@ -2187,3 +2187,904 @@ window.addEventListener("gtnhnei-icons-ready", () => {
   }, 250);
 })();
 /* === GTNHNEI DATA API v1 END === */
+
+/* === GTNHNEI LIVE RECIPE CARD API v1 START === */
+(() => {
+  if (window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__) return;
+  window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__ = true;
+
+  let tries = 0;
+
+  function installLiveCardApi() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof recipesFor !== "function" ||
+        typeof recipeCardNei !== "function"
+      ) {
+        return false;
+      }
+
+      function compact(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      function objName(o) {
+        try {
+          if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
+        } catch {}
+        return String(o?.name || o?.id || "");
+      }
+
+      function findObject(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const qCompact = compact(q);
+
+        if (!qLower) return null;
+
+        try {
+          if (window.GTNHNEI_ICON_API?.findObjectByName) {
+            const x = window.GTNHNEI_ICON_API.findObjectByName(q);
+            if (x) return x;
+          }
+        } catch {}
+
+        return (
+          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
+          allGoods.find(o => compact(objName(o)) === qCompact) ||
+          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
+          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
+          null
+        );
+      }
+
+      function getRecipe(rawName, mode, index) {
+        const obj = findObject(rawName);
+        if (!obj) return null;
+
+        const list = recipesFor(obj, mode) || [];
+        return list[Number(index)] || null;
+      }
+
+      window.GTNHNEI_LIVE_RECIPE_CARD_API = {
+        ready: true,
+
+        mountProduction(rawName, index, mount) {
+          const recipe = getRecipe(rawName, "Production", index);
+          if (!recipe || !mount) return false;
+
+          const card = recipeCardNei(recipe);
+          if (!card) return false;
+
+          mount.replaceChildren(card);
+          return true;
+        },
+
+        mountUsage(rawName, index, mount) {
+          const recipe = getRecipe(rawName, "Usage", index);
+          if (!recipe || !mount) return false;
+
+          const card = recipeCardNei(recipe);
+          if (!card) return false;
+
+          mount.replaceChildren(card);
+          return true;
+        }
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-live-card-api-ready"));
+      console.log("GTNHNEI_LIVE_RECIPE_CARD_API v1 ready");
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installLiveCardApi() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 gave up.");
+    }
+  }, 250);
+})();
+/* === GTNHNEI LIVE RECIPE CARD API v1 END === */
+
+/* === GTNHNEI LIVE RECIPE CARD API v1 START === */
+(() => {
+  if (window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__) return;
+  window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__ = true;
+
+  let tries = 0;
+
+  function installLiveCardApi() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof recipesFor !== "function" ||
+        typeof recipeCardNei !== "function"
+      ) {
+        return false;
+      }
+
+      function compact(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      function objName(o) {
+        try {
+          if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
+        } catch {}
+        return String(o?.name || o?.id || "");
+      }
+
+      function findObject(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const qCompact = compact(q);
+
+        if (!qLower) return null;
+
+        try {
+          if (window.GTNHNEI_ICON_API?.findObjectByName) {
+            const x = window.GTNHNEI_ICON_API.findObjectByName(q);
+            if (x) return x;
+          }
+        } catch {}
+
+        return (
+          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
+          allGoods.find(o => compact(objName(o)) === qCompact) ||
+          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
+          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
+          null
+        );
+      }
+
+      function getRecipe(rawName, mode, index) {
+        const obj = findObject(rawName);
+        if (!obj) return null;
+
+        const list = recipesFor(obj, mode) || [];
+        return list[Number(index)] || null;
+      }
+
+      window.GTNHNEI_LIVE_RECIPE_CARD_API = {
+        ready: true,
+
+        mountProduction(rawName, index, mount) {
+          const recipe = getRecipe(rawName, "Production", index);
+          if (!recipe || !mount) return false;
+
+          const card = recipeCardNei(recipe);
+          if (!card) return false;
+
+          mount.replaceChildren(card);
+          return true;
+        },
+
+        mountUsage(rawName, index, mount) {
+          const recipe = getRecipe(rawName, "Usage", index);
+          if (!recipe || !mount) return false;
+
+          const card = recipeCardNei(recipe);
+          if (!card) return false;
+
+          mount.replaceChildren(card);
+          return true;
+        }
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-live-card-api-ready"));
+      console.log("GTNHNEI_LIVE_RECIPE_CARD_API v1 ready");
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installLiveCardApi() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 gave up.");
+    }
+  }, 250);
+})();
+/* === GTNHNEI LIVE RECIPE CARD API v1 END === */
+
+/* === GTNH-FLOW YAML EXPORT API v1 START === */
+(() => {
+  if (window.__GTNHNEI_FLOW_EXPORT_API_V1__) return;
+  window.__GTNHNEI_FLOW_EXPORT_API_V1__ = true;
+
+  let tries = 0;
+
+  function installFlowExportApi() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof recipesFor !== "function"
+      ) {
+        return false;
+      }
+
+      function compact(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      function objName(o) {
+        try {
+          if (typeof nameOf === "function") {
+            const n = String(nameOf(o) || "");
+            if (n && n !== "[object Object]") return n;
+          }
+        } catch {}
+
+        return String(o?.name || o?.id || "");
+      }
+
+      function findObject(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const qCompact = compact(q);
+
+        if (!qLower) return null;
+
+        try {
+          if (window.GTNHNEI_ICON_API?.findObjectByName) {
+            const viaIcon = window.GTNHNEI_ICON_API.findObjectByName(q);
+            if (viaIcon) return viaIcon;
+          }
+        } catch {}
+
+        return (
+          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
+          allGoods.find(o => compact(objName(o)) === qCompact) ||
+          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
+          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
+          null
+        );
+      }
+
+      function machineName(recipe) {
+        try {
+          if (typeof recipeMachineName === "function") {
+            const m = recipeMachineName(recipe);
+            if (m) return String(m);
+          }
+        } catch {}
+
+        return String(
+          recipe?.machine ||
+          recipe?.m ||
+          recipe?.machineName ||
+          recipe?.map ||
+          "machine"
+        );
+      }
+
+      function machineText(recipe) {
+        try {
+          if (typeof machineRecipeText === "function") {
+            const t = machineRecipeText(recipe);
+            if (t) return String(t);
+          }
+        } catch {}
+
+        try {
+          const card = typeof recipeCardNei === "function" ? recipeCardNei(recipe) : null;
+          if (card) return String(card.textContent || "");
+        } catch {}
+
+        return "";
+      }
+
+      function parseAmount(raw) {
+        if (raw === null || raw === undefined) return 1;
+        if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+
+        let s = String(raw).trim().toLowerCase();
+        if (!s) return 1;
+
+        s = s.replace(/,/g, "");
+
+        const m = s.match(/([0-9]+(?:\.[0-9]+)?)([kmb])?/i);
+        if (!m) return 1;
+
+        let n = Number(m[1]);
+        const suffix = (m[2] || "").toLowerCase();
+
+        if (suffix === "k") n *= 1000;
+        if (suffix === "m") n *= 1000000;
+        if (suffix === "b") n *= 1000000000;
+
+        if (!Number.isFinite(n)) return 1;
+        return Math.round(n);
+      }
+
+      function ioAmount(io) {
+        try {
+          if (typeof amountText === "function") {
+            const t = amountText(io);
+            if (t) return parseAmount(t);
+          }
+        } catch {}
+
+        return parseAmount(
+          io?.amount ??
+          io?.count ??
+          io?.qty ??
+          io?.n ??
+          io?.size ??
+          io?.stackSize ??
+          1
+        );
+      }
+
+      function ioName(io) {
+        const candidates = [
+          io?.obj,
+          io?.object,
+          io?.type,
+          io?.item,
+          io?.fluid,
+          io?.stack,
+          io?.ingredient,
+          io?.value,
+          io
+        ];
+
+        for (const c of candidates) {
+          if (!c) continue;
+
+          if (typeof c === "string") {
+            const s = c.trim();
+            if (s && s !== "[object Object]") return s;
+          }
+
+          if (typeof c === "object") {
+            const n = objName(c).trim();
+            if (n && n !== "[object Object]") return n;
+          }
+        }
+
+        return "";
+      }
+
+      function addIo(map, io) {
+        const name = ioName(io);
+        if (!name) return;
+
+        const amount = ioAmount(io);
+        map[name] = (map[name] || 0) + amount;
+      }
+
+      function readIo(recipe, side) {
+        const map = {};
+
+        const inputFns = [];
+        const outputFns = [];
+
+        try { if (typeof inputItemTypes === "function") inputFns.push(inputItemTypes); } catch {}
+        try { if (typeof inputFluidTypes === "function") inputFns.push(inputFluidTypes); } catch {}
+        try { if (typeof outputItemTypes === "function") outputFns.push(outputItemTypes); } catch {}
+        try { if (typeof outputFluidTypes === "function") outputFns.push(outputFluidTypes); } catch {}
+
+        const fns = side === "in" ? inputFns : outputFns;
+
+        for (const fn of fns) {
+          try {
+            const arr = fn(recipe) || [];
+            for (const io of arr) addIo(map, io);
+          } catch {}
+        }
+
+        return map;
+      }
+
+      function parseTier(text) {
+        const m = String(text || "").match(/\b(ULV|LV|MV|HV|EV|IV|LuV|ZPM|UV|UHV|UEV|UIV|UMV|UXV|MAX)\b/i);
+        return m ? m[1] : "LV";
+      }
+
+      function parseEu(text) {
+        const m = String(text || "").replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)\s*EU\/t/i);
+        return m ? Math.round(Number(m[1])) : 0;
+      }
+
+      function parseDur(text) {
+        const s = String(text || "").toLowerCase();
+
+        const sec = s.match(/([0-9]+(?:\.[0-9]+)?)\s*s\b/);
+        if (sec) return Number(sec[1]);
+
+        const tick = s.match(/([0-9]+(?:\.[0-9]+)?)\s*ticks?\b/);
+        if (tick) return Number(tick[1]) / 20;
+
+        return 1;
+      }
+
+      function yamlScalar(v) {
+        if (typeof v === "number") return String(v);
+        const s = String(v ?? "");
+        if (/^[a-zA-Z0-9_ .+\-()[\]\/]+$/.test(s)) return s;
+        return JSON.stringify(s);
+      }
+
+      function yamlMap(name, map) {
+        const entries = Object.entries(map || {});
+        if (!entries.length) return `  ${name}: {}`;
+
+        return [
+          `  ${name}:`,
+          ...entries.map(([k, v]) => `    ${yamlScalar(k)}: ${yamlScalar(v)}`)
+        ].join("\n");
+      }
+
+      function yamlForRecipe(rawName, routeIndex = 0, options = {}) {
+        const obj = findObject(rawName);
+        if (!obj) {
+          return {
+            ok: false,
+            yaml: "",
+            error: `Target not found: ${rawName}`
+          };
+        }
+
+        const recipes = recipesFor(obj, "Production") || [];
+        const recipe = recipes[Number(routeIndex)] || recipes[0];
+
+        if (!recipe) {
+          return {
+            ok: false,
+            yaml:
+`# GTNH Workbench -> gtnh-flow draft
+# No production recipe found for ${objName(obj)}
+# This target may be raw material, loot, ore, or unresolved.
+
+- m: manual
+  tier: LV
+  I: {}
+  O:
+    ${yamlScalar(objName(obj))}: ${yamlScalar(options.targetAmount || 1)}
+  eut: 0
+  dur: 1
+  number: 1
+`,
+            error: "No production recipe found."
+          };
+        }
+
+        const text = machineText(recipe);
+        const m = machineName(recipe).toLowerCase();
+
+        const tier = parseTier(text);
+        const eut = parseEu(text);
+        const dur = parseDur(text);
+
+        const input = readIo(recipe, "in");
+        const output = readIo(recipe, "out");
+
+        const yaml =
+`# GTNH Workbench -> gtnh-flow draft
+# Target: ${objName(obj)}
+# Route: ${Number(routeIndex) + 1}
+# Machine: ${machineName(recipe)}
+# Check this once with local gtnh-flow. Some GTNH recipe types may still need manual edits.
+
+- m: ${yamlScalar(m)}
+  tier: ${yamlScalar(tier)}
+${yamlMap("I", input)}
+${yamlMap("O", output)}
+  eut: ${yamlScalar(eut)}
+  dur: ${yamlScalar(dur)}
+  number: 1
+`;
+
+        return {
+          ok: true,
+          target: objName(obj),
+          routeIndex: Number(routeIndex),
+          machine: machineName(recipe),
+          tier,
+          eut,
+          dur,
+          input,
+          output,
+          yaml
+        };
+      }
+
+      window.GTNHNEI_FLOW_EXPORT_API = {
+        ready: true,
+        yamlForRecipe,
+        yaml(rawName, routeIndex = 0, options = {}) {
+          return yamlForRecipe(rawName, routeIndex, options).yaml;
+        }
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
+      console.log("GTNHNEI_FLOW_EXPORT_API v1 ready");
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_FLOW_EXPORT_API v1 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installFlowExportApi() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_FLOW_EXPORT_API v1 gave up.");
+    }
+  }, 250);
+})();
+/* === GTNH-FLOW YAML EXPORT API v1 END === */
+
+/* === GTNH-FLOW YAML EXPORT API v2 START === */
+(() => {
+  if (window.__GTNHNEI_FLOW_EXPORT_API_V2__) return;
+  window.__GTNHNEI_FLOW_EXPORT_API_V2__ = true;
+
+  let tries = 0;
+
+  function installFlowExportApiV2() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof recipesFor !== "function" ||
+        typeof recipeCardNei !== "function"
+      ) {
+        return false;
+      }
+
+      function compact(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      function objName(o) {
+        try {
+          if (typeof nameOf === "function") {
+            const n = String(nameOf(o) || "");
+            if (n && n !== "[object Object]") return n;
+          }
+        } catch {}
+
+        return String(o?.name || o?.id || "");
+      }
+
+      function findObject(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const qCompact = compact(q);
+
+        if (!qLower) return null;
+
+        try {
+          if (window.GTNHNEI_ICON_API?.findObjectByName) {
+            const viaIcon = window.GTNHNEI_ICON_API.findObjectByName(q);
+            if (viaIcon) return viaIcon;
+          }
+        } catch {}
+
+        return (
+          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
+          allGoods.find(o => compact(objName(o)) === qCompact) ||
+          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
+          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
+          null
+        );
+      }
+
+      function machineName(recipe) {
+        try {
+          if (typeof recipeMachineName === "function") {
+            const m = recipeMachineName(recipe);
+            if (m) return String(m);
+          }
+        } catch {}
+
+        return String(recipe?.machine || recipe?.m || recipe?.machineName || "machine");
+      }
+
+      function machineText(recipe) {
+        try {
+          const card = recipeCardNei(recipe);
+          return String(card?.textContent || "");
+        } catch {
+          return "";
+        }
+      }
+
+      function parseAmount(raw) {
+        let s = String(raw ?? "1").trim().toLowerCase().replace(/,/g, "");
+        const m = s.match(/([0-9]+(?:\.[0-9]+)?)([kmb])?/i);
+        if (!m) return 1;
+
+        let n = Number(m[1]);
+        const suffix = String(m[2] || "").toLowerCase();
+
+        if (suffix === "k") n *= 1000;
+        if (suffix === "m") n *= 1000000;
+        if (suffix === "b") n *= 1000000000;
+
+        return Number.isFinite(n) ? Math.round(n) : 1;
+      }
+
+      function parseTier(text) {
+        const m = String(text || "").match(/\b(ULV|LV|MV|HV|EV|IV|LuV|ZPM|UV|UHV|UEV|UIV|UMV|UXV|MAX)\b/i);
+        return m ? m[1] : "LV";
+      }
+
+      function parseEu(text) {
+        const m = String(text || "").replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)\s*EU\/t/i);
+        return m ? Math.round(Number(m[1])) : 0;
+      }
+
+      function parseDur(text) {
+        const s = String(text || "").toLowerCase();
+
+        const h = s.match(/([0-9]+(?:\.[0-9]+)?)\s*h\b/);
+        const min = s.match(/([0-9]+(?:\.[0-9]+)?)\s*m\b/);
+        const sec = s.match(/([0-9]+(?:\.[0-9]+)?)\s*s\b/);
+        const tick = s.match(/([0-9]+(?:\.[0-9]+)?)\s*ticks?\b/);
+
+        let total = 0;
+        if (h) total += Number(h[1]) * 3600;
+        if (min) total += Number(min[1]) * 60;
+        if (sec) total += Number(sec[1]);
+        if (total > 0) return total;
+
+        if (tick) return Number(tick[1]) / 20;
+
+        return 1;
+      }
+
+      function cleanName(s) {
+        s = String(s || "").trim();
+
+        s = s.replace(/\s+/g, " ");
+        s = s.replace(/^No recipe:\s*/i, "");
+        s = s.replace(/\b\d+(\.\d+)?[kmb]?\b/ig, "").trim();
+
+        if (!s) return "";
+        if (/^(input|output|recipe|usage|copy|selected|open nei recipe|open nei usage)$/i.test(s)) return "";
+        if (/^\d+$/.test(s)) return "";
+
+        return s;
+      }
+
+      function getSlotName(el) {
+        const attrs = [
+          "data-gtnh-icon-name",
+          "data-gtnh-name",
+          "data-name",
+          "data-item-name",
+          "data-fluid-name",
+          "title",
+          "aria-label",
+          "alt"
+        ];
+
+        for (const a of attrs) {
+          const v = el.getAttribute?.(a);
+          const c = cleanName(v);
+          if (c) return c;
+        }
+
+        const ds = el.dataset || {};
+        for (const k of Object.keys(ds)) {
+          if (/name/i.test(k)) {
+            const c = cleanName(ds[k]);
+            if (c) return c;
+          }
+        }
+
+        const img = el.querySelector?.("img[alt], img[title]");
+        if (img) {
+          const c = cleanName(img.getAttribute("alt") || img.getAttribute("title"));
+          if (c) return c;
+        }
+
+        return "";
+      }
+
+      function getSlotAmount(el) {
+        const text = String(el.textContent || "");
+        return parseAmount(text);
+      }
+
+      function add(map, name, amount) {
+        name = cleanName(name);
+        if (!name) return;
+        map[name] = (map[name] || 0) + (amount || 1);
+      }
+
+      function parseIoFromRenderedCard(recipe) {
+        const input = {};
+        const output = {};
+
+        const host = document.createElement("div");
+        host.style.position = "fixed";
+        host.style.left = "-99999px";
+        host.style.top = "0";
+        host.style.width = "900px";
+        host.style.visibility = "hidden";
+        host.style.pointerEvents = "none";
+        document.body.appendChild(host);
+
+        try {
+          const card = recipeCardNei(recipe);
+          host.appendChild(card);
+
+          const cardRect = card.getBoundingClientRect();
+          const midX = cardRect.left + cardRect.width * 0.56;
+
+          const candidates = [
+            ...card.querySelectorAll(
+              "[data-gtnh-icon-name], [data-gtnh-name], [data-name], [data-item-name], [data-fluid-name], [title], [aria-label], .neiSlot, .slot, .itemSlot, .recipeSlot, .ioSlot"
+            )
+          ];
+
+          const seen = new Set();
+
+          for (const el of candidates) {
+            if (!(el instanceof HTMLElement)) continue;
+            if (seen.has(el)) continue;
+            seen.add(el);
+
+            const rect = el.getBoundingClientRect();
+            if (rect.width < 10 || rect.height < 10) continue;
+
+            const name = getSlotName(el);
+            if (!name) continue;
+
+            if (name.toLowerCase() === machineName(recipe).toLowerCase()) continue;
+
+            const amount = getSlotAmount(el);
+            const cx = rect.left + rect.width / 2;
+
+            if (cx < midX) add(input, name, amount);
+            else add(output, name, amount);
+          }
+        } catch (err) {
+          console.warn("Rendered-card IO parse failed:", err);
+        } finally {
+          host.remove();
+        }
+
+        return { input, output };
+      }
+
+      function yamlScalar(v) {
+        if (typeof v === "number") return String(v);
+        const s = String(v ?? "");
+        if (/^[a-zA-Z0-9_ .+\-()[\]\/]+$/.test(s)) return s;
+        return JSON.stringify(s);
+      }
+
+      function yamlMap(name, map) {
+        const entries = Object.entries(map || {});
+        if (!entries.length) return `  ${name}: {}`;
+
+        return [
+          `  ${name}:`,
+          ...entries.map(([k, v]) => `    ${yamlScalar(k)}: ${yamlScalar(v)}`)
+        ].join("\n");
+      }
+
+      function yamlForRecipe(rawName, routeIndex = 0, options = {}) {
+        const obj = findObject(rawName);
+        if (!obj) {
+          return {
+            ok: false,
+            yaml: `# Target not found: ${rawName}\n`,
+            error: `Target not found: ${rawName}`
+          };
+        }
+
+        const recipes = recipesFor(obj, "Production") || [];
+        const recipe = recipes[Number(routeIndex)] || recipes[0];
+
+        if (!recipe) {
+          return {
+            ok: false,
+            target: objName(obj),
+            yaml:
+`# GTNH Workbench -> gtnh-flow draft
+# No production recipe found for ${objName(obj)}
+
+- m: manual
+  tier: LV
+  I: {}
+  O:
+    ${yamlScalar(objName(obj))}: ${yamlScalar(options.targetAmount || 1)}
+  eut: 0
+  dur: 1
+  number: 1
+`,
+            error: "No production recipe found."
+          };
+        }
+
+        const text = machineText(recipe);
+        const machine = machineName(recipe);
+        const tier = parseTier(text);
+        const eut = parseEu(text);
+        const dur = parseDur(text);
+        const parsed = parseIoFromRenderedCard(recipe);
+
+        const yaml =
+`# GTNH Workbench -> gtnh-flow draft
+# Target: ${objName(obj)}
+# Route: ${Number(routeIndex) + 1}
+# Machine: ${machine}
+# Draft. Test once with local gtnh-flow.
+
+- m: ${yamlScalar(machine.toLowerCase())}
+  tier: ${yamlScalar(tier)}
+${yamlMap("I", parsed.input)}
+${yamlMap("O", parsed.output)}
+  eut: ${yamlScalar(eut)}
+  dur: ${yamlScalar(dur)}
+  number: 1
+`;
+
+        return {
+          ok: true,
+          target: objName(obj),
+          routeIndex: Number(routeIndex),
+          machine,
+          tier,
+          eut,
+          dur,
+          input: parsed.input,
+          output: parsed.output,
+          yaml
+        };
+      }
+
+      window.GTNHNEI_FLOW_EXPORT_API = {
+        ready: true,
+        version: 2,
+        yamlForRecipe,
+        yaml(rawName, routeIndex = 0, options = {}) {
+          return yamlForRecipe(rawName, routeIndex, options).yaml;
+        }
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
+      console.log("GTNHNEI_FLOW_EXPORT_API v2 ready");
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_FLOW_EXPORT_API v2 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installFlowExportApiV2() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_FLOW_EXPORT_API v2 gave up.");
+    }
+  }, 250);
+})();
+/* === GTNH-FLOW YAML EXPORT API v2 END === */

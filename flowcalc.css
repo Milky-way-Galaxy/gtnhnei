@@ -1,0 +1,90 @@
+/* === GTNH Workbench built-in gtnh-flow panel v1 === */
+
+#gtnhFlowCalcTab {
+  text-transform: none;
+}
+
+.gtnhFlowCalcPanel {
+  margin-top: 14px;
+  border: 1px solid rgba(103,232,249,.25);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(103,232,249,.11), transparent 34%),
+    linear-gradient(180deg, rgba(10,22,39,.96), rgba(4,11,23,.96));
+  padding: 14px;
+}
+
+.gtnhFlowHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.gtnhFlowTitle {
+  color: #7dd3fc;
+  font-weight: 950;
+  font-size: 22px;
+}
+
+.gtnhFlowSub {
+  color: #9fb0c8;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.gtnhFlowSvgWrap {
+  overflow: auto;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 16px;
+  background: #07111f;
+  max-height: 58vh;
+}
+
+.gtnhFlowSvg {
+  min-width: 760px;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.gtnhFlowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.gtnhFlowActions button {
+  min-height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(103,232,249,.42);
+  background: linear-gradient(180deg, rgba(18,35,60,.98), rgba(7,16,31,.98));
+  color: #eaf2ff;
+  font-weight: 900;
+  padding: 0 14px;
+}
+
+.gtnhFlowDetails {
+  margin-top: 12px;
+  color: #cbd5e1;
+}
+
+.gtnhFlowDetails summary {
+  cursor: pointer;
+  color: #facc15;
+  font-weight: 900;
+}
+
+.gtnhFlowDetails pre {
+  white-space: pre;
+  overflow: auto;
+  max-height: 260px;
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(2,8,20,.86);
+  border: 1px solid rgba(148,163,184,.22);
+  font-size: 12px;
+}

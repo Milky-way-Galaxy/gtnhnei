@@ -65,6 +65,40 @@
     el._timer = setTimeout(() => el.classList.remove("show"), 1600);
   }
 
+  function ensureBusyOverlay() {
+    let el = document.getElementById("gtnhCalcBusy");
+    if (el) return el;
+
+    el = document.createElement("div");
+    el.id = "gtnhCalcBusy";
+    el.className = "gtnhCalcBusy";
+    el.innerHTML = `
+      <div class="gtnhCalcBusyBox">
+        <div class="gtnhCalcSpinner"></div>
+        <div class="gtnhCalcBusyTitle">Building recipe tree</div>
+        <div class="gtnhCalcBusyText" id="gtnhCalcBusyText">
+          Reading GTNH recipe routes. Big recipe lists can take a moment.
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function setCalcBusy(on, text = "") {
+    const el = ensureBusyOverlay();
+    const msg = document.getElementById("gtnhCalcBusyText");
+    if (msg && text) msg.textContent = text;
+    el.classList.toggle("show", !!on);
+  }
+
+  function waitForPaint() {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+  }
+
+
   function createOverlay() {
     if (document.getElementById("gtnhCalcOverlay")) return;
 
@@ -256,13 +290,31 @@
       });
     });
 
-    document.getElementById("calcBuild")?.addEventListener("click", () => {
+    document.getElementById("calcBuild")?.addEventListener("click", async () => {
       readForm();
       calcHasBuiltTree = true;
-      document.getElementById("gtnhCalcOverlay").dataset.mobileTab = "tree";
-      document.querySelectorAll("[data-calc-tab]").forEach(b => b.classList.toggle("active", b.dataset.calcTab === "tree"));
-      render();
-      toast("Tree shell built. Real recipe expansion comes next.");
+
+      const ov = document.getElementById("gtnhCalcOverlay");
+      if (ov) ov.dataset.mobileTab = "tree";
+
+      document.querySelectorAll("[data-calc-tab]").forEach(b => {
+        b.classList.toggle("active", b.dataset.calcTab === "tree");
+      });
+
+      setCalcBusy(true, `Building routes for ${state.target || "target"}...`);
+
+      // Let Chrome paint the loading screen before the heavy synchronous recipe lookup.
+      await waitForPaint();
+
+      try {
+        render();
+        toast("Tree built.");
+      } catch (err) {
+        console.error(err);
+        toast("Build failed. Check console/log.");
+      } finally {
+        setCalcBusy(false);
+      }
     });
 
     document.getElementById("calcUseSearch")?.addEventListener("click", () => {
@@ -467,17 +519,11 @@
             ${badges.length ? badges.map(b => `<span>${esc(b)}</span>`).join("") : "<span>no EU/time data exposed yet</span>"}
           </div>
 
-          ${r.cardHtml ? `
-            <div class="gtnhEmbeddedNeiCard">
-              ${r.cardHtml}
-            </div>
-          ` : `
+          <div class="gtnhEmbeddedNeiCard" data-live-production-card="${i}" data-live-target="${esc(found.name)}">
             <div class="gtnhRouteIo">
-              <div><b>Input:</b> ${esc(r.inputText || "unknown / needs deeper parser")}</div>
-              <div><b>Output:</b> ${esc(r.outputText || "unknown / needs deeper parser")}</div>
-              <div><b>Keys:</b> ${esc((r.keys || []).join(", "))}</div>
+              <div><b>Loading NEI card...</b></div>
             </div>
-          `}
+          </div>
 
           <div class="gtnhRouteActions">
             <button class="primary" type="button" data-calc-route="${i}">${selected ? "Selected" : "Use this route"}</button>
@@ -602,6 +648,27 @@
     return errors.map((e, i) => `${i + 1}. ${e}`).join("\n");
   }
 
+  function hydrateLiveRecipeCards() {
+    const api = window.GTNHNEI_LIVE_RECIPE_CARD_API;
+    if (!api?.ready) return;
+
+    document.querySelectorAll("[data-live-production-card]").forEach(mount => {
+      if (mount.dataset.liveDone === "1") return;
+
+      const target = mount.dataset.liveTarget || state.target;
+      const index = Number(mount.dataset.liveProductionCard || 0);
+
+      try {
+        const ok = api.mountProduction(target, index, mount);
+        if (ok) {
+          mount.dataset.liveDone = "1";
+        }
+      } catch (err) {
+        console.warn("live NEI card mount failed:", err);
+      }
+    });
+  }
+
   function renderCode() {
     const out = document.getElementById("calcCodeOut");
     const label = document.getElementById("calcCodeLabel");
@@ -625,6 +692,10 @@
   function render() {
     renderTree();
     renderCode();
+
+    // Mount real NEI cards after HTML exists.
+    // This preserves normal tooltip/click/tap behavior.
+    setTimeout(hydrateLiveRecipeCards, 0);
   }
 
   function open() {
@@ -640,3 +711,528 @@
 
   window.GTNH_CALC = { open, close, getState: () => state };
 })();
+
+/* === CALCULATOR FRONT ACTION FIX v1 START === */
+(() => {
+  if (window.__GTNH_CALC_FRONT_ACTION_FIX_V1__) return;
+  window.__GTNH_CALC_FRONT_ACTION_FIX_V1__ = true;
+
+  let tapTimer = null;
+  let lastTapName = "";
+  let lastTapTime = 0;
+  let longPressTimer = null;
+  let suppressClickUntil = 0;
+
+  function calcOverlay() {
+    return document.getElementById("gtnhCalcOverlay");
+  }
+
+  function isInCalc(el) {
+    const ov = calcOverlay();
+    return !!(ov && el && ov.contains(el));
+  }
+
+  function clickCloseButton() {
+    const ov = calcOverlay();
+    if (!ov) return;
+
+    const btn =
+      ov.querySelector("#calcClose") ||
+      ov.querySelector("[data-calc-close]") ||
+      ov.querySelector("[aria-label='Close']") ||
+      [...ov.querySelectorAll("button")].find(b => String(b.textContent || "").trim() === "×");
+
+    if (btn) {
+      btn.click();
+      return;
+    }
+
+    // Conservative fallback. Do not set hidden=true because your open() may not undo it.
+    ov.classList.remove("show", "open", "active");
+    ov.style.display = "none";
+  }
+
+  function getSlotName(start) {
+    const root = start?.closest?.(".gtnhEmbeddedNeiCard");
+    if (!root) return "";
+
+    let el = start;
+    while (el && el !== root && el.nodeType === 1) {
+      const ds = el.dataset || {};
+
+      const name =
+        ds.gtnhIconName ||
+        ds.gtnhName ||
+        ds.name ||
+        ds.itemName ||
+        ds.fluidName ||
+        el.getAttribute("data-gtnh-icon-name") ||
+        el.getAttribute("data-name") ||
+        el.getAttribute("aria-label") ||
+        el.getAttribute("title");
+
+      if (name && String(name).trim()) {
+        return String(name).trim();
+      }
+
+      el = el.parentElement;
+    }
+
+    return "";
+  }
+
+  function toast(text) {
+    let el = document.getElementById("gtnhCalcToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gtnhCalcToast";
+      el.className = "gtnhCalcToast";
+      document.body.appendChild(el);
+    }
+
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove("show"), 1600);
+  }
+
+  async function copyName(name) {
+    try {
+      await navigator.clipboard.writeText(name);
+      toast("Copied: " + name);
+    } catch {
+      toast("Copy failed: " + name);
+    }
+  }
+
+  function ensureReturnPill() {
+    let pill = document.getElementById("gtnhCalcReturnPill");
+    if (pill) return pill;
+
+    pill = document.createElement("button");
+    pill.id = "gtnhCalcReturnPill";
+    pill.type = "button";
+    pill.textContent = "Back to Calculator";
+    pill.addEventListener("click", () => {
+      const ov = calcOverlay();
+      if (!ov) return;
+
+      ov.classList.remove("gtnhCalcParked");
+      ov.style.display = "";
+      pill.classList.remove("show");
+    });
+
+    document.body.appendChild(pill);
+    return pill;
+  }
+
+  function parkCalculator() {
+    const ov = calcOverlay();
+    if (!ov) return;
+
+    ov.classList.add("gtnhCalcParked");
+    ov.style.display = "none";
+
+    const pill = ensureReturnPill();
+    pill.classList.add("show");
+  }
+
+  function openRealNei(name, mode) {
+    if (!name) return;
+
+    // Do NOT fully close/reopen calculator. That causes rebuild lag.
+    // Park it, open NEI, then let the return pill restore the same calculator DOM/state.
+    parkCalculator();
+
+    setTimeout(() => {
+      try {
+        if (mode === "usage") {
+          window.GTNHNEI_MAIN_API?.usage?.(name);
+        } else {
+          window.GTNHNEI_MAIN_API?.recipe?.(name);
+        }
+      } catch (err) {
+        console.warn("Failed to open real NEI:", mode, name, err);
+      }
+    }, 60);
+  }
+
+  function stop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation?.();
+  }
+
+  // Fix the calculator buttons opening NEI behind the overlay.
+  document.addEventListener("click", event => {
+    const target = event.target;
+    if (!isInCalc(target)) return;
+
+    const recipeBtn = target.closest?.("[data-open-recipe]");
+    const usageBtn = target.closest?.("[data-open-usage]");
+
+    if (recipeBtn) {
+      stop(event);
+      openRealNei(recipeBtn.dataset.openRecipe, "recipe");
+      return;
+    }
+
+    if (usageBtn) {
+      stop(event);
+      openRealNei(usageBtn.dataset.openUsage, "usage");
+      return;
+    }
+  }, true);
+
+  // Long press = copy.
+  document.addEventListener("pointerdown", event => {
+    const target = event.target;
+    if (!isInCalc(target)) return;
+
+    const name = getSlotName(target);
+    if (!name) return;
+
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      suppressClickUntil = Date.now() + 700;
+      copyName(name);
+    }, 650);
+  }, true);
+
+  document.addEventListener("pointerup", () => {
+    clearTimeout(longPressTimer);
+  }, true);
+
+  document.addEventListener("pointercancel", () => {
+    clearTimeout(longPressTimer);
+  }, true);
+
+  document.addEventListener("pointermove", () => {
+    clearTimeout(longPressTimer);
+  }, true);
+
+  // Tap = recipe, double tap = usage.
+  document.addEventListener("click", event => {
+    const target = event.target;
+    if (!isInCalc(target)) return;
+
+    const name = getSlotName(target);
+    if (!name) return;
+
+    stop(event);
+
+    if (Date.now() < suppressClickUntil) return;
+
+    const now = Date.now();
+    const isDouble = lastTapName === name && now - lastTapTime < 330;
+
+    clearTimeout(tapTimer);
+
+    if (isDouble) {
+      lastTapName = "";
+      lastTapTime = 0;
+      openRealNei(name, "usage");
+      return;
+    }
+
+    lastTapName = name;
+    lastTapTime = now;
+
+    tapTimer = setTimeout(() => {
+      openRealNei(name, "recipe");
+      lastTapName = "";
+      lastTapTime = 0;
+    }, 260);
+  }, true);
+
+  // Desktop right click = usage.
+  document.addEventListener("contextmenu", event => {
+    const target = event.target;
+    if (!isInCalc(target)) return;
+
+    const name = getSlotName(target);
+    if (!name) return;
+
+    stop(event);
+    openRealNei(name, "usage");
+  }, true);
+})();
+/* === CALCULATOR FRONT ACTION FIX v1 END === */
+
+/* === CALCULATOR MOBILE QUICK ACTIONS v1 START === */
+(() => {
+  if (window.__GTNH_CALC_MOBILE_QUICK_ACTIONS_V1__) return;
+  window.__GTNH_CALC_MOBILE_QUICK_ACTIONS_V1__ = true;
+
+  function overlay() {
+    return document.getElementById("gtnhCalcOverlay");
+  }
+
+  function ensureQuickActions() {
+    const ov = overlay();
+    if (!ov) return;
+
+    if (document.getElementById("gtnhCalcQuickActions")) return;
+
+    const bar = document.createElement("div");
+    bar.id = "gtnhCalcQuickActions";
+    bar.innerHTML = `
+      <button type="button" id="gtnhCalcQuickBuild">Build tree</button>
+      <button type="button" id="gtnhCalcQuickTree">Tree</button>
+    `;
+
+    ov.appendChild(bar);
+
+    document.getElementById("gtnhCalcQuickBuild")?.addEventListener("click", () => {
+      document.getElementById("calcBuild")?.click();
+    });
+
+    document.getElementById("gtnhCalcQuickTree")?.addEventListener("click", () => {
+      const treeBtn =
+        document.querySelector("[data-calc-tab='tree']") ||
+        [...document.querySelectorAll("#gtnhCalcOverlay button")]
+          .find(b => String(b.textContent || "").trim().toLowerCase() === "tree");
+
+      treeBtn?.click();
+    });
+  }
+
+  const timer = setInterval(ensureQuickActions, 500);
+
+  window.addEventListener("load", ensureQuickActions);
+  window.addEventListener("resize", ensureQuickActions);
+})();
+/* === CALCULATOR MOBILE QUICK ACTIONS v1 END === */
+
+/* === CALCULATOR COMPACT BUILD BUTTON v1 START === */
+(() => {
+  if (window.__GTNH_CALC_COMPACT_BUILD_V1__) return;
+  window.__GTNH_CALC_COMPACT_BUILD_V1__ = true;
+
+  function installCompactBuild() {
+    const ov = document.getElementById("gtnhCalcOverlay");
+    if (!ov) return;
+
+    if (document.getElementById("gtnhCalcCompactBuild")) return;
+
+    const treeTab =
+      ov.querySelector("[data-calc-tab='tree']") ||
+      [...ov.querySelectorAll("button")].find(b => String(b.textContent || "").trim().toLowerCase() === "tree");
+
+    const parent = treeTab?.parentElement;
+    if (!parent) return;
+
+    const btn = document.createElement("button");
+    btn.id = "gtnhCalcCompactBuild";
+    btn.type = "button";
+    btn.textContent = "Build";
+    btn.addEventListener("click", () => {
+      document.getElementById("calcBuild")?.click();
+    });
+
+    parent.appendChild(btn);
+  }
+
+  const timer = setInterval(installCompactBuild, 400);
+  window.addEventListener("load", installCompactBuild);
+  window.addEventListener("resize", installCompactBuild);
+})();
+/* === CALCULATOR COMPACT BUILD BUTTON v1 END === */
+
+/* === CALCULATOR YAML EXPORT WIRING v1 START === */
+(() => {
+  if (window.__GTNH_CALC_YAML_EXPORT_WIRING_V1__) return;
+  window.__GTNH_CALC_YAML_EXPORT_WIRING_V1__ = true;
+
+  let yamlModeActive = false;
+  let lastYaml = "";
+
+  function getState() {
+    try {
+      return window.GTNH_CALC?.getState?.() || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function getTarget() {
+    const st = getState();
+
+    return String(
+      st.target ||
+      document.getElementById("calcTarget")?.value ||
+      document.querySelector("[name='target']")?.value ||
+      ""
+    ).trim();
+  }
+
+  function getRouteIndex(target) {
+    const st = getState();
+    const key = String(target || "").toLowerCase();
+
+    const locked =
+      st.lockedRoutes?.[key] ??
+      st.lockedRoutes?.[String(target || "")] ??
+      0;
+
+    const n = Number(locked);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function outputEl() {
+    return (
+      document.getElementById("calcCodeOut") ||
+      document.querySelector("#gtnhCalcOverlay textarea") ||
+      document.querySelector("#gtnhCalcOverlay pre")
+    );
+  }
+
+  function setOutput(text) {
+    const out = outputEl();
+    if (!out) return false;
+
+    if ("value" in out) out.value = text;
+    else out.textContent = text;
+
+    return true;
+  }
+
+  function fileSafe(s) {
+    return String(s || "target")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "target";
+  }
+
+  function toast(text) {
+    let el = document.getElementById("gtnhCalcToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gtnhCalcToast";
+      el.className = "gtnhCalcToast";
+      document.body.appendChild(el);
+    }
+
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove("show"), 1600);
+  }
+
+  function buildYaml() {
+    const api = window.GTNHNEI_FLOW_EXPORT_API;
+    const target = getTarget();
+
+    if (!target) {
+      lastYaml = "# No target selected.\n";
+      setOutput(lastYaml);
+      return;
+    }
+
+    if (!api?.ready) {
+      lastYaml = "# GTNH-flow export API is not ready yet. Wait for data load, then press YAML again.\n";
+      setOutput(lastYaml);
+      return;
+    }
+
+    const routeIndex = getRouteIndex(target);
+    const st = getState();
+
+    try {
+      const result = api.yamlForRecipe(target, routeIndex, {
+        targetAmount: st.targetAmount || st.amount || 1
+      });
+
+      lastYaml = result.yaml || "# YAML export failed.\n";
+      setOutput(lastYaml);
+
+      const dl = [...document.querySelectorAll("#gtnhCalcOverlay button")]
+        .find(b => /download/i.test(String(b.textContent || "")));
+
+      if (dl) dl.textContent = "Download YAML";
+
+      toast(result.ok ? "YAML draft generated." : "YAML draft generated with warning.");
+    } catch (err) {
+      lastYaml =
+`# YAML export crashed.
+# ${String(err?.message || err)}
+`;
+      setOutput(lastYaml);
+      toast("YAML export crashed.");
+    }
+  }
+
+  async function copyYaml() {
+    if (!lastYaml) buildYaml();
+
+    try {
+      await navigator.clipboard.writeText(lastYaml);
+      toast("Copied YAML.");
+    } catch {
+      toast("Copy failed.");
+    }
+  }
+
+  function downloadYaml() {
+    if (!lastYaml) buildYaml();
+
+    const target = getTarget();
+    const blob = new Blob([lastYaml], { type: "text/yaml;charset=utf-8" });
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+    a.download = `gtnh-flow_${fileSafe(target)}.yaml`;
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+
+    toast("Downloaded YAML.");
+  }
+
+  document.addEventListener("click", event => {
+    const btn = event.target?.closest?.("button");
+    if (!btn) return;
+
+    const inCalc = btn.closest("#gtnhCalcOverlay");
+    if (!inCalc) return;
+
+    const txt = String(btn.textContent || "").trim().toLowerCase();
+
+    if (txt === "yaml") {
+      yamlModeActive = true;
+      setTimeout(buildYaml, 80);
+      return;
+    }
+
+    if (yamlModeActive && txt === "copy") {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      copyYaml();
+      return;
+    }
+
+    if (yamlModeActive && txt.includes("download")) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      downloadYaml();
+      return;
+    }
+
+    if (["summary", "json", "errors"].includes(txt)) {
+      yamlModeActive = false;
+    }
+  }, true);
+
+  window.GTNH_CALC_YAML_EXPORT = {
+    buildYaml,
+    copyYaml,
+    downloadYaml
+  };
+})();
+/* === CALCULATOR YAML EXPORT WIRING v1 END === */

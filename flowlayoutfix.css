@@ -1,0 +1,93 @@
+/* === gtnh-flow calculator layout fix v1 === */
+
+/* Stop the whole calculator from becoming one giant horizontal scroller. */
+#gtnhCalcOverlay,
+#gtnhCalcOverlay * {
+  box-sizing: border-box;
+}
+
+#gtnhCalcOverlay {
+  overflow-x: hidden !important;
+}
+
+/* Code / Export tab row: keep it visible and not dragged by graph scroll. */
+.gtnhExportTabsPinned {
+  position: sticky !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 80 !important;
+
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+
+  padding: 10px 0 12px !important;
+  margin-bottom: 12px !important;
+
+  background:
+    linear-gradient(180deg, rgba(7,17,31,.98), rgba(7,17,31,.92)) !important;
+
+  border-bottom: 1px solid rgba(103,232,249,.18);
+  scrollbar-width: thin;
+}
+
+.gtnhExportTabsPinned > button,
+.gtnhExportTabsPinned > a {
+  flex: 0 0 auto !important;
+}
+
+/* The gtnh-flow panel itself must fit inside the calculator. */
+#gtnhFlowRealPanel,
+#gtnhFlowCalcPanel,
+.gtnhFlowCalcPanel {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Only this box scrolls horizontally, not the whole calculator. */
+.gtnhFlowSvgWrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  border-radius: 16px;
+}
+
+/* Keep the SVG large enough to read, but contained inside its own scroller. */
+.gtnhFlowSvg {
+  width: 1020px !important;
+  min-width: 1020px !important;
+  max-width: none !important;
+  height: auto !important;
+  display: block !important;
+}
+
+/* Code boxes should scroll internally too. */
+#gtnhCalcOverlay textarea,
+#gtnhCalcOverlay pre {
+  max-width: 100% !important;
+  overflow: auto !important;
+}
+
+/* Mobile: slightly smaller SVG so it is not insanely wide. */
+@media (max-width: 700px) {
+  .gtnhFlowSvg {
+    width: 900px !important;
+    min-width: 900px !important;
+  }
+
+  .gtnhExportTabsPinned {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}

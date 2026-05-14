@@ -1,9 +1,13 @@
-/* === GTNH tools horizontal strip v2: proper help modal === */
+/* === GTNH Workbench top strip v3: no redundant Flow button === */
 (() => {
   "use strict";
 
+  if (window.__GTNH_WORKBENCH_TOPSTRIP_V3__) return;
+  window.__GTNH_WORKBENCH_TOPSTRIP_V3__ = true;
+
   function smallHint(text) {
     let el = document.getElementById("gtnhSmallHint");
+
     if (!el) {
       el = document.createElement("div");
       el.id = "gtnhSmallHint";
@@ -13,13 +17,8 @@
 
     el.textContent = text;
     el.classList.add("show");
-
     clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.classList.remove("show"), 2800);
-  }
-
-  function openFlow() {
-    location.href = "flow.html";
+    el._timer = setTimeout(() => el.classList.remove("show"), 2400);
   }
 
   function openCalculator() {
@@ -31,7 +30,7 @@
   }
 
   function openFavorites() {
-    smallHint("Favorites are next: star items, then open them from this button.");
+    smallHint("Favorites are not built yet. Use recipe/usage for now.");
   }
 
   function createHelpModal() {
@@ -42,50 +41,48 @@
     ov.className = "gtnhHelpOverlay";
 
     ov.innerHTML = `
-      <section class="gtnhHelpPanel" role="dialog" aria-label="GTNH NEI help">
+      <div class="gtnhHelpPanel" role="dialog" aria-modal="true" aria-label="GTNH Workbench help">
         <div class="gtnhHelpHead">
           <div>
-            <h2>GTNH NEI Controls</h2>
-            <p>Recipe search, calculator planning, and flow diagrams.</p>
+            <h2>GTNH Workbench</h2>
+            <p>NEI search, calculator planning, and gtnh-flow export.</p>
           </div>
-          <button type="button" class="gtnhHelpClose" id="gtnhHelpClose">×</button>
+          <button id="gtnhHelpClose" class="gtnhHelpClose" type="button" aria-label="Close help">×</button>
         </div>
 
         <div class="gtnhHelpGrid">
-          <article class="gtnhHelpCard">
+          <section class="gtnhHelpCard">
             <h3>NEI</h3>
-            <p><b>Tap / left click</b> opens the recipe.</p>
-            <p><b>Double tap / right click</b> opens usage.</p>
-            <p><b>Long press</b> will open the item menu later.</p>
-          </article>
+            <p><b>Tap / left click</b>: open recipe.</p>
+            <p><b>Double tap / right click</b>: open usage.</p>
+            <p><b>Hold</b>: copy exact item/fluid name.</p>
+          </section>
 
-          <article class="gtnhHelpCard">
+          <section class="gtnhHelpCard">
             <h3>Calculator</h3>
-            <p>Pick a target item or fluid.</p>
-            <p>If there are multiple recipes, choose the route.</p>
-            <p>Set target amount or machine count.</p>
-          </article>
+            <p>Pick a target, choose a route, then build the recipe tree.</p>
+            <p>Use route mode when multiple GTNH recipes exist.</p>
+          </section>
 
-          <article class="gtnhHelpCard">
-            <h3>Flow</h3>
-            <p>Flow will show generated factory diagrams.</p>
-            <p>Export SVG / YAML later.</p>
-            <p>Useful for things like epichlorohydrin lines.</p>
-          </article>
+          <section class="gtnhHelpCard">
+            <h3>gtnh-flow</h3>
+            <p>Inside Calculator → Code / Export → <b>gtnh-flow</b>.</p>
+            <p>Exports YAML/SVG draft. Test serious lines in local gtnh-flow.</p>
+          </section>
 
-          <article class="gtnhHelpCard">
-            <h3>Versions</h3>
+          <section class="gtnhHelpCard">
+            <h3>Database</h3>
             <p><b>GTNH 2.8.x</b> is active.</p>
-            <p>Older databases like 2.7.x need their own data files before they can work.</p>
-          </article>
+            <p>Older databases need separate data files before they can work.</p>
+          </section>
         </div>
 
         <div class="gtnhHelpFooter">
-          <button type="button" id="gtnhHelpStart">Start</button>
-          <button type="button" id="gtnhHelpEveryTime">Show every visit</button>
-          <button type="button" id="gtnhHelpNever">Don’t auto-open</button>
+          <button id="gtnhHelpStart" type="button">Close</button>
+          <button id="gtnhHelpEveryTime" type="button">Show every visit</button>
+          <button id="gtnhHelpNever" type="button">Don’t auto-open</button>
         </div>
-      </section>
+      </div>
     `;
 
     document.body.appendChild(ov);
@@ -95,26 +92,23 @@
     }
 
     document.getElementById("gtnhHelpClose")?.addEventListener("click", close);
-
     document.getElementById("gtnhHelpStart")?.addEventListener("click", () => {
       localStorage.setItem("gtnhnei_help_seen", "1");
       close();
     });
-
     document.getElementById("gtnhHelpEveryTime")?.addEventListener("click", () => {
       localStorage.setItem("gtnhnei_help_seen", "always");
       close();
       smallHint("Help will auto-open every visit.");
     });
-
     document.getElementById("gtnhHelpNever")?.addEventListener("click", () => {
       localStorage.setItem("gtnhnei_help_seen", "1");
       close();
       smallHint("Use Help to open this guide again.");
     });
 
-    ov.addEventListener("click", e => {
-      if (e.target === ov) close();
+    ov.addEventListener("click", event => {
+      if (event.target === ov) close();
     });
   }
 
@@ -135,6 +129,7 @@
         <button type="button" data-ver="2.7.x">GTNH 2.7.x — not installed</button>
         <button type="button" data-ver="close">Close</button>
       `;
+
       document.body.appendChild(drop);
 
       drop.addEventListener("click", event => {
@@ -142,6 +137,7 @@
         if (!btn) return;
 
         const ver = btn.dataset.ver;
+
         if (ver === "2.8.x") {
           localStorage.setItem("gtnhnei_database_version", "2.8.x");
           smallHint("Using GTNH 2.8.x database.");
@@ -154,7 +150,8 @@
     }
 
     const r = anchor.getBoundingClientRect();
-    drop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 215)) + "px";
+
+    drop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 235)) + "px";
     drop.style.top = Math.min(r.bottom + 6, window.innerHeight - 160) + "px";
     drop.classList.toggle("show");
   }
@@ -164,16 +161,18 @@
       const strip = document.createElement("nav");
       strip.id = "gtnhToolStrip";
       strip.className = "gtnhToolStrip";
+      strip.setAttribute("aria-label", "GTNH Workbench tools");
+
       strip.innerHTML = `
-        <button class="gtnhToolBtn active" id="toolNei" type="button">NEI ▼</button>
-        <button class="gtnhToolBtn" id="toolCalc" type="button">Calculator</button>
-        <button class="gtnhToolBtn" id="toolFlow" type="button">Flow</button>
-        <button class="gtnhToolBtn" id="toolFav" type="button">Favorites</button>
-        <button class="gtnhToolBtn" id="toolHelp" type="button">Help</button>
-        <button class="gtnhToolBtn disabled" id="toolDb" type="button">GTNH 2.8.x</button>
+        <button id="toolNei" class="gtnhToolBtn active" type="button">NEI ▾</button>
+        <button id="toolCalc" class="gtnhToolBtn" type="button">Calculator</button>
+        <button id="toolFav" class="gtnhToolBtn" type="button">Favorites</button>
+        <button id="toolHelp" class="gtnhToolBtn" type="button">Help</button>
+        <span id="toolDb" class="gtnhDbBadge" title="Current database: GTNH 2.8.x">DB: GTNH 2.8.x</span>
       `;
 
       const header = document.querySelector("header") || document.body.firstElementChild;
+
       if (header && header.parentNode) {
         header.parentNode.insertBefore(strip, header.nextSibling);
       } else {
@@ -181,33 +180,36 @@
       }
     }
 
-    document.getElementById("toolNei")?.addEventListener("click", e => showNeiDropdown(e.currentTarget));
+    document.getElementById("toolNei")?.addEventListener("click", event => showNeiDropdown(event.currentTarget));
     document.getElementById("toolCalc")?.addEventListener("click", openCalculator);
-    document.getElementById("toolFlow")?.addEventListener("click", openFlow);
     document.getElementById("toolFav")?.addEventListener("click", openFavorites);
     document.getElementById("toolHelp")?.addEventListener("click", showHelp);
-    document.getElementById("toolDb")?.addEventListener("click", e => showNeiDropdown(e.currentTarget));
 
     document.addEventListener("click", event => {
       const drop = document.getElementById("gtnhNeiDrop");
       if (!drop) return;
+
       if (
         event.target.closest("#gtnhNeiDrop") ||
-        event.target.closest("#toolNei") ||
-        event.target.closest("#toolDb")
-      ) return;
+        event.target.closest("#toolNei")
+      ) {
+        return;
+      }
+
       drop.classList.remove("show");
     }, true);
 
     createHelpModal();
 
     const seen = localStorage.getItem("gtnhnei_help_seen");
-    if (!seen || seen === "always") {
+
+    if (seen === "always") {
       setTimeout(showHelp, 550);
-    } else {
+    } else if (!seen) {
       setTimeout(() => {
-        smallHint("Help is now in the top bar. NEI • Calculator • Flow • Favorites");
+        smallHint("Help is in the top bar. gtnh-flow is inside Calculator → Code / Export.");
       }, 700);
+      localStorage.setItem("gtnhnei_help_seen", "1");
     }
   }
 

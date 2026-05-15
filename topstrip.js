@@ -30,7 +30,257 @@
   }
 
   function openFavorites() {
-    smallHint("Favorites are not built yet. Use recipe/usage for now.");
+    const KEY = "gtnhnei_favorites_v2";
+
+    function cleanName(s) {
+      return String(s || "").trim();
+    }
+
+    function compact(s) {
+      return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    }
+
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function loadFavs() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(arr)) return [];
+
+        return arr
+          .filter(x => cleanName(x?.name || x))
+          .map(x => ({
+            name: cleanName(x?.name || x),
+            addedAt: Number(x?.addedAt || Date.now())
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveFavs(arr) {
+      const out = [];
+      const seen = new Set();
+
+      for (const x of arr || []) {
+        const name = cleanName(x?.name || x);
+        if (!name) continue;
+
+        const key = compact(name);
+        if (seen.has(key)) continue;
+
+        seen.add(key);
+        out.push({
+          name,
+          addedAt: Number(x?.addedAt || Date.now())
+        });
+      }
+
+      localStorage.setItem(KEY, JSON.stringify(out));
+      return out;
+    }
+
+    function getSearchText() {
+      const el =
+        document.querySelector("#search") ||
+        document.querySelector("input[type='search']") ||
+        document.querySelector("input[placeholder*='Search']");
+
+      return cleanName(el?.value || "");
+    }
+
+    function addFav(name) {
+      name = cleanName(name);
+
+      if (!name) {
+        smallHint("Nothing to favorite.");
+        return;
+      }
+
+      const arr = loadFavs();
+
+      if (!arr.some(x => compact(x.name) === compact(name))) {
+        arr.unshift({ name, addedAt: Date.now() });
+        saveFavs(arr);
+      }
+
+      renderFavs();
+      smallHint("Favorited: " + name);
+    }
+
+    function removeFav(name) {
+      const key = compact(name);
+      saveFavs(loadFavs().filter(x => compact(x.name) !== key));
+      renderFavs();
+      smallHint("Removed: " + name);
+    }
+
+    function closeFavs() {
+      document.getElementById("gtnhFavOverlay")?.classList.remove("show");
+    }
+
+    async function copyName(name) {
+      try {
+        await navigator.clipboard.writeText(name);
+        smallHint("Copied: " + name);
+      } catch {
+        smallHint("Copy failed.");
+      }
+    }
+
+    function openNeiFromFav(name, mode) {
+      closeFavs();
+
+      setTimeout(() => {
+        try {
+          if (mode === "usage") {
+            if (window.GTNHNEI_MAIN_API?.usage?.(name)) return;
+          } else {
+            if (window.GTNHNEI_MAIN_API?.recipe?.(name)) return;
+          }
+        } catch (err) {
+          console.warn("Favorite NEI open failed:", err);
+        }
+
+        const search =
+          document.querySelector("#search") ||
+          document.querySelector("input[type='search']") ||
+          document.querySelector("input[placeholder*='Search']");
+
+        if (search) {
+          search.value = name;
+          search.dispatchEvent(new Event("input", { bubbles: true }));
+          smallHint("Searched: " + name);
+        } else {
+          smallHint("NEI search box not found.");
+        }
+      }, 60);
+    }
+
+    function ensureFavOverlay() {
+      let ov = document.getElementById("gtnhFavOverlay");
+      if (ov) return ov;
+
+      ov = document.createElement("div");
+      ov.id = "gtnhFavOverlay";
+      ov.innerHTML = `
+        <div class="gtnhFavPanel" role="dialog" aria-modal="true" aria-label="Favorites">
+          <div class="gtnhFavHead">
+            <div>
+              <h2>Favorites</h2>
+              <p>Saved GTNH items/fluids. Minimal safe version.</p>
+            </div>
+            <button class="gtnhFavClose" type="button" aria-label="Close favorites">×</button>
+          </div>
+
+          <div class="gtnhFavTools">
+            <input id="gtnhFavInput" placeholder="Item/fluid name, e.g. microprocessor">
+            <button id="gtnhFavAdd" type="button">Add</button>
+            <button id="gtnhFavAddSearch" type="button">Add search text</button>
+            <button id="gtnhFavClear" type="button">Clear</button>
+          </div>
+
+          <div id="gtnhFavList" class="gtnhFavList"></div>
+        </div>
+      `;
+
+      document.body.appendChild(ov);
+
+      ov.querySelector(".gtnhFavClose")?.addEventListener("click", closeFavs);
+
+      ov.addEventListener("click", event => {
+        if (event.target === ov) closeFavs();
+      });
+
+      ov.querySelector("#gtnhFavAdd")?.addEventListener("click", () => {
+        const input = ov.querySelector("#gtnhFavInput");
+        addFav(input.value);
+        input.value = "";
+      });
+
+      ov.querySelector("#gtnhFavInput")?.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          ov.querySelector("#gtnhFavAdd")?.click();
+        }
+      });
+
+      ov.querySelector("#gtnhFavAddSearch")?.addEventListener("click", () => {
+        addFav(getSearchText());
+      });
+
+      ov.querySelector("#gtnhFavClear")?.addEventListener("click", () => {
+        if (!confirm("Clear all favorites?")) return;
+        saveFavs([]);
+        renderFavs();
+        smallHint("Favorites cleared.");
+      });
+
+      return ov;
+    }
+
+    function renderFavs() {
+      const list = document.getElementById("gtnhFavList");
+      if (!list) return;
+
+      const favs = loadFavs().sort((a, b) => b.addedAt - a.addedAt);
+
+      if (!favs.length) {
+        list.innerHTML = `
+          <div class="gtnhFavEmpty">
+            No favorites yet. Type an item/fluid name or use “Add search text”.
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = favs.map(x => `
+        <div class="gtnhFavRow">
+          <div>
+            <div class="gtnhFavName">★ ${esc(x.name)}</div>
+            <div class="gtnhFavMeta">Saved ${esc(new Date(x.addedAt).toLocaleString())}</div>
+          </div>
+
+          <div class="gtnhFavActions">
+            <button type="button" data-recipe="${esc(x.name)}">Recipe</button>
+            <button type="button" data-usage="${esc(x.name)}">Usage</button>
+            <button type="button" data-copy="${esc(x.name)}">Copy</button>
+            <button type="button" class="danger" data-remove="${esc(x.name)}">Remove</button>
+          </div>
+        </div>
+      `).join("");
+
+      list.querySelectorAll("[data-recipe]").forEach(btn => {
+        btn.addEventListener("click", () => openNeiFromFav(btn.dataset.recipe, "recipe"));
+      });
+
+      list.querySelectorAll("[data-usage]").forEach(btn => {
+        btn.addEventListener("click", () => openNeiFromFav(btn.dataset.usage, "usage"));
+      });
+
+      list.querySelectorAll("[data-copy]").forEach(btn => {
+        btn.addEventListener("click", () => copyName(btn.dataset.copy));
+      });
+
+      list.querySelectorAll("[data-remove]").forEach(btn => {
+        btn.addEventListener("click", () => removeFav(btn.dataset.remove));
+      });
+    }
+
+    const ov = ensureFavOverlay();
+    renderFavs();
+    ov.classList.add("show");
+
+    setTimeout(() => {
+      ov.querySelector("#gtnhFavInput")?.focus?.();
+    }, 80);
   }
 
   function createHelpModal() {

@@ -1251,7 +1251,7 @@ button:disabled {
   text-align: center !important;
 }
 
-/* Big crafting stays side-by-side like real NEI, but scrolls horizontally if needed */
+/* Big crafting stays side-by-side like NEI, but scrolls horizontally if needed */
 .recipe.bigCrafting .neiRecipeBody {
   grid-template-columns: max-content 46px max-content !important;
   overflow-x: auto !important;

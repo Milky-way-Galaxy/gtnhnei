@@ -1,0 +1,1258 @@
+=== 1) top variables / data loading area ===
+import {
+  Repository,
+  Item,
+  Fluid,
+  OreDict,
+  Recipe,
+  RecipeIoType
+} from "./dist/repository.js";
+import { SearchQuery } from "./dist/searchQuery.js";
+
+const search = document.getElementById("search");
+const clear = document.getElementById("clear");
+const navBack = document.getElementById("navBack");
+const navForward = document.getElementById("navForward");
+const status = document.getElementById("status");
+const breadcrumb = document.getElementById("breadcrumb");
+const machineTabs = document.getElementById("machineTabs");
+const grid = document.getElementById("grid");
+const recipePage = document.getElementById("recipePage");
+const tip = document.getElementById("tip");
+
+let repo;
+let allGoods = [];
+let allItems = [];
+let timer = null;
+let tipTimer = null;
+let activeTipAnchor = null;
+let activeTipObj = null;
+let activeTipText = "";
+
+let historyStack = [];
+let forwardStack = [];
+let currentView = { type: "grid" };
+
+let activeMachine = "All";
+let currentRecipes = [];
+let currentRecipeGroups = new Map();
+
+const MAX_GRID_TOTAL = 420;
+const GRID_PAGE_SIZE = 160;
+const RECIPE_PAGE_SIZE = 8;
+
+const machineIconCache = new Map();
+
+let oreAnimTick = 0;
+const animatedOreIcons = new Set();
+
+function registerOreIcon(el, obj) {
+  if (!(obj instanceof OreDict)) return;
+  animatedOreIcons.add({ el, obj });
+}
+
+setInterval(() => {
+  if (animatedOreIcons.size === 0) return;
+
+  oreAnimTick++;
+
+  for (const entry of Array.from(animatedOreIcons)) {
+    if (!entry.el.isConnected) {
+      animatedOreIcons.delete(entry);
+      continue;
+    }
+
+    const items = entry.obj.items;
+    if (!items || items.length === 0) continue;
+
+    const shown = items[oreAnimTick % items.length];
+    if (shown?.iconId !== undefined) {
+      setIcon(entry.el, shown.iconId);
+    }
+  }
+}, 550);
+
+let currentSearchList = [];
+let renderedGridCount = 0;
+
+let currentRecipeList = [];
+let renderedRecipeCount = 0;
+
+function tierFromEu(eu) {
+  const v = Number(eu);
+  if (!Number.isFinite(v)) return "?";
+
+  if (v <= 8) return "ULV";
+  if (v <= 32) return "LV";
+  if (v <= 128) return "MV";
+  if (v <= 512) return "HV";
+  if (v <= 2048) return "EV";
+  if (v <= 8192) return "IV";
+  if (v <= 32768) return "LuV";
+  if (v <= 131072) return "ZPM";
+  if (v <= 524288) return "UV";
+  if (v <= 2097152) return "UHV";
+  if (v <= 8388608) return "UEV";
+  if (v <= 33554432) return "UIV";
+  if (v <= 134217728) return "UMV";
+  if (v <= 536870912) return "UXV";
+  return "MAX+";
+}
+
+function esc(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function norm(s) {
+  return String(s ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function setIcon(el, iconId) {
+  const ix = iconId % 256;
+  const iy = Math.floor(iconId / 256);
+  el.style.backgroundPosition = `${ix * -32}px ${iy * -32}px`;
+}
+
+function displayObj(obj) {
+  if (obj instanceof OreDict) return obj.items[0] ?? null;
+  return obj;
+}
+
+function nameOf(obj) {
+  if (!obj) return "unknown";
+  if (obj instanceof OreDict) return obj.id;
+  return obj.name ?? obj.id ?? "unknown";
+}
+
+function typeOf(obj) {
+  if (obj instanceof OreDict) return "OreDict";
+  if (obj instanceof Fluid) return "Fluid";
+  return "Item";
+}
+
+function placeTipNearAnchor(anchor, fallbackX = 16, fallbackY = 16) {
+  if (!anchor) {
+
+=== 2) machine icon + recipe helpers area ===
+
+    // Penalize obvious non-machine stuff.
+    if (
+      n.includes("dust") ||
+      n.includes("ingot") ||
+      n.includes("plate") ||
+      n.includes("cell") ||
+      n.includes("fluid") ||
+      n.includes("bucket") ||
+      n.includes("cover") ||
+      n.includes("circuit") ||
+      n.includes("wire") ||
+      n.includes("cable") ||
+      n.includes("pipe")
+    ) {
+      s -= 2500;
+    }
+
+    score = Math.max(score, s);
+  }
+
+  return score;
+}
+
+function findMachineIcon(machineName, recipe = null) {
+  /*
+    Correct fast mode:
+    The official GTNH calculator uses recipeType.defaultCrafter.iconId.
+    No guessing, no scanning all items, no wrong icons.
+  */
+  const iconId = recipe?.recipeType?.defaultCrafter?.iconId;
+  return iconId === undefined ? null : iconId;
+}
+
+function renderMachineTabs() {
+  const counts = new Map();
+  counts.set("All", currentRecipes.length);
+
+  for (const recipe of currentRecipes) {
+    const m = recipeMachineName(recipe);
+    counts.set(m, (counts.get(m) ?? 0) + 1);
+  }
+
+  machineTabs.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  for (const [name, count] of counts.entries()) {
+    const b = document.createElement("button");
+    b.className = "tab" + (name === activeMachine ? " active" : "");
+
+    const sampleRecipe = name === "All"
+          ? null
+          : currentRecipes.find(r => recipeMachineName(r) === name);
+
+        const iconId = findMachineIcon(name, sampleRecipe);
+
+    if (iconId !== null && iconId !== undefined) {
+      const ic = document.createElement("span");
+      ic.className = "tabIcon";
+      setIcon(ic, iconId);
+      b.appendChild(ic);
+    }
+
+    const t = document.createElement("span");
+    t.textContent = `${name} (${count})`;
+    b.appendChild(t);
+
+    b.addEventListener("click", () => {
+      if (activeMachine === name) return;
+
+      activeMachine = name;
+
+      for (const tab of machineTabs.querySelectorAll(".tab")) {
+        tab.classList.remove("active");
+      }
+
+      b.classList.add("active");
+
+      recipePage.innerHTML = '<div class="empty">Loading recipes...</div>';
+
+      requestAnimationFrame(() => {
+
+=== 3) recipe render area 1 ===
+  }, { passive: true });
+
+  el.addEventListener("touchend", (event) => {
+    clearHold();
+
+    if (held) {
+      held = false;
+      tapCount = 0;
+      return;
+    }
+
+    if (moved) {
+      tapCount = 0;
+      return;
+    }
+
+    tapCount++;
+
+    if (tapTimer) clearTimeout(tapTimer);
+
+    tapTimer = setTimeout(() => {
+      const count = tapCount;
+      tapCount = 0;
+      tapTimer = null;
+
+      if (count >= 2) {
+        openUsage(obj);
+      } else {
+        openProduction(obj);
+      }
+    }, 180);
+  }, { passive: true });
+}
+
+function amountText(io) {
+  if (io.goods instanceof Fluid) return `${io.amount} L`;
+  if (io.amount === 1) return "";
+  return `x${io.amount}`;
+}
+
+function ioBox(io) {
+  const box = document.createElement("div");
+  box.className = "goods";
+  box.title = nameOf(io.goods);
+
+  const shown = displayObj(io.goods);
+  const icon = document.createElement("div");
+  icon.className = "icon";
+  if (shown) setIcon(icon, shown.iconId);
+  registerOreIcon(icon, io.goods);
+
+  const text = document.createElement("div");
+  text.className = "goodsName";
+
+  let extra = "";
+  if (io.probability < 1) extra = ` (${Math.round(io.probability * 100)}%)`;
+
+  text.textContent = `${amountText(io)} ${nameOf(io.goods)}${extra}`.trim();
+
+  box.appendChild(icon);
+  box.appendChild(text);
+
+  attachControls(box, io.goods);
+
+  return box;
+}
+
+function ioRow(recipe, label, types) {
+  const block = document.createElement("div");
+  block.className = "ioBlock";
+
+  const l = document.createElement("div");
+  l.className = "label";
+  l.textContent = label;
+
+  const items = document.createElement("div");
+  items.className = "ioItems";
+
+  let count = 0;
+
+  for (const io of recipe.items) {
+    if (types.includes(io.type)) {
+      items.appendChild(ioBox(io));
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    const e = document.createElement("div");
+    e.className = "goodsName";
+    e.textContent = "none";
+    items.appendChild(e);
+  }
+
+  block.appendChild(l);
+  block.appendChild(items);
+
+  return block;
+}
+
+function formatDuration(gt) {
+  if (!gt) return null;
+  const sec = gt.durationSeconds;
+  if (sec === undefined || sec === null) return null;
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}m ${s}s`;
+}
+
+function recipeCard(recipe) {
+  const card = document.createElement("div");
+  card.className = "recipe";
+
+  const head = document.createElement("div");
+  head.className = "recipeHead";
+
+  const left = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "recipeTitle";
+
+  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+  if (machineIcon !== null && machineIcon !== undefined) {
+    const ic = document.createElement("span");
+    ic.className = "tabIcon";
+    setIcon(ic, machineIcon);
+    title.appendChild(ic);
+  }
+
+  const titleText = document.createElement("span");
+  titleText.textContent = recipeMachineName(recipe);
+  title.appendChild(titleText);
+
+  const id = document.createElement("div");
+  id.className = "recipeId";
+  id.textContent = recipe.id ?? "";
+
+  left.appendChild(title);
+  left.appendChild(id);
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+
+  if (recipe.gtRecipe) {
+    const gt = recipe.gtRecipe;
+
+    const tier = document.createElement("span");
+    tier.className = "badge tier";
+    tier.textContent = tierFromEu(gt.voltage);
+    badges.appendChild(tier);
+
+=== 4) recipe render area 2 ===
+grid.addEventListener("scroll", () => {
+  if (currentView.type !== "grid") return;
+
+  const nearBottom = grid.scrollTop + grid.clientHeight > grid.scrollHeight - 260;
+  if (nearBottom) appendGridItems();
+});
+
+recipePage.addEventListener("scroll", () => {
+  if (currentView.type !== "recipes") return;
+
+  const nearBottom = recipePage.scrollTop + recipePage.clientHeight > recipePage.scrollHeight - 320;
+  if (nearBottom) appendRecipeCards();
+});
+
+
+
+
+function inputItemTypes() {
+  return [
+    RecipeIoType.ItemInput,
+    RecipeIoType.OreDictInput
+  ];
+}
+
+function inputFluidTypes() {
+  return [
+    RecipeIoType.FluidInput
+  ];
+}
+
+function outputItemTypes() {
+  return [
+    RecipeIoType.ItemOutput
+  ];
+}
+
+function outputFluidTypes() {
+  return [
+    RecipeIoType.FluidOutput
+  ];
+}
+
+function amountShort(io) {
+  const amount = Number(io.amount ?? 0);
+
+  if (io.goods instanceof Fluid) {
+    if (amount >= 1000000) return `${Math.round(amount / 100000) / 10}M`;
+    if (amount >= 1000) return `${Math.round(amount / 100) / 10}k`;
+    return String(amount);
+  }
+
+  if (amount <= 1) return "";
+  return String(amount);
+}
+
+function makeEmptySlot() {
+  const slot = document.createElement("div");
+  slot.className = "neiSlot emptySlot";
+  return slot;
+}
+
+function makeNeiSlot(io) {
+  const slot = document.createElement("div");
+  slot.className = "neiSlot";
+  slot.title = `${amountText(io)} ${nameOf(io.goods)}`.trim();
+
+  const shown = displayObj(io.goods);
+  const icon = document.createElement("div");
+  icon.className = "icon";
+
+  if (shown) setIcon(icon, shown.iconId);
+
+  if (typeof registerOreIcon === "function") {
+    registerOreIcon(icon, io.goods);
+  }
+
+  slot.appendChild(icon);
+
+  const amt = amountShort(io);
+  if (amt) {
+    const amount = document.createElement("div");
+    amount.className = "neiAmount";
+    amount.textContent = amt;
+    slot.appendChild(amount);
+  }
+
+  attachControls(slot, io.goods);
+  return slot;
+}
+
+function makeSlotGrid(recipe, label, types, dimensionOffset) {
+  const dims = recipe.recipeType?.dimensions;
+  if (!dims) return null;
+
+  const dimX = Number(dims[dimensionOffset] ?? 0);
+  const dimY = Number(dims[dimensionOffset + 1] ?? 0);
+
+  if (dimX <= 0 || dimY <= 0) return null;
+
+  const count = dimX * dimY;
+  const bySlot = new Map();
+
+  for (const io of recipe.items) {
+    if (!types.includes(io.type)) continue;
+
+    const slot = Number(io.slot ?? -1);
+    if (slot < 0 || slot >= count) continue;
+
+    bySlot.set(slot, io);
+  }
+
+  if (bySlot.size === 0) return null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "neiSubGrid";
+  wrap.style.setProperty("--nei-cols", String(dimX));
+
+  if (label) {
+    const title = document.createElement("div");
+    title.className = "neiGridLabel";
+    title.textContent = label;
+    wrap.appendChild(title);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const io = bySlot.get(i);
+    wrap.appendChild(io ? makeNeiSlot(io) : makeEmptySlot());
+  }
+
+  return wrap;
+}
+
+function makeIoSide(recipe, label, itemTypes, fluidTypes, dimensionOffset) {
+  const side = document.createElement("div");
+  side.className = "neiIoSide";
+
+  const title = document.createElement("div");
+  title.className = "neiGridLabel";
+  title.textContent = label;
+  side.appendChild(title);
+
+  const itemGrid = makeSlotGrid(recipe, "", itemTypes, dimensionOffset);
+  const fluidGrid = makeSlotGrid(recipe, "", fluidTypes, dimensionOffset + 2);
+
+  if (itemGrid) side.appendChild(itemGrid);
+  if (fluidGrid) side.appendChild(fluidGrid);
+
+  if (!itemGrid && !fluidGrid) {
+    side.appendChild(makeEmptySlot());
+  }
+
+  return side;
+}
+
+function addBadges(recipe, badges) {
+  let tierText = "";
+  let euText = "";
+  let ampText = "";
+  let timeText = "";
+
+  if (recipe.gtRecipe) {
+    const gt = recipe.gtRecipe;
+
+    tierText = tierFromEu(gt.voltage);
+    euText = `${gt.voltage ?? "?"} EU/t`;
+    ampText = `${gt.amperage ?? "?"}A`;
+    timeText = formatDuration(gt) ?? "";
+
+    const tier = document.createElement("span");
+    tier.className = "badge tier";
+    tier.textContent = tierText;
+    badges.appendChild(tier);
+
+    const eu = document.createElement("span");
+    eu.className = "badge eu";
+    eu.textContent = euText;
+    badges.appendChild(eu);
+
+    const amp = document.createElement("span");
+    amp.className = "badge";
+    amp.textContent = ampText;
+    badges.appendChild(amp);
+
+    if (timeText) {
+      const time = document.createElement("span");
+      time.className = "badge time";
+      time.textContent = timeText;
+      badges.appendChild(time);
+    }
+  }
+
+  return { tierText, euText, ampText, timeText };
+}
+
+function recipeCardNei(recipe) {
+  const dims = recipe.recipeType?.dimensions;
+  const inputItemX = Number(dims?.[0] ?? 0);
+  const inputItemY = Number(dims?.[1] ?? 0);
+
+  const card = document.createElement("div");
+  card.className = "recipe";
+
+  if (inputItemX >= 7 || inputItemY >= 7) {
+    card.classList.add("bigCrafting");
+  }
+
+  const head = document.createElement("div");
+  head.className = "recipeHead";
+
+  const left = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className = "recipeTitle";
+
+  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+  if (machineIcon !== null && machineIcon !== undefined) {
+    const ic = document.createElement("span");
+    ic.className = "tabIcon";
+    setIcon(ic, machineIcon);
+    title.appendChild(ic);
+  }
+
+  const titleText = document.createElement("span");
+  titleText.textContent = recipeMachineName(recipe);
+  title.appendChild(titleText);
+
+  left.appendChild(title);
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+  const meta = addBadges(recipe, badges);
+
+  head.appendChild(left);
+  head.appendChild(badges);
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "neiRecipeBody";
+
+  const inputSide = makeIoSide(
+    recipe,
+    "Input",
+    inputItemTypes(),
+    inputFluidTypes(),
+    0
+  );
+
+  const arrowWrap = document.createElement("div");
+  arrowWrap.className = "neiArrowBox";
+
+  const arrow = document.createElement("div");
+  arrow.className = "neiArrow";
+  arrow.textContent = "→";
+
+  const machineLine = document.createElement("div");
+  machineLine.className = "neiMachineLine";
+  machineLine.textContent = meta.timeText ? `${meta.tierText} • ${meta.timeText}` : meta.tierText;
+
+  const subLine = document.createElement("div");
+  subLine.className = "neiSubLine";
+  subLine.textContent = meta.euText ? `${meta.ampText} • ${meta.euText}` : "";
+
+  arrowWrap.appendChild(arrow);
+  arrowWrap.appendChild(machineLine);
+  arrowWrap.appendChild(subLine);
+
+  const outputSide = makeIoSide(
+    recipe,
+    "Output",
+    outputItemTypes(),
+    outputFluidTypes(),
+    4
+  );
+
+  body.appendChild(inputSide);
+  body.appendChild(arrowWrap);
+  body.appendChild(outputSide);
+
+  card.appendChild(body);
+  return card;
+}
+
+search.addEventListener("input", () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => renderSearchGrid(true), 150);
+});
+
+=== 5) navigation/back/API area ===
+}
+
+search.addEventListener("input", () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => renderSearchGrid(true), 150);
+});
+
+clear.addEventListener("click", () => {
+  search.value = "";
+  renderSearchGrid(true);
+  search.focus();
+});
+
+navBack.addEventListener("click", () => {
+  if (historyStack.length === 0) return;
+  forwardStack.push(currentView);
+  const prev = historyStack.pop();
+  restoreView(prev);
+});
+
+navForward.addEventListener("click", () => {
+  if (forwardStack.length === 0) return;
+  historyStack.push(currentView);
+  const next = forwardStack.pop();
+  restoreView(next);
+});
+
+load().catch(err => {
+  console.error(err);
+  status.textContent = "ERROR: " + err.message;
+});
+
+// Hide tooltip when tapping/clicking empty space
+function hideTip() {
+  tip.style.display = "none";
+  activeTipAnchor = null;
+  activeTipObj = null;
+  activeTipText = "";
+  clearTimeout(tipTimer);
+}
+
+document.addEventListener("pointerdown", (event) => {
+  const keepTooltip =
+    event.target.closest(".slot") ||
+    event.target.closest(".goods") ||
+    event.target.closest(".tab") ||
+    event.target.closest("button") ||
+    event.target.closest("input") ||
+    event.target.closest("#tip");
+
+  if (!keepTooltip) {
+    hideTip();
+  }
+}, true);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    hideTip();
+  }
+});
+
+// Extra tooltip close rule:
+// Only item/recipe icons keep tooltip. Search bar, close button, nav buttons,
+// tabs, blank space, etc. close the tooltip.
+document.addEventListener("pointerdown", (event) => {
+  const isItemIcon =
+    event.target.closest(".slot") ||
+    event.target.closest(".neiSlot") ||
+    event.target.closest(".goods");
+
+  if (!isItemIcon && typeof hideTip === "function") {
+    hideTip();
+  }
+}, true);
+
+search.addEventListener("focus", () => {
+  if (typeof hideTip === "function") hideTip();
+});
+
+clear.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+navBack.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+navForward.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+machineTabs.addEventListener("pointerdown", () => {
+  if (typeof hideTip === "function") hideTip();
+}, true);
+
+
+
+
+
+
+/* === GTNH NEI ADDON ICON API START === */
+function installAddonIconApi() {
+  try {
+    window.GTNHNEI_ICON_API = {
+      ready: true,
+
+      findObjectByName(rawName) {
+        const q = String(rawName || "").trim();
+        const qLower = q.toLowerCase();
+        const compact = qLower.replace(/[^a-z0-9]/g, "");
+
+        if (!qLower || !Array.isArray(allGoods)) return null;
+
+        function objName(o) {
+          try {
+            return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+          } catch {
+            return String(o?.name || o?.id || "").toLowerCase();
+          }
+        }
+
+        function objCompact(o) {
+          return objName(o).replace(/[^a-z0-9]/g, "");
+        }
+
+        let obj =
+          allGoods.find(o => objName(o) === qLower) ||
+          allGoods.find(o => objCompact(o) === compact) ||
+          allGoods.find(o => objName(o).includes(qLower)) ||
+          allGoods.find(o => objCompact(o).includes(compact));
+
+        // Stronger fallback: use the same GTNH calculator search engine.
+        if (!obj && typeof SearchQuery !== "undefined" && repo) {
+          try {
+            const query = new SearchQuery(q);
+            obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+          } catch {}
+        }
+
+        return obj || null;
+      },
+
+      setIconByName(el, rawName) {
+        const obj = this.findObjectByName(rawName);
+
+        if (!obj || obj.iconId === undefined || obj.iconId === null) {
+          return false;
+        }
+
+        el.classList.add("icon");
+        el.textContent = "";
+
+        try {
+          setIcon(el, obj.iconId);
+          el.dataset.gtnhIconOk = "1";
+          el.dataset.gtnhIconName = String(obj.name || obj.id || rawName);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    };
+
+    window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+    console.log("GTNHNEI_ICON_API ready:", allGoods?.length || 0);
+  } catch (err) {
+    console.warn("Failed to install addon icon API", err);
+  }
+}
+/* === GTNH NEI ADDON ICON API END === */
+
+
+/* === GTNH NEI ICON DEBUG PANEL START === */
+window.addEventListener("gtnhnei-icons-ready", () => {
+  window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "microprocessor") {
+    const api = window.GTNHNEI_ICON_API;
+    if (!api) {
+      alert("GTNHNEI_ICON_API missing");
+      return [];
+    }
+
+    const q = String(rawQuery || "").toLowerCase();
+    const results = [];
+
+    try {
+      for (const obj of allGoods) {
+        let n = "";
+        try {
+          n = String(nameOf(obj) || obj?.name || obj?.id || "");
+        } catch {
+          n = String(obj?.name || obj?.id || "");
+        }
+
+        if (n.toLowerCase().includes(q)) {
+          results.push({
+            name: n,
+            id: obj?.id,
+            iconId: obj?.iconId
+          });
+        }
+
+        if (results.length >= 40) break;
+      }
+    } catch (err) {
+      alert("debug failed: " + err.message);
+      return [];
+    }
+
+    console.table(results);
+    alert(
+      "Found " + results.length + " result(s) for: " + rawQuery + "\n\n" +
+      results.slice(0, 12).map(x => x.name + " | iconId=" + x.iconId).join("\n")
+    );
+
+    return results;
+  };
+});
+/* === GTNH NEI ICON DEBUG PANEL END === */
+
+
+
+/* === GTNH NEI ICON API HARD OVERRIDE v10 START === */
+(function installIconApiHardOverrideV10() {
+  let tries = 0;
+
+  function safeName(o) {
+    try {
+      if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
+    } catch {}
+    return String(o?.name || o?.id || "");
+  }
+
+  function compact(s) {
+    return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function installNow() {
+    tries++;
+
+    try {
+      if (
+        typeof allGoods === "undefined" ||
+        !Array.isArray(allGoods) ||
+        allGoods.length === 0 ||
+        typeof setIcon !== "function"
+      ) {
+        return false;
+      }
+
+      window.GTNHNEI_ICON_API = {
+        ready: true,
+        count: allGoods.length,
+
+        findObjectByName(rawName) {
+          const q = String(rawName || "").trim();
+          const qLower = q.toLowerCase();
+          const qCompact = compact(q);
+
+          if (!qLower) return null;
+
+          let obj =
+            allGoods.find(o => safeName(o).toLowerCase() === qLower) ||
+            allGoods.find(o => compact(safeName(o)) === qCompact) ||
+            allGoods.find(o => safeName(o).toLowerCase().includes(qLower)) ||
+            allGoods.find(o => compact(safeName(o)).includes(qCompact));
+
+          if (!obj && typeof SearchQuery !== "undefined" && typeof repo !== "undefined" && repo) {
+            try {
+              const query = new SearchQuery(q);
+              obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+            } catch {}
+          }
+
+          return obj || null;
+        },
+
+        setIconByName(el, rawName) {
+          const obj = this.findObjectByName(rawName);
+
+          if (!obj || obj.iconId === undefined || obj.iconId === null) {
+            return false;
+          }
+
+          el.classList.add("icon");
+          el.classList.remove("lunaIconFallback");
+          el.textContent = "";
+
+          try {
+            setIcon(el, obj.iconId);
+            el.dataset.gtnhIconOk = "1";
+            el.dataset.gtnhIconName = safeName(obj);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      };
+
+      window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "") {
+        const q = String(rawQuery || "").trim().toLowerCase();
+        const qCompact = compact(q);
+        const results = [];
+
+        for (const obj of allGoods) {
+          const n = safeName(obj);
+          const nLower = n.toLowerCase();
+          const nCompact = compact(n);
+
+          if (!q || nLower.includes(q) || nCompact.includes(qCompact)) {
+            results.push({
+              name: n,
+              id: obj?.id,
+              iconId: obj?.iconId
+            });
+          }
+
+          if (results.length >= 40) break;
+        }
+
+        console.table(results);
+        alert(
+          "Found " + results.length + " result(s) for: " + rawQuery + "\n\n" +
+          results.slice(0, 14).map(x => x.name + " | iconId=" + x.iconId).join("\n")
+        );
+
+        return results;
+      };
+
+      window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+      console.log("GTNHNEI_ICON_API v10 ready:", allGoods.length);
+      return true;
+    } catch (err) {
+      console.warn("GTNHNEI_ICON_API v10 failed:", err);
+      return false;
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (installNow() || tries >= 80) {
+      clearInterval(timer);
+      if (tries >= 80) console.warn("GTNHNEI_ICON_API v10 gave up.");
+    }
+  }, 250);
+})();
+ /* === GTNH NEI ICON API HARD OVERRIDE v10 END === */
+
+
+/* === GTNH NEI MAIN NAV API v17 START === */
+(() => {
+  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+
+  function findByNameV17(name) {
+    try {
+      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+        return window.GTNHNEI_ICON_API.findObjectByName(name);
+      }
+    } catch {}
+
+    try {
+      const q = String(name || "").trim().toLowerCase();
+      const compact = q.replace(/[^a-z0-9]/g, "");
+
+      function n(o) {
+        try {
+          return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+        } catch {
+          return String(o?.name || o?.id || "").toLowerCase();
+        }
+      }
+
+      return (
+        allGoods.find(o => n(o) === q) ||
+        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+        allGoods.find(o => n(o).includes(q)) ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  window.GTNHNEI_MAIN_API = {
+    recipe(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openProduction === "function") {
+          openProduction(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Production", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    usage(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openUsage === "function") {
+          openUsage(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Usage", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    async copy(name) {
+      try {
+        await navigator.clipboard.writeText(String(name || ""));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  console.log("GTNHNEI_MAIN_API v17 ready");
+})();
+ /* === GTNH NEI MAIN NAV API v17 END === */
+
+/* === GTNH NEI MAIN NAV API v17 START === */
+(() => {
+  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+
+  function findByNameV17(name) {
+    try {
+      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+        return window.GTNHNEI_ICON_API.findObjectByName(name);
+      }
+    } catch {}
+
+    try {
+      const q = String(name || "").trim().toLowerCase();
+      const compact = q.replace(/[^a-z0-9]/g, "");
+
+      function n(o) {
+        try {
+          return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
+        } catch {
+          return String(o?.name || o?.id || "").toLowerCase();
+        }
+      }
+
+      return (
+        allGoods.find(o => n(o) === q) ||
+        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+        allGoods.find(o => n(o).includes(q)) ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  window.GTNHNEI_MAIN_API = {
+    recipe(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openProduction === "function") {
+          openProduction(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Production", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    usage(name) {
+      const obj = findByNameV17(name);
+      if (!obj) return false;
+
+      try {
+        if (typeof openUsage === "function") {
+          openUsage(obj);
+          return true;
+        }
+
+        if (typeof showRecipes === "function") {
+          showRecipes(obj, "Usage", true);
+          return true;
+        }
+      } catch {}
+
+      return false;
+    },
+
+    async copy(name) {
+      try {
+        await navigator.clipboard.writeText(String(name || ""));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  console.log("GTNHNEI_MAIN_API v17 ready");
+})();
+ /* === GTNH NEI MAIN NAV API v17 END === */
+
+=== 6) function list only ===
+48:function registerOreIcon(el, obj) {
+80:function tierFromEu(eu) {
+101:function esc(s) {
+109:function norm(s) {
+116:function setIcon(el, iconId) {
+122:function displayObj(obj) {
+127:function nameOf(obj) {
+133:function typeOf(obj) {
+139:function placeTipNearAnchor(anchor, fallbackX = 16, fallbackY = 16) {
+152:function positionTip(anchor, fallbackX = 16, fallbackY = 16) {
+185:function showTip(obj, text, x = 16, y = 16, anchor = null) {
+208:function refreshTipPosition() {
+217:async function load() {
+248:function updateNav() {
+253:function pushView(next) {
+260:function restoreView(view) {
+272:function renderSearchGrid(push = true) {
+313:function appendGridItems() {
+350:function recipesFor(obj, mode) {
+362:function renderRecipes(obj, mode, push = true) {
+390:function recipeMachineName(recipe) {
+394:function machineRecipeText(recipe) {
+399:  function walk(x, depth = 0) {
+429:function machineModPrefs(machineName, recipe = null) {
+443:function machineCandidates(machineName, recipe = null) {
+450:  function add(x) {
+628:function machineItemScore(item, candidates, modPrefs) {
+704:function findMachineIcon(machineName, recipe = null) {
+714:function renderMachineTabs() {
+771:function renderRecipeList() {
+788:function appendRecipeCards() {
+813:function openProduction(obj) {
+822:function openUsage(obj) {
+831:async function copyExactName(obj, x, y, anchor = null) {
+840:function attachControls(el, obj) {
+850:  function clearHold() {
+857:  function startHold(x, y) {
+871:  function moveCheck(x, y) {
+964:function amountText(io) {
+970:function ioBox(io) {
+997:function ioRow(recipe, label, types) {
+1030:function formatDuration(gt) {
+1040:function recipeCard(recipe) {
+1137:function inputItemTypes() {
+1144:function inputFluidTypes() {
+1150:function outputItemTypes() {
+1156:function outputFluidTypes() {
+1162:function amountShort(io) {
+1175:function makeEmptySlot() {
+1181:function makeNeiSlot(io) {
+1210:function makeSlotGrid(recipe, label, types, dimensionOffset) {
+1252:function makeIoSide(recipe, label, itemTypes, fluidTypes, dimensionOffset) {
+1274:function addBadges(recipe, badges) {
+1314:function recipeCardNei(recipe) {
+1433:function hideTip() {
+1501:function installAddonIconApi() {
+1513:        function objName(o) {
+1521:        function objCompact(o) {
+1622:(function installIconApiHardOverrideV10() {
+1625:  function safeName(o) {
+1632:  function compact(s) {
+1636:  function installNow() {
+1737:  const timer = setInterval(() => {
+1752:  function findByNameV17(name) {
+1763:      function n(o) {
+1840:  function findByNameV17(name) {
+1851:      function n(o) {

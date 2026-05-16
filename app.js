@@ -214,14 +214,14 @@ function refreshTipPosition() {
 window.addEventListener("scroll", refreshTipPosition, true);
 window.addEventListener("resize", refreshTipPosition);
 
-async function load() {
-  const res = await fetch("data/data.bin");
+async function load() { console.time("GTNH_LOAD_DEBUG_V1_total"); console.log("[GTNH] load start");
+  console.time("GTNH_LOAD_DEBUG_V1_fetch"); const res = await fetch("data/data.bin"); console.timeEnd("GTNH_LOAD_DEBUG_V1_fetch"); console.log("[GTNH] fetch status", res.status, res.headers.get("content-length"));
   if (!res.ok) throw new Error("Failed to fetch data/data.bin");
 
   const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
-  const buffer = await new Response(stream).arrayBuffer();
+  console.time("GTNH_LOAD_DEBUG_V1_gzip"); const buffer = await new Response(stream).arrayBuffer(); console.timeEnd("GTNH_LOAD_DEBUG_V1_gzip"); console.log("[GTNH] decompressed bytes", buffer.byteLength);
 
-  repo = Repository.load(buffer);
+  console.time("GTNH_LOAD_DEBUG_V1_repo"); repo = Repository.load(buffer); console.timeEnd("GTNH_LOAD_DEBUG_V1_repo"); console.log("[GTNH] repo loaded");
 
   allGoods = [];
   allItems = [];
@@ -562,7 +562,7 @@ function machineCandidates(machineName, recipe = null) {
 
     /*
       Forestry.
-      There is not really a normal 'Forestry Assembler' name in many packs.
+      There is no normal 'Forestry Assembler' name in many packs.
       Forestry recipes usually use these machine blocks instead.
     */
     ["forestry assembler", [
@@ -1601,7 +1601,7 @@ window.addEventListener("gtnhnei-icons-ready", () => {
         if (results.length >= 40) break;
       }
     } catch (err) {
-      alert("debug failed: " + err.message);
+      alert("check failed: " + err.message);
       return [];
     }
 

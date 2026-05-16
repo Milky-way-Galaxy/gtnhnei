@@ -434,7 +434,7 @@
         <div class="gtnhTreeNode">
           <b>Ready</b>
           <span>Target: ${esc(state.target)}</span>
-          <span>Press Build tree to search real production recipes. This avoids freezing while opening or typing.</span>
+          <span>Press Build tree to search production recipes. This avoids freezing while opening or typing.</span>
         </div>
       `;
       return;
@@ -693,7 +693,7 @@
     renderTree();
     renderCode();
 
-    // Mount real NEI cards after HTML exists.
+    // Mount NEI cards after HTML exists.
     // This preserves normal tooltip/click/tap behavior.
     setTimeout(hydrateLiveRecipeCards, 0);
   }
@@ -852,7 +852,7 @@
           window.GTNHNEI_MAIN_API?.recipe?.(name);
         }
       } catch (err) {
-        console.warn("Failed to open real NEI:", mode, name, err);
+        console.warn("Failed to open NEI:", mode, name, err);
       }
     }, 60);
   }

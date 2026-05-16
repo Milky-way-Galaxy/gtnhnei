@@ -315,10 +315,10 @@ Output:
       const raw = String(search.value || "").trim();
       const q = raw.toLowerCase();
 
-      if (q.startsWith("icondebug ")) {
-        const term = raw.slice("icondebug ".length).trim();
+      if (q.startsWith("iconcheck ")) {
+        const term = raw.slice("iconcheck ".length).trim();
         if (window.GTNHNEI_DEBUG_ICONS) window.GTNHNEI_DEBUG_ICONS(term);
-        else toast("Icon debug not ready yet.");
+        else toast("Icon check not ready yet.");
         return;
       }
 

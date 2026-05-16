@@ -1,0 +1,467 @@
+=== file sizes ===
+-rw-------. 1 u0_a405 u0_a405  47K May 13 05:50 app.js
+-rw-------. 1 u0_a405 u0_a405  17K May 13 14:13 calc.js
+-rw-------. 1 u0_a405 u0_a405  15M May 11 06:07 data/atlas.webp
+-rw-------. 1 u0_a405 u0_a405  15M May 11 06:07 data/data.bin
+-rw-------. 1 u0_a405 u0_a405  12K May 13 06:24 extras.js
+-rw-------. 1 u0_a405 u0_a405 2.5K May 13 14:13 index.html
+-rw-------. 1 u0_a405 u0_a405 7.3K May 13 14:13 topstrip.js
+
+=== script/style order ===
+8:  <link rel="stylesheet" href="style.css">
+10:  <meta name="description" content="GTNH NEI is a mobile-friendly GregTech: New Horizons recipe and usage searcher with NEI-style recipe grids, real shaped recipe slots, machine tabs, and item/fluid search.">
+16:  <meta property="og:description" content="Mobile-friendly NEI-style recipe and usage searcher for GregTech: New Horizons.">
+22:  <meta name="twitter:description" content="Mobile-friendly NEI-style recipe and usage searcher for GregTech: New Horizons.">
+24:  <link rel="stylesheet" href="extras.css?v=1778628271">
+25:  <link rel="stylesheet" href="topstrip.css?v=1778656431">
+26:  <link rel="stylesheet" href="calc.css?v=1778656431">
+60:  <script type="module" src="app.js?v=1778628271"></script>
+61:  <script src="extras.js?v=1778628271" defer></script>
+62:  <script src="topstrip.js?v=1778656431" defer></script>
+63:  <script src="calc.js?v=1778656431" defer></script>
+
+=== app.js recipe/data clues ===
+6:  Recipe,
+7:  RecipeIoType
+9:import { SearchQuery } from "./dist/searchQuery.js";
+11:const search = document.getElementById("search");
+19:const recipePage = document.getElementById("recipePage");
+24:let allItems = [];
+31:let historyStack = [];
+33:let currentView = { type: "grid" };
+36:let currentRecipes = [];
+37:let currentRecipeGroups = new Map();
+41:const RECIPE_PAGE_SIZE = 8;
+64:    const items = entry.obj.items;
+65:    if (!items || items.length === 0) continue;
+67:    const shown = items[oreAnimTick % items.length];
+74:let currentSearchList = [];
+75:let renderedGridCount = 0;
+77:let currentRecipeList = [];
+78:let renderedRecipeCount = 0;
+123:  if (obj instanceof OreDict) return obj.items[0] ?? null;
+218:  const res = await fetch("data/data.bin");
+219:  if (!res.ok) throw new Error("Failed to fetch data/data.bin");
+227:  allItems = [];
+229:  for (const ptr of repo.items) {
+233:      allItems.push(item);
+237:  for (const ptr of repo.fluids) {
+242:  status.textContent = `Loaded ${allGoods.length} items/fluids`;
+245:renderSearchGrid(false);
+249:  navBack.disabled = historyStack.length === 0;
+253:function pushView(next) {
+254:  historyStack.push(currentView);
+256:  currentView = next;
+260:function restoreView(view) {
+261:  currentView = view;
+263:  if (view.type === "grid") {
+264:    renderSearchGrid(false);
+265:  } else if (view.type === "recipes") {
+266:    renderRecipes(view.obj, view.mode, false);
+272:function renderSearchGrid(push = true) {
+273:  if (push) pushView({ type: "grid" });
+274:  currentView = { type: "grid" };
+277:  recipePage.style.display = "none";
+281:  const q = search.value.trim();
+284:    currentSearchList = allGoods.slice(0, MAX_GRID_TOTAL);
+285:    status.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
+287:    const query = new SearchQuery(q);
+288:    currentSearchList = [];
+291:      if (repo.IsObjectMatchingSearch(obj, query)) {
+292:        currentSearchList.push(obj);
+293:        if (currentSearchList.length >= MAX_GRID_TOTAL) break;
+297:    status.textContent = `${currentSearchList.length} result(s), capped at ${MAX_GRID_TOTAL}`;
+301:  renderedGridCount = 0;
+303:  if (currentSearchList.length === 0) {
+309:  appendGridItems();
+313:function appendGridItems() {
+314:  if (renderedGridCount >= currentSearchList.length) return;
+317:  const end = Math.min(renderedGridCount + GRID_PAGE_SIZE, currentSearchList.length);
+319:  for (let i = renderedGridCount; i < end; i++) {
+320:    const obj = currentSearchList[i];
+335:  renderedGridCount = end;
+340:  if (renderedGridCount < currentSearchList.length) {
+343:    more.textContent = `Scroll more to load ${currentSearchList.length - renderedGridCount} more...`;
+350:function recipesFor(obj, mode) {
+351:  const arr = mode === "Production" ? obj.production : obj.consumption;
+355:    const recipe = repo.GetObject(ptr, Recipe);
+356:    if (recipe) out.push(recipe);
+362:function renderRecipes(obj, mode, push = true) {
+363:  if (push) pushView({ type: "recipes", obj, mode });
+365:  currentView = { type: "recipes", obj, mode };
+367:  currentRecipes = recipesFor(obj, mode);
+369:  currentRecipeGroups = new Map();
+370:  currentRecipeGroups.set("All", currentRecipes);
+372:  for (const recipe of currentRecipes) {
+373:    const m = recipeMachineName(recipe);
+374:    if (!currentRecipeGroups.has(m)) currentRecipeGroups.set(m, []);
+375:    currentRecipeGroups.get(m).push(recipe);
+379:  recipePage.style.display = "block";
+385:  renderMachineTabs();
+386:  renderRecipeList();
+390:function recipeMachineName(recipe) {
+391:  return recipe.recipeType?.name ?? "Unknown Machine";
+394:function machineRecipeText(recipe) {
+395:  if (!recipe) return "";
+423:  walk(recipe.recipeType);
+424:  walk(recipe.id);
+429:function machineModPrefs(machineName, recipe = null) {
+430:  const text = norm(`${machineName} ${machineRecipeText(recipe)}`);
+443:function machineCandidates(machineName, recipe = null) {
+446:  const text = norm(`${raw} ${machineRecipeText(recipe)}`);
+458:  add(raw.replace(/\s+recipe$/i, ""));
+464:    Add exact/common machine names here instead of letting the code guess random outputs.
+566:      Forestry recipes usually use these machine blocks instead.
+628:function machineItemScore(item, candidates, modPrefs) {
+704:function findMachineIcon(machineName, recipe = null) {
+707:    The official GTNH calculator uses recipeType.defaultCrafter.iconId.
+708:    No guessing, no scanning all items, no wrong icons.
+710:  const iconId = recipe?.recipeType?.defaultCrafter?.iconId;
+714:function renderMachineTabs() {
+716:  counts.set("All", currentRecipes.length);
+718:  for (const recipe of currentRecipes) {
+719:    const m = recipeMachineName(recipe);
+730:    const sampleRecipe = name === "All"
+732:          : currentRecipes.find(r => recipeMachineName(r) === name);
+734:        const iconId = findMachineIcon(name, sampleRecipe);
+758:      recipePage.innerHTML = '<div class="empty">Loading recipes...</div>';
+761:        renderRecipeList();
+771:function renderRecipeList() {
+772:  recipePage.innerHTML = "";
+774:  currentRecipeList = currentRecipeGroups.get(activeMachine) ?? [];
+776:  renderedRecipeCount = 0;
+778:  status.textContent = `${currentView.mode}: ${nameOf(currentView.obj)} — ${currentRecipeList.length}/${currentRecipes.length} recipe(s)`;
+780:  if (currentRecipeList.length === 0) {
+781:    recipePage.innerHTML = `<div class="empty">No recipes in this machine tab.</div>`;
+785:  requestAnimationFrame(() => appendRecipeCards());
+788:function appendRecipeCards() {
+789:  if (renderedRecipeCount >= currentRecipeList.length) return;
+792:  const end = Math.min(renderedRecipeCount + RECIPE_PAGE_SIZE, currentRecipeList.length);
+794:  for (let i = renderedRecipeCount; i < end; i++) {
+795:    frag.appendChild(recipeCardNei(currentRecipeList[i]));
+798:  renderedRecipeCount = end;
+800:  const oldMore = recipePage.querySelector(".loadMore");
+803:  if (renderedRecipeCount < currentRecipeList.length) {
+806:    more.textContent = `Scroll more to load ${currentRecipeList.length - renderedRecipeCount} more recipes...`;
+810:  recipePage.appendChild(frag);
+813:function openProduction(obj) {
+814:  recipePage.style.display = "block";
+818:  recipePage.innerHTML = '<div class="empty">Loading recipe...</div>';
+819:  requestAnimationFrame(() => renderRecipes(obj, "Production", true));
+822:function openUsage(obj) {
+823:  recipePage.style.display = "block";
+827:  recipePage.innerHTML = '<div class="empty">Loading usage...</div>';
+828:  requestAnimationFrame(() => renderRecipes(obj, "Usage", true));
+879:    showTip(obj, "Left click/tap: recipe • Right click/double tap: usage • Hold: copy", event.clientX, event.clientY, el);
+886:    openUsage(obj);
+914:    // PC left click should be instant. Use right click for usage.
+915:    openProduction(obj);
+923:    showTip(obj, "Tap: recipe • Double tap: usage • Hold: copy", t.clientX, t.clientY, el);
+956:        openUsage(obj);
+958:        openProduction(obj);
+997:function ioRow(recipe, label, types) {
+1005:  const items = document.createElement("div");
+1006:  items.className = "ioItems";
+1010:  for (const io of recipe.items) {
+1012:      items.appendChild(ioBox(io));
+1021:    items.appendChild(e);
+1025:  block.appendChild(items);
+1040:function recipeCard(recipe) {
+1042:  card.className = "recipe";
+1045:  head.className = "recipeHead";
+1050:  title.className = "recipeTitle";
+1052:  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+1061:  titleText.textContent = recipeMachineName(recipe);
+1065:  id.className = "recipeId";
+1066:  id.textContent = recipe.id ?? "";
+1074:  if (recipe.gtRecipe) {
+1075:    const gt = recipe.gtRecipe;
+1106:  card.appendChild(ioRow(recipe, "Input", [
+1107:    RecipeIoType.ItemInput,
+1108:    RecipeIoType.OreDictInput,
+1109:    RecipeIoType.FluidInput
+1112:  card.appendChild(ioRow(recipe, "Output", [
+1113:    RecipeIoType.ItemOutput,
+1114:    RecipeIoType.FluidOutput
+1121:  if (currentView.type !== "grid") return;
+1124:  if (nearBottom) appendGridItems();
+1127:recipePage.addEventListener("scroll", () => {
+1128:  if (currentView.type !== "recipes") return;
+1130:  const nearBottom = recipePage.scrollTop + recipePage.clientHeight > recipePage.scrollHeight - 320;
+1131:  if (nearBottom) appendRecipeCards();
+1137:function inputItemTypes() {
+1139:    RecipeIoType.ItemInput,
+1140:    RecipeIoType.OreDictInput
+1144:function inputFluidTypes() {
+1146:    RecipeIoType.FluidInput
+1150:function outputItemTypes() {
+1152:    RecipeIoType.ItemOutput
+1156:function outputFluidTypes() {
+1158:    RecipeIoType.FluidOutput
+1210:function makeSlotGrid(recipe, label, types, dimensionOffset) {
+1211:  const dims = recipe.recipeType?.dimensions;
+1222:  for (const io of recipe.items) {
+1252:function makeIoSide(recipe, label, itemTypes, fluidTypes, dimensionOffset) {
+1261:  const itemGrid = makeSlotGrid(recipe, "", itemTypes, dimensionOffset);
+1262:  const fluidGrid = makeSlotGrid(recipe, "", fluidTypes, dimensionOffset + 2);
+1274:function addBadges(recipe, badges) {
+1280:  if (recipe.gtRecipe) {
+1281:    const gt = recipe.gtRecipe;
+1314:function recipeCardNei(recipe) {
+1315:  const dims = recipe.recipeType?.dimensions;
+1316:  const inputItemX = Number(dims?.[0] ?? 0);
+1317:  const inputItemY = Number(dims?.[1] ?? 0);
+1320:  card.className = "recipe";
+1322:  if (inputItemX >= 7 || inputItemY >= 7) {
+1327:  head.className = "recipeHead";
+1332:  title.className = "recipeTitle";
+1334:  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+1343:  titleText.textContent = recipeMachineName(recipe);
+1350:  const meta = addBadges(recipe, badges);
+1357:  body.className = "neiRecipeBody";
+1359:  const inputSide = makeIoSide(
+1360:    recipe,
+1361:    "Input",
+1362:    inputItemTypes(),
+1363:    inputFluidTypes(),
+1386:  const outputSide = makeIoSide(
+1387:    recipe,
+1388:    "Output",
+1389:    outputItemTypes(),
+1390:    outputFluidTypes(),
+1394:  body.appendChild(inputSide);
+1396:  body.appendChild(outputSide);
+1402:search.addEventListener("input", () => {
+1404:  timer = setTimeout(() => renderSearchGrid(true), 150);
+1408:  search.value = "";
+1409:  renderSearchGrid(true);
+1410:  search.focus();
+1414:  if (historyStack.length === 0) return;
+1415:  forwardStack.push(currentView);
+1416:  const prev = historyStack.pop();
+1417:  restoreView(prev);
+1422:  historyStack.push(currentView);
+1424:  restoreView(next);
+1447:    event.target.closest("input") ||
+1462:// Only item/recipe icons keep tooltip. Search bar, close button, nav buttons,
+1475:search.addEventListener("focus", () => {
+1531:        // Stronger fallback: use the same GTNH calculator search engine.
+1532:        if (!obj && typeof SearchQuery !== "undefined" && repo) {
+1534:            const query = new SearchQuery(q);
+1535:            obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+1554:          el.dataset.gtnhIconOk = "1";
+1555:          el.dataset.gtnhIconName = String(obj.name || obj.id || rawName);
+1666:          if (!obj && typeof SearchQuery !== "undefined" && typeof repo !== "undefined" && repo) {
+1668:              const query = new SearchQuery(q);
+1669:              obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+1689:            el.dataset.gtnhIconOk = "1";
+1690:            el.dataset.gtnhIconName = safeName(obj);
+1783:    recipe(name) {
+1788:        if (typeof openProduction === "function") {
+1789:          openProduction(obj);
+1793:        if (typeof showRecipes === "function") {
+1794:          showRecipes(obj, "Production", true);
+1802:    usage(name) {
+1807:        if (typeof openUsage === "function") {
+1808:          openUsage(obj);
+1812:        if (typeof showRecipes === "function") {
+1813:          showRecipes(obj, "Usage", true);
+1871:    recipe(name) {
+1876:        if (typeof openProduction === "function") {
+1877:          openProduction(obj);
+1881:        if (typeof showRecipes === "function") {
+1882:          showRecipes(obj, "Production", true);
+1890:    usage(name) {
+1895:        if (typeof openUsage === "function") {
+1896:          openUsage(obj);
+1900:        if (typeof showRecipes === "function") {
+1901:          showRecipes(obj, "Usage", true);
+
+=== window/global API clues ===
+app.js:69:      setIcon(entry.el, shown.iconId);
+app.js:116:function setIcon(el, iconId) {
+app.js:165:  if (left + rect.width > window.innerWidth - margin) {
+app.js:170:  if (top + rect.height > window.innerHeight - margin) {
+app.js:171:    top = window.innerHeight - rect.height - margin;
+app.js:178:  left = Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin));
+app.js:179:  top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+app.js:214:window.addEventListener("scroll", refreshTipPosition, true);
+app.js:215:window.addEventListener("resize", refreshTipPosition);
+app.js:243:      installAddonIconApi();
+app.js:328:    setIcon(icon, obj.iconId);
+app.js:704:function findMachineIcon(machineName, recipe = null) {
+app.js:732:          : currentRecipes.find(r => recipeMachineName(r) === name);
+app.js:734:        const iconId = findMachineIcon(name, sampleRecipe);
+app.js:739:      setIcon(ic, iconId);
+app.js:978:  if (shown) setIcon(icon, shown.iconId);
+app.js:1052:  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+app.js:1056:    setIcon(ic, machineIcon);
+app.js:1190:  if (shown) setIcon(icon, shown.iconId);
+app.js:1334:  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
+app.js:1338:    setIcon(ic, machineIcon);
+app.js:1500:/* === GTNH NEI ADDON ICON API START === */
+app.js:1501:function installAddonIconApi() {
+app.js:1503:    window.GTNHNEI_ICON_API = {
+app.js:1506:      findObjectByName(rawName) {
+app.js:1526:          allGoods.find(o => objName(o) === qLower) ||
+app.js:1527:          allGoods.find(o => objCompact(o) === compact) ||
+app.js:1528:          allGoods.find(o => objName(o).includes(qLower)) ||
+app.js:1529:          allGoods.find(o => objCompact(o).includes(compact));
+app.js:1535:            obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+app.js:1542:      setIconByName(el, rawName) {
+app.js:1543:        const obj = this.findObjectByName(rawName);
+app.js:1553:          setIcon(el, obj.iconId);
+app.js:1563:    window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+app.js:1564:    console.log("GTNHNEI_ICON_API ready:", allGoods?.length || 0);
+app.js:1566:    console.warn("Failed to install addon icon API", err);
+app.js:1569:/* === GTNH NEI ADDON ICON API END === */
+app.js:1573:window.addEventListener("gtnhnei-icons-ready", () => {
+app.js:1574:  window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "microprocessor") {
+app.js:1575:    const api = window.GTNHNEI_ICON_API;
+app.js:1576:    if (!api) {
+app.js:1577:      alert("GTNHNEI_ICON_API missing");
+app.js:1621:/* === GTNH NEI ICON API HARD OVERRIDE v10 START === */
+app.js:1622:(function installIconApiHardOverrideV10() {
+app.js:1644:        typeof setIcon !== "function"
+app.js:1649:      window.GTNHNEI_ICON_API = {
+app.js:1653:        findObjectByName(rawName) {
+app.js:1661:            allGoods.find(o => safeName(o).toLowerCase() === qLower) ||
+app.js:1662:            allGoods.find(o => compact(safeName(o)) === qCompact) ||
+app.js:1663:            allGoods.find(o => safeName(o).toLowerCase().includes(qLower)) ||
+app.js:1664:            allGoods.find(o => compact(safeName(o)).includes(qCompact));
+app.js:1669:              obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
+app.js:1676:        setIconByName(el, rawName) {
+app.js:1677:          const obj = this.findObjectByName(rawName);
+app.js:1688:            setIcon(el, obj.iconId);
+app.js:1698:      window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "") {
+app.js:1728:      window.dispatchEvent(new Event("gtnhnei-icons-ready"));
+app.js:1729:      console.log("GTNHNEI_ICON_API v10 ready:", allGoods.length);
+app.js:1732:      console.warn("GTNHNEI_ICON_API v10 failed:", err);
+app.js:1740:      if (tries >= 80) console.warn("GTNHNEI_ICON_API v10 gave up.");
+app.js:1744: /* === GTNH NEI ICON API HARD OVERRIDE v10 END === */
+app.js:1747:/* === GTNH NEI MAIN NAV API v17 START === */
+app.js:1749:  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+app.js:1750:  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+app.js:1752:  function findByNameV17(name) {
+app.js:1754:      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+app.js:1755:        return window.GTNHNEI_ICON_API.findObjectByName(name);
+app.js:1772:        allGoods.find(o => n(o) === q) ||
+app.js:1773:        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+app.js:1774:        allGoods.find(o => n(o).includes(q)) ||
+app.js:1782:  window.GTNHNEI_MAIN_API = {
+app.js:1784:      const obj = findByNameV17(name);
+app.js:1803:      const obj = findByNameV17(name);
+app.js:1831:  console.log("GTNHNEI_MAIN_API v17 ready");
+app.js:1833: /* === GTNH NEI MAIN NAV API v17 END === */
+app.js:1835:/* === GTNH NEI MAIN NAV API v17 START === */
+app.js:1837:  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
+app.js:1838:  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
+app.js:1840:  function findByNameV17(name) {
+app.js:1842:      if (window.GTNHNEI_ICON_API?.findObjectByName) {
+app.js:1843:        return window.GTNHNEI_ICON_API.findObjectByName(name);
+app.js:1860:        allGoods.find(o => n(o) === q) ||
+app.js:1861:        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
+app.js:1862:        allGoods.find(o => n(o).includes(q)) ||
+app.js:1870:  window.GTNHNEI_MAIN_API = {
+app.js:1872:      const obj = findByNameV17(name);
+app.js:1891:      const obj = findByNameV17(name);
+app.js:1919:  console.log("GTNHNEI_MAIN_API v17 ready");
+app.js:1921: /* === GTNH NEI MAIN NAV API v17 END === */
+extras.js:45:    const api = window.GTNHNEI_ICON_API;
+extras.js:46:    if (!api || typeof api.setIconByName !== "function") {
+extras.js:52:    const ok = api.setIconByName(el, name);
+extras.js:90:          <p>A sacred statue for <span class="lunaPink">lunaloves.</span></p>
+extras.js:133:          <p class="lunaDesc">A sacred statue for <span class="lunaPink">lunaloves.</span></p>
+extras.js:182:    window.addEventListener("gtnhnei-icons-ready", () => hydrateAllIcons(overlay));
+extras.js:215:    const ok = window.GTNHNEI_MAIN_API?.recipe?.(name);
+extras.js:230:    const ok = window.GTNHNEI_MAIN_API?.usage?.(name);
+extras.js:320:        if (window.GTNHNEI_DEBUG_ICONS) window.GTNHNEI_DEBUG_ICONS(term);
+extras.js:390:    window.addEventListener("gtnhnei-icons-ready", () => setTimeout(hide, 300), { once: true });
+extras.js:426:  window.GTNHNEIExtras = {
+calc.js:32:      const raw = localStorage.getItem("gtnhnei_calc_state");
+calc.js:41:    localStorage.setItem("gtnhnei_calc_state", JSON.stringify(state));
+calc.js:301:      a.download = "gtnhnei_calc_state.json";
+calc.js:401:      "GTNHNEI Calculator Summary",
+calc.js:506:  window.GTNH_CALC = { open, close, getState: () => state };
+topstrip.js:26:    if (window.GTNH_CALC?.open) {
+topstrip.js:27:      window.GTNH_CALC.open();
+topstrip.js:100:      localStorage.setItem("gtnhnei_help_seen", "1");
+topstrip.js:105:      localStorage.setItem("gtnhnei_help_seen", "always");
+topstrip.js:111:      localStorage.setItem("gtnhnei_help_seen", "1");
+topstrip.js:127:    let drop = document.getElementById("gtnhNeiDrop");
+topstrip.js:131:      drop.id = "gtnhNeiDrop";
+topstrip.js:146:          localStorage.setItem("gtnhnei_database_version", "2.8.x");
+topstrip.js:157:    drop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 215)) + "px";
+topstrip.js:158:    drop.style.top = Math.min(r.bottom + 6, window.innerHeight - 160) + "px";
+topstrip.js:192:      const drop = document.getElementById("gtnhNeiDrop");
+topstrip.js:195:        event.target.closest("#gtnhNeiDrop") ||
+topstrip.js:204:    const seen = localStorage.getItem("gtnhnei_help_seen");
+
+=== important function names ===
+48:function registerOreIcon(el, obj) {
+80:function tierFromEu(eu) {
+101:function esc(s) {
+109:function norm(s) {
+116:function setIcon(el, iconId) {
+122:function displayObj(obj) {
+127:function nameOf(obj) {
+133:function typeOf(obj) {
+139:function placeTipNearAnchor(anchor, fallbackX = 16, fallbackY = 16) {
+152:function positionTip(anchor, fallbackX = 16, fallbackY = 16) {
+185:function showTip(obj, text, x = 16, y = 16, anchor = null) {
+208:function refreshTipPosition() {
+217:async function load() {
+248:function updateNav() {
+253:function pushView(next) {
+260:function restoreView(view) {
+272:function renderSearchGrid(push = true) {
+313:function appendGridItems() {
+350:function recipesFor(obj, mode) {
+362:function renderRecipes(obj, mode, push = true) {
+390:function recipeMachineName(recipe) {
+394:function machineRecipeText(recipe) {
+399:  function walk(x, depth = 0) {
+429:function machineModPrefs(machineName, recipe = null) {
+443:function machineCandidates(machineName, recipe = null) {
+450:  function add(x) {
+628:function machineItemScore(item, candidates, modPrefs) {
+704:function findMachineIcon(machineName, recipe = null) {
+714:function renderMachineTabs() {
+771:function renderRecipeList() {
+788:function appendRecipeCards() {
+813:function openProduction(obj) {
+822:function openUsage(obj) {
+831:async function copyExactName(obj, x, y, anchor = null) {
+840:function attachControls(el, obj) {
+850:  function clearHold() {
+857:  function startHold(x, y) {
+871:  function moveCheck(x, y) {
+964:function amountText(io) {
+970:function ioBox(io) {
+997:function ioRow(recipe, label, types) {
+1030:function formatDuration(gt) {
+1040:function recipeCard(recipe) {
+1137:function inputItemTypes() {
+1144:function inputFluidTypes() {
+1150:function outputItemTypes() {
+1156:function outputFluidTypes() {
+1162:function amountShort(io) {
+1175:function makeEmptySlot() {
+1181:function makeNeiSlot(io) {
+1210:function makeSlotGrid(recipe, label, types, dimensionOffset) {
+1252:function makeIoSide(recipe, label, itemTypes, fluidTypes, dimensionOffset) {
+1274:function addBadges(recipe, badges) {
+1314:function recipeCardNei(recipe) {
+1433:function hideTip() {
+1501:function installAddonIconApi() {
+1513:        function objName(o) {
+1521:        function objCompact(o) {
+1622:(function installIconApiHardOverrideV10() {
+1625:  function safeName(o) {
+1632:  function compact(s) {
+1636:  function installNow() {
+1737:  const timer = setInterval(() => {
+1752:  function findByNameV17(name) {
+1763:      function n(o) {
+1840:  function findByNameV17(name) {
+1851:      function n(o) {

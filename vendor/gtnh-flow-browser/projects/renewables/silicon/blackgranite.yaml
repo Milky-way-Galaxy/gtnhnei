@@ -1,0 +1,43 @@
+- m: centrifuge
+  tier: LV
+  I:
+    black granite dust: 5
+  O:
+    silicon dioxide dust: 4
+    biotite dust: 1
+  eut: 10
+  dur: 20
+- m: electrolyzer
+  tier: MV
+  I:
+    biotite dust: 22
+  O:
+    potassium dust: 1
+    '[output] magnesium dust': 3
+    aluminium dust: 3
+    raw silicon dust: 3
+    oxygen: 10000
+    fluorine: 2000
+  eut: 120
+  dur: 22
+  target:
+    raw silicon dust: 0.09276437847
+- m: chemical reactor
+  tier: LV
+  I:
+    silicon dioxide dust: 3
+    magnesium dust: 2
+  O:
+    raw silicon dust: 1
+    magnesia dust: 4
+  eut: 7
+  dur: 5
+- m: electrolyzer
+  tier: LV
+  I:
+    magnesia dust: 2
+  O:
+    '[output] magnesium dust': 1
+    '[output] oxygen': 1000
+  eut: 30
+  dur: 2

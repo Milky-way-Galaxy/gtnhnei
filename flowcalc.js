@@ -1,10 +1,16 @@
-/* === GTNH WORKBENCH BUILT-IN GTNH-FLOW v1 === */
+/* === GTNH WORKBENCH LIVE GTNH-FLOW GRAPHVIZ v1 === */
 (() => {
-  if (window.__GTNH_WORKBENCH_FLOWCALC_V1__) return;
-  window.__GTNH_WORKBENCH_FLOWCALC_V1__ = true;
+  "use strict";
+
+  if (window.__GTNH_WORKBENCH_LIVE_FLOW_V1__) return;
+  window.__GTNH_WORKBENCH_LIVE_FLOW_V1__ = true;
 
   let lastYaml = "";
+  let lastDot = "";
   let lastSvg = "";
+  let vizPromise = null;
+
+  const VIZ_URL = "https://cdn.jsdelivr.net/npm/@viz-js/viz@3.27.0/+esm";
 
   function overlay() {
     return document.getElementById("gtnhCalcOverlay");
@@ -31,7 +37,6 @@
   function getRouteIndex(target) {
     const st = state();
     const key = String(target || "").toLowerCase();
-
     const locked =
       st.lockedRoutes?.[key] ??
       st.lockedRoutes?.[String(target || "")] ??
@@ -43,6 +48,7 @@
 
   function toast(text) {
     let el = document.getElementById("gtnhCalcToast");
+
     if (!el) {
       el = document.createElement("div");
       el.id = "gtnhCalcToast";
@@ -52,8 +58,9 @@
 
     el.textContent = text;
     el.classList.add("show");
+
     clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.classList.remove("show"), 1600);
+    el._timer = setTimeout(() => el.classList.remove("show"), 1700);
   }
 
   function codeOut() {
@@ -69,13 +76,14 @@
     if (!out) return false;
 
     out.style.display = "";
+
     if ("value" in out) out.value = text;
     else out.textContent = text;
 
     return true;
   }
 
-  function esc(s) {
+  function escHtml(s) {
     return String(s ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
@@ -83,11 +91,31 @@
       .replaceAll('"', "&quot;");
   }
 
+  function escDot(s) {
+    return String(s ?? "")
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', '\\"')
+      .replace(/\r?\n/g, "\\n");
+  }
+
   function fileSafe(s) {
     return String(s || "target")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "") || "target";
+  }
+
+  function amountLabel(v) {
+    const raw = String(v ?? "").replace(/,/g, "").trim();
+    const n = Number(raw);
+
+    if (!Number.isFinite(n)) return String(v ?? "");
+
+    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, "") + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, "") + "M";
+    if (n >= 1000) return (n / 1000).toFixed(2).replace(/\.00$/, "") + "k";
+
+    return String(n);
   }
 
   function buildYamlResult() {
@@ -101,7 +129,10 @@
         yaml: "# No target selected.\n",
         input: {},
         output: {},
-        machine: "machine"
+        machine: "machine",
+        tier: "?",
+        eut: "?",
+        dur: "?"
       };
     }
 
@@ -109,10 +140,13 @@
       return {
         ok: false,
         target,
-        yaml: "# gtnh-flow export API is not ready yet. Wait for item data to load.\n",
+        yaml: "# gtnh-flow export API is not ready yet.\n# Wait for item data to load.\n",
         input: {},
         output: {},
-        machine: "machine"
+        machine: "machine",
+        tier: "?",
+        eut: "?",
+        dur: "?"
       };
     }
 
@@ -130,30 +164,12 @@
         yaml: `# YAML export crashed.\n# ${String(err?.message || err)}\n`,
         input: {},
         output: {},
-        machine: "machine"
+        machine: "machine",
+        tier: "?",
+        eut: "?",
+        dur: "?"
       };
     }
-  }
-
-  function renderYamlOnly() {
-    hideFlowPanel();
-
-    const result = buildYamlResult();
-    lastYaml = result.yaml || "# YAML export failed.\n";
-
-    setCodeOut(lastYaml);
-    renameDownloadButton("Download YAML");
-    toast(result.ok ? "YAML draft generated." : "YAML warning. Check output.");
-  }
-
-  function renameDownloadButton(text) {
-    const ov = overlay();
-    if (!ov) return;
-
-    const btn = [...ov.querySelectorAll("button")]
-      .find(b => /download/i.test(String(b.textContent || "")));
-
-    if (btn) btn.textContent = text;
   }
 
   function ensureFlowButton() {
@@ -202,92 +218,151 @@
     if (out) out.style.display = "";
   }
 
-  function amountLabel(v) {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return String(v || 1);
-    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, "") + "B";
-    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, "") + "M";
-    if (n >= 1000) return (n / 1000).toFixed(2).replace(/\.00$/, "") + "k";
-    return String(n);
+  function activateButton(btn) {
+    const row = btn?.parentElement;
+    if (!row) return;
+
+    [...row.querySelectorAll("button")].forEach(b => {
+      b.classList.toggle("active", b === btn);
+      b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+    });
   }
 
-  function makeSvg(result) {
-    const inputs = Object.entries(result.input || {});
-    const outputs = Object.entries(result.output || {});
+  function renderYamlOnly() {
+    hideFlowPanel();
 
-    const rowH = 54;
-    const leftRows = Math.max(inputs.length, 1);
-    const rightRows = Math.max(outputs.length, 1);
-    const h = Math.max(260, 130 + Math.max(leftRows, rightRows) * rowH);
-    const w = 980;
+    const result = buildYamlResult();
+    lastYaml = result.yaml || "# YAML export failed.\n";
 
-    const machineX = 405;
-    const machineY = h / 2 - 42;
+    setCodeOut(lastYaml);
+    renameDownloadButton("Download YAML");
 
-    function node(x, y, title, sub, cls = "") {
-      return `
-        <g class="flowNode ${cls}">
-          <rect x="${x}" y="${y}" width="230" height="44" rx="14"></rect>
-          <text x="${x + 14}" y="${y + 19}" class="flowTitle">${esc(title)}</text>
-          <text x="${x + 14}" y="${y + 36}" class="flowSub">${esc(sub)}</text>
-        </g>
-      `;
-    }
-
-    function inputNodes() {
-      if (!inputs.length) return node(40, h / 2 - 22, "No parsed input", "parser missed I/O", "warn");
-
-      return inputs.map(([name, amount], i) => {
-        const y = 70 + i * rowH;
-        return node(40, y, name, amountLabel(amount), "");
-      }).join("");
-    }
-
-    function outputNodes() {
-      if (!outputs.length) return node(710, h / 2 - 22, "No parsed output", "parser missed I/O", "warn");
-
-      return outputs.map(([name, amount], i) => {
-        const y = 70 + i * rowH;
-        return node(710, y, name, amountLabel(amount), "");
-      }).join("");
-    }
-
-    function lines() {
-      const inYs = inputs.length ? inputs.map((_, i) => 70 + i * rowH + 22) : [h / 2];
-      const outYs = outputs.length ? outputs.map((_, i) => 70 + i * rowH + 22) : [h / 2];
-
-      return [
-        ...inYs.map(y => `<path class="flowLine" d="M270 ${y} C330 ${y}, 330 ${h / 2}, 405 ${h / 2}"></path>`),
-        ...outYs.map(y => `<path class="flowLine" d="M575 ${h / 2} C650 ${h / 2}, 650 ${y}, 710 ${y}"></path>`)
-      ].join("");
-    }
-
-    return `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="gtnhFlowSvg">
-  <defs>
-    <style>
-      .bg{fill:#07111f}
-      .flowLine{fill:none;stroke:#67e8f9;stroke-width:3;stroke-opacity:.55}
-      .flowNode rect{fill:#0f2138;stroke:#2d4567;stroke-width:2}
-      .flowNode.warn rect{stroke:#f59e0b}
-      .machine rect{fill:#142a45;stroke:#f472b6}
-      .flowTitle{fill:#eaf2ff;font:bold 16px system-ui, sans-serif}
-      .flowSub{fill:#9fb0c8;font:13px system-ui, sans-serif}
-      .caption{fill:#7dd3fc;font:bold 18px system-ui, sans-serif}
-    </style>
-  </defs>
-  <rect class="bg" x="0" y="0" width="${w}" height="${h}" rx="20"></rect>
-  <text class="caption" x="40" y="35">gtnh-flow draft: ${esc(result.target || getTarget())}</text>
-  ${lines()}
-  ${inputNodes()}
-  ${node(machineX, machineY, result.machine || "Machine", `${result.tier || "LV"} · ${result.eut || 0} EU/t · ${result.dur || 1}s`, "machine")}
-  ${outputNodes()}
-</svg>`;
+    toast(result.ok ? "YAML draft generated." : "YAML warning. Check output.");
   }
 
-  function renderFlowPanel() {
+  function renameDownloadButton(text) {
+    const ov = overlay();
+    if (!ov) return;
+
+    const btn = [...ov.querySelectorAll("button")]
+      .find(b => /download/i.test(String(b.textContent || "")));
+
+    if (btn) btn.textContent = text;
+  }
+
+  function slug(prefix, name, i = "") {
+    return `${prefix}_${name}_${i}`
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, "_")
+      .replace(/^_+|_+$/g, "") || `${prefix}_${i}`;
+  }
+
+  function resultToDot(result) {
+    const input = Object.entries(result.input || {});
+    const output = Object.entries(result.output || {});
+
+    const machineName = result.machine || "Machine";
+    const target = result.target || getTarget() || "target";
+
+    const machineId = "machine_main";
+
+    const tier = result.tier || "?";
+    const eut = result.eut ?? "?";
+    const dur = result.dur ?? "?";
+
+    let dot = `digraph GTNHFlow {
+  graph [
+    rankdir=LR,
+    bgcolor="#030914",
+    pad="0.35",
+    nodesep="0.52",
+    ranksep="0.92",
+    splines=true,
+    outputorder=edgesfirst,
+    label="gtnh-flow: ${escDot(target)}",
+    labelloc=t,
+    fontname="Arial",
+    fontsize=26,
+    fontcolor="#7dd3fc"
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Arial",
+    fontsize=18,
+    margin="0.16,0.10",
+    penwidth=2,
+    fontcolor="#eaf2ff"
+  ];
+
+  edge [
+    penwidth=3,
+    arrowsize=0.8,
+    color="#67e8f9",
+    fontname="Arial",
+    fontsize=13,
+    fontcolor="#aebbd2"
+  ];
+
+  "${machineId}" [
+    label="${escDot(machineName)}\\n${escDot(tier)} · ${escDot(eut)} EU/t · ${escDot(dur)}s",
+    fillcolor="#142845",
+    color="#fb8ccf",
+    penwidth=3
+  ];
+
+`;
+
+    if (!input.length) {
+      dot += `  "no_input" [label="No parsed input\\ncheck YAML/export parser", fillcolor="#241526", color="#f59e0b"];\n`;
+      dot += `  "no_input" -> "${machineId}" [color="#f59e0b"];\n`;
+    } else {
+      input.forEach(([name, amount], i) => {
+        const id = slug("in", name, i);
+        dot += `  "${id}" [label="${escDot(name)}\\n${escDot(amountLabel(amount))}", fillcolor="#0f253f", color="#3f668a"];\n`;
+        dot += `  "${id}" -> "${machineId}" [label="${escDot(amountLabel(amount))}", color="#67e8f9"];\n`;
+      });
+    }
+
+    if (!output.length) {
+      dot += `  "no_output" [label="No parsed output\\ncheck YAML/export parser", fillcolor="#241526", color="#f59e0b"];\n`;
+      dot += `  "${machineId}" -> "no_output" [color="#f59e0b"];\n`;
+    } else {
+      output.forEach(([name, amount], i) => {
+        const id = slug("out", name, i);
+        dot += `  "${id}" [label="${escDot(name)}\\n${escDot(amountLabel(amount))}", fillcolor="#102b24", color="#5eead4"];\n`;
+        dot += `  "${machineId}" -> "${id}" [label="${escDot(amountLabel(amount))}", color="#5eead4"];\n`;
+      });
+    }
+
+    dot += `}\n`;
+    return dot;
+  }
+
+  async function getViz() {
+    if (!vizPromise) {
+      vizPromise = import(VIZ_URL).then(mod => mod.instance());
+    }
+
+    return vizPromise;
+  }
+
+  async function renderDotToSvg(dot) {
+    const viz = await getViz();
+    const svgEl = viz.renderSVGElement(dot);
+
+    svgEl.classList.add("gtnhFlowSvgLive");
+    svgEl.setAttribute("role", "img");
+    svgEl.setAttribute("aria-label", "gtnh-flow Graphviz SVG");
+
+    return svgEl;
+  }
+
+  async function renderFlowPanel() {
     const panel = ensurePanel();
     const out = codeOut();
+
     if (!panel || !out) {
       toast("gtnh-flow panel not ready.");
       return;
@@ -295,50 +370,104 @@
 
     const result = buildYamlResult();
     lastYaml = result.yaml || "# YAML export failed.\n";
-    lastSvg = makeSvg(result);
+    lastDot = resultToDot(result);
+    lastSvg = "";
 
     out.style.display = "none";
     panel.style.display = "block";
 
     panel.innerHTML = `
-      <div class="gtnhFlowHeader">
-        <div>
-          <div class="gtnhFlowTitle">gtnh-flow preview</div>
-          <div class="gtnhFlowSub">
-            Static browser preview. Export YAML for real local gtnh-flow.
+      <div class="gtnhFlowLiveBox">
+        <div class="gtnhFlowLiveHead">
+          <div>
+            <h3>gtnh-flow</h3>
+            <p>Live Graphviz SVG generated inside the website.</p>
           </div>
+          <span class="gtnhFlowLiveBadge">${result.ok ? "live" : "warning"}</span>
         </div>
-      </div>
 
-      <div class="gtnhFlowSvgWrap">
-        ${lastSvg}
-      </div>
+        <div class="gtnhFlowLiveActions">
+          <button type="button" id="gtnhFlowCopyYaml">Copy YAML</button>
+          <button type="button" id="gtnhFlowDownloadYaml">Download YAML</button>
+          <button type="button" id="gtnhFlowDownloadSvg">Download SVG</button>
+          <button type="button" id="gtnhFlowCopyDot">Copy DOT</button>
+          <button type="button" id="gtnhFlowRerender">Re-render</button>
+        </div>
 
-      <div class="gtnhFlowActions">
-        <button type="button" id="gtnhFlowCopyYaml">Copy YAML</button>
-        <button type="button" id="gtnhFlowDownloadYaml">Download YAML</button>
-        <button type="button" id="gtnhFlowDownloadSvg">Download SVG</button>
-      </div>
+        <div id="gtnhFlowLiveStatus" class="gtnhFlowLiveStatus">
+          Loading Graphviz WASM...
+        </div>
 
-      <details class="gtnhFlowDetails">
-        <summary>YAML draft</summary>
-        <pre>${esc(lastYaml)}</pre>
-      </details>
+        <div id="gtnhFlowLiveViewer" class="gtnhFlowLiveViewer"></div>
+
+        <details class="gtnhFlowYamlDetails">
+          <summary>YAML used for this graph</summary>
+          <pre>${escHtml(lastYaml)}</pre>
+        </details>
+      </div>
     `;
 
     panel.querySelector("#gtnhFlowCopyYaml")?.addEventListener("click", copyYaml);
     panel.querySelector("#gtnhFlowDownloadYaml")?.addEventListener("click", downloadYaml);
     panel.querySelector("#gtnhFlowDownloadSvg")?.addEventListener("click", downloadSvg);
+    panel.querySelector("#gtnhFlowCopyDot")?.addEventListener("click", copyDot);
+    panel.querySelector("#gtnhFlowRerender")?.addEventListener("click", renderFlowPanel);
 
-    toast("gtnh-flow preview generated.");
+    const status = panel.querySelector("#gtnhFlowLiveStatus");
+    const viewer = panel.querySelector("#gtnhFlowLiveViewer");
+
+    try {
+      const svgEl = await renderDotToSvg(lastDot);
+
+      viewer.innerHTML = "";
+      viewer.appendChild(svgEl);
+
+      lastSvg = new XMLSerializer().serializeToString(svgEl);
+
+      status.textContent = result.ok
+        ? "Rendered live SVG."
+        : "Rendered with warnings. Check YAML/export parser.";
+
+      status.classList.toggle("warn", !result.ok);
+
+      toast("gtnh-flow SVG rendered.");
+    } catch (err) {
+      console.error(err);
+
+      status.textContent = "Graphviz render failed.";
+      status.classList.add("warn");
+
+      viewer.innerHTML = `
+        <pre class="gtnhFlowError">${escHtml(String(err?.stack || err))}</pre>
+      `;
+
+      toast("gtnh-flow render failed.");
+    }
   }
 
   async function copyYaml() {
-    if (!lastYaml) renderYamlOnly();
+    if (!lastYaml) {
+      const result = buildYamlResult();
+      lastYaml = result.yaml || "";
+    }
 
     try {
       await navigator.clipboard.writeText(lastYaml);
       toast("Copied YAML.");
+    } catch {
+      toast("Copy failed.");
+    }
+  }
+
+  async function copyDot() {
+    if (!lastDot) {
+      const result = buildYamlResult();
+      lastDot = resultToDot(result);
+    }
+
+    try {
+      await navigator.clipboard.writeText(lastDot);
+      toast("Copied DOT.");
     } catch {
       toast("Copy failed.");
     }
@@ -350,6 +479,7 @@
 
     a.href = URL.createObjectURL(blob);
     a.download = filename;
+
     document.body.appendChild(a);
     a.click();
 
@@ -360,25 +490,33 @@
   }
 
   function downloadYaml() {
-    if (!lastYaml) renderYamlOnly();
-    downloadText(`gtnh-flow_${fileSafe(getTarget())}.yaml`, lastYaml, "text/yaml;charset=utf-8");
+    if (!lastYaml) {
+      const result = buildYamlResult();
+      lastYaml = result.yaml || "";
+    }
+
+    downloadText(
+      `gtnh-flow_${fileSafe(getTarget())}.yaml`,
+      lastYaml,
+      "text/yaml;charset=utf-8"
+    );
+
     toast("Downloaded YAML.");
   }
 
   function downloadSvg() {
-    if (!lastSvg) renderFlowPanel();
-    downloadText(`gtnh-flow_${fileSafe(getTarget())}.svg`, lastSvg, "image/svg+xml;charset=utf-8");
+    if (!lastSvg) {
+      toast("Render SVG first.");
+      return;
+    }
+
+    downloadText(
+      `gtnh-flow_${fileSafe(getTarget())}.svg`,
+      lastSvg,
+      "image/svg+xml;charset=utf-8"
+    );
+
     toast("Downloaded SVG.");
-  }
-
-  function activateButton(btn) {
-    const row = btn?.parentElement;
-    if (!row) return;
-
-    [...row.querySelectorAll("button")].forEach(b => {
-      b.classList.toggle("active", b === btn);
-      b.setAttribute("aria-pressed", b === btn ? "true" : "false");
-    });
   }
 
   document.addEventListener("click", event => {
@@ -403,6 +541,7 @@
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
+
       activateButton(btn);
       setTimeout(renderYamlOnly, 0);
       return;
@@ -412,13 +551,21 @@
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
+
       activateButton(btn);
       setTimeout(renderFlowPanel, 0);
       return;
     }
   }, true);
 
-  const installTimer = setInterval(ensureFlowButton, 400);
+  const installTimer = setInterval(() => {
+    ensureFlowButton();
+
+    if (document.getElementById("gtnhFlowCalcTab")) {
+      clearInterval(installTimer);
+    }
+  }, 400);
+
   window.addEventListener("load", ensureFlowButton);
   window.addEventListener("resize", ensureFlowButton);
 
@@ -426,6 +573,7 @@
     renderYamlOnly,
     renderFlowPanel,
     copyYaml,
+    copyDot,
     downloadYaml,
     downloadSvg
   };

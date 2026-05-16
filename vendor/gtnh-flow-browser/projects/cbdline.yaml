@@ -1,0 +1,7 @@
+- m: distillery
+  tier: MV 
+  I:
+    heavy oil: 100
+  O:
+    sulfuric light fuel: 45
+  eut:

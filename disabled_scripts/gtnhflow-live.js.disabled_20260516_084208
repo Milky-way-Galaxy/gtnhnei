@@ -1,0 +1,593 @@
+/* === GTNH Workbench live gtnh-flow override v1 === */
+(() => {
+  "use strict";
+
+  if (window.__GTNH_LIVE_GTNNH_FLOW_OVERRIDE_V1__) return;
+  window.__GTNH_LIVE_GTNNH_FLOW_OVERRIDE_V1__ = true;
+
+  const VIZ_URL = "https://cdn.jsdelivr.net/npm/@viz-js/viz@3.27.0/+esm";
+
+  let vizPromise = null;
+  let lastYaml = "";
+  let lastDot = "";
+  let lastSvg = "";
+
+  function escHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  function escDot(s) {
+    return String(s ?? "")
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', '\\"')
+      .replace(/\r?\n/g, "\\n");
+  }
+
+  function fileSafe(s) {
+    return String(s || "target")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "target";
+  }
+
+  function cleanName(s) {
+    return String(s || "")
+      .trim()
+      .replace(/^x\d+\s+/i, "")
+      .replace(/^L\s+/i, "")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
+
+  function amountLabel(v) {
+    const raw = String(v ?? "").replace(/,/g, "").trim();
+    const n = Number(raw);
+
+    if (!Number.isFinite(n)) return String(v ?? "");
+
+    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, "") + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, "") + "M";
+    if (n >= 1000) return (n / 1000).toFixed(2).replace(/\.00$/, "") + "k";
+
+    return String(n);
+  }
+
+  function toast(text) {
+    let el = document.getElementById("gtnhSmallHint") || document.getElementById("gtnhCalcToast");
+
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gtnhSmallHint";
+      el.className = "gtnhSmallHint";
+      document.body.appendChild(el);
+    }
+
+    el.textContent = text;
+    el.classList.add("show");
+
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove("show"), 1700);
+  }
+
+  function calcRoot() {
+    return (
+      document.getElementById("gtnhCalcOverlay") ||
+      document.querySelector(".gtnhCalcOverlay") ||
+      document.body
+    );
+  }
+
+  function getState() {
+    try {
+      return window.GTNH_CALC?.getState?.() || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function getTarget() {
+    const st = getState();
+
+    const possible = [
+      st.target,
+      st.targetName,
+      st.item,
+      document.getElementById("calcTarget")?.value,
+      document.querySelector("[name='target']")?.value,
+      document.querySelector("input[placeholder*='Target' i]")?.value,
+      document.querySelector("input[placeholder*='item' i]")?.value,
+      document.querySelector("input[placeholder*='fluid' i]")?.value
+    ];
+
+    for (const x of possible) {
+      const s = String(x || "").trim();
+      if (s) return s;
+    }
+
+    const text = calcRoot().innerText || document.body.innerText || "";
+    const m = text.match(/Target:\s*([A-Za-z0-9 _.\-]+)/i);
+    if (m) return m[1].trim();
+
+    return "epichlorohydrin";
+  }
+
+  function getRouteIndex(target) {
+    const st = getState();
+    const key = String(target || "").toLowerCase();
+
+    const n = Number(
+      st.lockedRoutes?.[key] ??
+      st.lockedRoutes?.[String(target || "")] ??
+      st.routeIndex ??
+      0
+    );
+
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function parseSimpleYaml(yaml) {
+    const lines = String(yaml || "").split(/\r?\n/);
+
+    const result = {
+      ok: false,
+      target: getTarget(),
+      machine: "machine",
+      tier: "?",
+      eut: "?",
+      dur: "?",
+      input: {},
+      output: {},
+      yaml: String(yaml || "")
+    };
+
+    let section = "";
+
+    for (const raw of lines) {
+      const line = raw.replace(/#.*$/, "");
+      if (!line.trim()) continue;
+
+      const mMachine = line.match(/^\s*-\s*m:\s*(.+?)\s*$/i);
+      if (mMachine) {
+        result.machine = mMachine[1].trim();
+        result.ok = true;
+        continue;
+      }
+
+      const mTier = line.match(/^\s*tier:\s*(.+?)\s*$/i);
+      if (mTier) {
+        result.tier = mTier[1].trim();
+        continue;
+      }
+
+      const mEut = line.match(/^\s*eut:\s*(.+?)\s*$/i);
+      if (mEut) {
+        result.eut = mEut[1].trim();
+        continue;
+      }
+
+      const mDur = line.match(/^\s*dur:\s*(.+?)\s*$/i);
+      if (mDur) {
+        result.dur = mDur[1].trim();
+        continue;
+      }
+
+      if (/^\s*I:\s*$/i.test(line) || /^\s*I:\s*\{\s*\}\s*$/i.test(line)) {
+        section = "input";
+        continue;
+      }
+
+      if (/^\s*O:\s*$/i.test(line) || /^\s*O:\s*\{\s*\}\s*$/i.test(line)) {
+        section = "output";
+        continue;
+      }
+
+      const mItem = line.match(/^\s{4,}(.+?):\s*(.+?)\s*$/);
+      if (mItem && section) {
+        const name = cleanName(mItem[1]);
+        const amount = String(mItem[2]).trim();
+
+        if (name && name !== "{}") {
+          result[section][name] = amount;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  function findYamlText() {
+    const root = calcRoot();
+
+    const fields = [
+      ...root.querySelectorAll("textarea"),
+      ...root.querySelectorAll("pre")
+    ];
+
+    for (const el of fields) {
+      const txt = "value" in el ? el.value : el.textContent;
+      if (/-\s*m:\s*/i.test(txt || "")) return txt;
+    }
+
+    return "";
+  }
+
+  function getYamlResult() {
+    const target = getTarget();
+    const routeIndex = getRouteIndex(target);
+
+    try {
+      const api = window.GTNHNEI_FLOW_EXPORT_API;
+
+      if (api?.yamlForRecipe) {
+        const st = getState();
+
+        const res = api.yamlForRecipe(target, routeIndex, {
+          targetAmount: st.targetAmount || st.amount || 1
+        });
+
+        const yaml = res?.yaml || "";
+
+        const parsed = parseSimpleYaml(yaml);
+
+        return {
+          ...parsed,
+          ...res,
+          input: res?.input && Object.keys(res.input).length ? res.input : parsed.input,
+          output: res?.output && Object.keys(res.output).length ? res.output : parsed.output,
+          machine: res?.machine || parsed.machine,
+          tier: res?.tier || parsed.tier,
+          eut: res?.eut ?? parsed.eut,
+          dur: res?.dur ?? parsed.dur,
+          target: res?.target || target,
+          yaml,
+          ok: true
+        };
+      }
+    } catch (err) {
+      console.warn("[gtnh-flow live] API export failed:", err);
+    }
+
+    const yaml = findYamlText();
+
+    if (yaml) return parseSimpleYaml(yaml);
+
+    return {
+      ok: false,
+      target,
+      machine: "machine",
+      tier: "?",
+      eut: "?",
+      dur: "?",
+      input: {},
+      output: {},
+      yaml: "# No YAML found.\n# Build tree first, then open Code / Export → gtnh-flow.\n"
+    };
+  }
+
+  function resultToDot(result) {
+    const input = Object.entries(result.input || {});
+    const output = Object.entries(result.output || {});
+
+    const target = result.target || getTarget();
+    const machineName = result.machine || "machine";
+    const tier = result.tier || "?";
+    const eut = result.eut ?? "?";
+    const dur = result.dur ?? "?";
+
+    let dot = `digraph GTNHFlow {
+  graph [
+    rankdir=LR,
+    bgcolor="#030914",
+    pad="0.35",
+    nodesep="0.55",
+    ranksep="1.0",
+    splines=true,
+    outputorder=edgesfirst,
+    label="gtnh-flow: ${escDot(target)}",
+    labelloc=t,
+    fontname="Arial",
+    fontsize=28,
+    fontcolor="#7dd3fc"
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Arial",
+    fontsize=18,
+    margin="0.16,0.10",
+    penwidth=2,
+    fontcolor="#eaf2ff"
+  ];
+
+  edge [
+    penwidth=3,
+    arrowsize=0.8,
+    fontname="Arial",
+    fontsize=13,
+    fontcolor="#aebbd2"
+  ];
+
+  "machine_main" [
+    label="${escDot(machineName)}\\n${escDot(tier)} · ${escDot(eut)} EU/t · ${escDot(dur)}s",
+    fillcolor="#142845",
+    color="#fb8ccf",
+    penwidth=3
+  ];
+
+`;
+
+    if (!input.length) {
+      dot += `  "missing_input" [label="No parsed input\\ncheck YAML/export", fillcolor="#241526", color="#f59e0b"];\n`;
+      dot += `  "missing_input" -> "machine_main" [color="#f59e0b"];\n`;
+    } else {
+      input.forEach(([name, amount], i) => {
+        const id = `in_${i}_${fileSafe(name)}`;
+        dot += `  "${id}" [label="${escDot(name)}\\n${escDot(amountLabel(amount))}", fillcolor="#0f253f", color="#3f668a"];\n`;
+        dot += `  "${id}" -> "machine_main" [label="${escDot(amountLabel(amount))}", color="#67e8f9"];\n`;
+      });
+    }
+
+    if (!output.length) {
+      dot += `  "missing_output" [label="No parsed output\\ncheck YAML/export", fillcolor="#241526", color="#f59e0b"];\n`;
+      dot += `  "machine_main" -> "missing_output" [color="#f59e0b"];\n`;
+    } else {
+      output.forEach(([name, amount], i) => {
+        const id = `out_${i}_${fileSafe(name)}`;
+        dot += `  "${id}" [label="${escDot(name)}\\n${escDot(amountLabel(amount))}", fillcolor="#102b24", color="#5eead4"];\n`;
+        dot += `  "machine_main" -> "${id}" [label="${escDot(amountLabel(amount))}", color="#5eead4"];\n`;
+      });
+    }
+
+    dot += `}\n`;
+    return dot;
+  }
+
+  async function getViz() {
+    if (!vizPromise) {
+      vizPromise = import(VIZ_URL).then(mod => mod.instance());
+    }
+
+    return vizPromise;
+  }
+
+  function findSmallestFakePanel() {
+    const root = calcRoot();
+
+    const candidates = [...root.querySelectorAll("div, section, article")]
+      .filter(el => {
+        const t = el.innerText || "";
+        return (
+          /Browser preview\. Export YAML\/SVG from here/i.test(t) ||
+          /gtnh-flow:\s*/i.test(t) ||
+          /Copy YAML[\s\S]*Download SVG/i.test(t)
+        );
+      })
+      .sort((a, b) => (a.innerText || "").length - (b.innerText || "").length);
+
+    return candidates[0] || null;
+  }
+
+  function findOutputParent() {
+    const root = calcRoot();
+
+    const fake = findSmallestFakePanel();
+    if (fake?.parentElement) return fake.parentElement;
+
+    const textarea = root.querySelector("#calcCodeOut") || root.querySelector("textarea") || root.querySelector("pre");
+    if (textarea?.parentElement) return textarea.parentElement;
+
+    return root;
+  }
+
+  function hideOldOutputs() {
+    const root = calcRoot();
+
+    const fake = findSmallestFakePanel();
+    if (fake) fake.style.display = "none";
+
+    [...root.querySelectorAll("textarea, pre")].forEach(el => {
+      const txt = "value" in el ? el.value : el.textContent;
+      if (/-\s*m:\s*/i.test(txt || "") || /target:/i.test(txt || "")) {
+        el.style.display = "none";
+      }
+    });
+  }
+
+  function ensurePanel() {
+    let panel = document.getElementById("gtnhLiveFlowPanel");
+    if (panel) return panel;
+
+    const parent = findOutputParent();
+
+    panel = document.createElement("div");
+    panel.id = "gtnhLiveFlowPanel";
+    panel.className = "gtnhLiveFlowPanel";
+
+    parent.appendChild(panel);
+    return panel;
+  }
+
+  async function renderLiveGtnhFlow() {
+    const root = calcRoot();
+
+    hideOldOutputs();
+
+    const panel = ensurePanel();
+    panel.style.display = "block";
+
+    const result = getYamlResult();
+
+    lastYaml = result.yaml || "";
+    lastDot = resultToDot(result);
+    lastSvg = "";
+
+    panel.innerHTML = `
+      <div class="gtnhLiveFlowBox">
+        <div class="gtnhLiveFlowHead">
+          <div>
+            <h3>gtnh-flow</h3>
+            <p>Live Graphviz SVG generated in the website.</p>
+          </div>
+          <span class="gtnhLiveFlowBadge">${result.ok ? "live" : "warning"}</span>
+        </div>
+
+        <div class="gtnhLiveFlowActions">
+          <button type="button" id="gtnhLiveCopyYaml">Copy YAML</button>
+          <button type="button" id="gtnhLiveDownloadYaml">Download YAML</button>
+          <button type="button" id="gtnhLiveDownloadSvg">Download SVG</button>
+          <button type="button" id="gtnhLiveCopyDot">Copy DOT</button>
+          <button type="button" id="gtnhLiveRerender">Re-render</button>
+        </div>
+
+        <div id="gtnhLiveFlowStatus" class="gtnhLiveFlowStatus">Loading Graphviz...</div>
+        <div id="gtnhLiveFlowViewer" class="gtnhLiveFlowViewer"></div>
+
+        <details class="gtnhLiveFlowDetails">
+          <summary>YAML used</summary>
+          <pre>${escHtml(lastYaml)}</pre>
+        </details>
+      </div>
+    `;
+
+    panel.querySelector("#gtnhLiveCopyYaml").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(lastYaml);
+      toast("Copied YAML.");
+    });
+
+    panel.querySelector("#gtnhLiveCopyDot").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(lastDot);
+      toast("Copied DOT.");
+    });
+
+    panel.querySelector("#gtnhLiveDownloadYaml").addEventListener("click", () => {
+      downloadText(`gtnh-flow_${fileSafe(getTarget())}.yaml`, lastYaml, "text/yaml;charset=utf-8");
+    });
+
+    panel.querySelector("#gtnhLiveDownloadSvg").addEventListener("click", () => {
+      if (!lastSvg) {
+        toast("Render SVG first.");
+        return;
+      }
+
+      downloadText(`gtnh-flow_${fileSafe(getTarget())}.svg`, lastSvg, "image/svg+xml;charset=utf-8");
+    });
+
+    panel.querySelector("#gtnhLiveRerender").addEventListener("click", renderLiveGtnhFlow);
+
+    const status = panel.querySelector("#gtnhLiveFlowStatus");
+    const viewer = panel.querySelector("#gtnhLiveFlowViewer");
+
+    try {
+      const viz = await getViz();
+      const svg = viz.renderSVGElement(lastDot);
+
+      svg.classList.add("gtnhLiveFlowSvg");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "gtnh-flow live SVG");
+
+      viewer.innerHTML = "";
+      viewer.appendChild(svg);
+
+      lastSvg = new XMLSerializer().serializeToString(svg);
+
+      status.textContent = result.ok
+        ? "Rendered live Graphviz SVG."
+        : "Rendered with warnings. Check YAML used below.";
+
+      status.classList.toggle("warn", !result.ok);
+
+      toast("gtnh-flow rendered.");
+    } catch (err) {
+      console.error("[gtnh-flow live] render failed:", err);
+
+      status.textContent = "Graphviz render failed.";
+      status.classList.add("warn");
+
+      viewer.innerHTML = `<pre class="gtnhLiveFlowError">${escHtml(String(err?.stack || err))}</pre>`;
+    }
+  }
+
+  function downloadText(filename, text, type) {
+    const blob = new Blob([text], { type });
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+  }
+
+  function renameFlowToGtnhFlow() {
+    const all = [...document.querySelectorAll("button, a")];
+
+    for (const el of all) {
+      const txt = String(el.textContent || "").trim();
+
+      if (txt === "Flow") {
+        el.textContent = "gtnh-flow";
+      }
+    }
+  }
+
+  function isGtnhFlowButton(el) {
+    const txt = String(el?.textContent || "").trim().toLowerCase();
+    const href = String(el?.getAttribute?.("href") || "").toLowerCase();
+
+    return (
+      txt === "gtnh-flow" ||
+      txt === "flow" ||
+      href.includes("flow.html")
+    );
+  }
+
+  window.addEventListener("click", event => {
+    const btn = event.target?.closest?.("button, a");
+    if (!btn) return;
+
+    const root = calcRoot();
+    if (!root.contains(btn)) return;
+
+    if (!isGtnhFlowButton(btn)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    renameFlowToGtnhFlow();
+
+    setTimeout(renderLiveGtnhFlow, 0);
+  }, true);
+
+  const mo = new MutationObserver(() => {
+    clearTimeout(window.__gtnhFlowRenameTimer);
+    window.__gtnhFlowRenameTimer = setTimeout(renameFlowToGtnhFlow, 100);
+  });
+
+  function start() {
+    renameFlowToGtnhFlow();
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+
+  window.GTNH_LIVE_GTNNH_FLOW = {
+    render: renderLiveGtnhFlow,
+    getYamlResult,
+    resultToDot
+  };
+})();

@@ -1,0 +1,160 @@
+/* === GTNH Workbench gtnh-flow panel UX v1 === */
+
+#gtnhFlowRealPanel,
+#gtnhFlowCalcPanel,
+.gtnhFlowCalcPanel {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(125, 211, 252, 0.08), transparent 35%),
+    linear-gradient(180deg, rgba(15, 33, 56, 0.88), rgba(7, 17, 31, 0.96));
+  padding: 14px;
+}
+
+.gtnhFlowHeader,
+.gtnhFlowUxHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.16);
+}
+
+.gtnhFlowTitle,
+.gtnhFlowUxTitle {
+  color: #7dd3fc;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.gtnhFlowSub,
+.gtnhFlowUxSub {
+  color: #9fb0c8;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.gtnhFlowUxTools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.gtnhFlowUxTools button,
+.gtnhFlowActions button,
+.gtnhFlowDetails summary {
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(15, 33, 56, 0.88);
+  color: #eaf2ff;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gtnhFlowUxTools button:hover,
+.gtnhFlowActions button:hover,
+.gtnhFlowDetails summary:hover {
+  border-color: rgba(125, 211, 252, 0.75);
+  background: rgba(20, 42, 69, 0.98);
+}
+
+.gtnhFlowSvgWrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: min(62vh, 720px);
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(rgba(125, 211, 252, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.035) 1px, transparent 1px),
+    #06101d;
+  background-size: 28px 28px;
+  padding: 12px;
+}
+
+.gtnhFlowSvgWrap svg,
+.gtnhFlowSvg {
+  display: block !important;
+  width: 980px !important;
+  min-width: 980px !important;
+  max-width: none !important;
+  height: auto !important;
+}
+
+.gtnhFlowSvgWrap.gtnhFlowFit svg,
+.gtnhFlowSvgWrap.gtnhFlowFit .gtnhFlowSvg {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.gtnhFlowActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.gtnhFlowDetails {
+  margin-top: 14px;
+}
+
+.gtnhFlowDetails pre {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(3, 8, 18, 0.72);
+  color: #eaf2ff;
+  white-space: pre;
+}
+
+@media (min-width: 900px) {
+  #gtnhFlowRealPanel,
+  #gtnhFlowCalcPanel,
+  .gtnhFlowCalcPanel {
+    padding: 16px;
+  }
+
+  .gtnhFlowSvgWrap {
+    max-height: 520px;
+  }
+}
+
+@media (max-width: 700px) {
+  .gtnhFlowHeader,
+  .gtnhFlowUxHead {
+    flex-direction: column;
+  }
+
+  .gtnhFlowUxTools {
+    justify-content: flex-start;
+  }
+
+  .gtnhFlowSvgWrap svg,
+  .gtnhFlowSvg {
+    width: 900px !important;
+    min-width: 900px !important;
+  }
+
+  .gtnhFlowSvgWrap.gtnhFlowFit svg,
+  .gtnhFlowSvgWrap.gtnhFlowFit .gtnhFlowSvg {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}

@@ -1,0 +1,15 @@
+/* === GTNH Calculator top bar focus feedback v1 === */
+
+.gtnhCalcPanelPulse {
+  outline: 2px solid rgba(125, 211, 252, 0.95) !important;
+  box-shadow:
+    0 0 0 4px rgba(125, 211, 252, 0.18),
+    0 0 28px rgba(125, 211, 252, 0.22) !important;
+  transition: outline-color 180ms ease, box-shadow 180ms ease;
+}
+
+#gtnhCalcOverlay [data-calc-tab].active,
+#gtnhCalcCompactBuild:active {
+  border-color: rgba(125, 211, 252, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.16) inset;
+}

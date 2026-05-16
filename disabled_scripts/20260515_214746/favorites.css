@@ -1,0 +1,155 @@
+/* === GTNH Workbench safe Favorites v1 === */
+
+#gtnhFavOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  display: none;
+  overflow: auto;
+  padding: 14px;
+  background: rgba(2, 6, 14, 0.92);
+  backdrop-filter: blur(6px);
+}
+
+#gtnhFavOverlay.show {
+  display: block;
+}
+
+.gtnhFavPanel {
+  width: min(900px, calc(100vw - 20px));
+  margin: 0 auto;
+  min-height: min(620px, calc(100vh - 28px));
+  border: 1px solid rgba(125, 211, 252, 0.32);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(12, 23, 42, 0.98), rgba(4, 10, 22, 0.98));
+  color: #eaf2ff;
+  padding: 16px;
+}
+
+.gtnhFavHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.45);
+  padding-bottom: 12px;
+}
+
+.gtnhFavHead h2 {
+  margin: 0;
+  font-size: 36px;
+}
+
+.gtnhFavHead p {
+  margin: 6px 0 0;
+  color: #aebbd2;
+}
+
+.gtnhFavClose {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(8, 20, 38, 0.92);
+  color: #eaf2ff;
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.gtnhFavTools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.gtnhFavTools input {
+  flex: 1 1 230px;
+  min-width: 0;
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 13px;
+  background: rgba(3, 8, 18, 0.72);
+  color: #eaf2ff;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 700;
+}
+
+.gtnhFavTools button,
+.gtnhFavActions button {
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+  padding: 9px 12px;
+  font-weight: 900;
+}
+
+.gtnhFavList {
+  display: grid;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.gtnhFavEmpty,
+.gtnhFavRow {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 16px;
+  background: rgba(7, 16, 31, 0.72);
+  padding: 13px;
+}
+
+.gtnhFavRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.gtnhFavName {
+  font-size: 18px;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.gtnhFavMeta {
+  color: #8fa3bd;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.gtnhFavActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gtnhFavRemove {
+  border-color: rgba(251, 140, 207, 0.45) !important;
+  color: #ffd1dc !important;
+}
+
+@media (max-width: 700px) {
+  #gtnhFavOverlay {
+    padding: 8px;
+  }
+
+  .gtnhFavPanel {
+    width: calc(100vw - 16px);
+    min-height: calc(100vh - 16px);
+    border-radius: 18px;
+    padding: 13px;
+  }
+
+  .gtnhFavHead h2 {
+    font-size: 30px;
+  }
+
+  .gtnhFavRow {
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhFavActions {
+    justify-content: flex-start;
+  }
+}

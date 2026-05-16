@@ -1,0 +1,150 @@
+/* === real OrderedSet86/gtnh-flow in-browser panel === */
+
+.realPyFlowPanel {
+  width: 100%;
+}
+
+.realPyFlowBox {
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 18px;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.10), transparent 34%),
+    linear-gradient(180deg, rgba(9, 22, 40, 0.94), rgba(4, 10, 22, 0.94));
+
+  padding: 14px;
+  color: #eaf2ff;
+}
+
+.realPyFlowHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.55);
+}
+
+.realPyFlowHead h3 {
+  margin: 0;
+  color: #7dd3fc;
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1;
+}
+
+.realPyFlowHead p {
+  margin: 8px 0 0;
+  color: #aebbd2;
+}
+
+.realPyFlowBadge {
+  border: 1px solid rgba(94, 234, 212, 0.55);
+  border-radius: 999px;
+
+  background: rgba(3, 8, 18, 0.72);
+  color: #5eead4;
+
+  padding: 7px 11px;
+  font-weight: 950;
+}
+
+.realPyFlowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+
+  margin: 14px 0;
+}
+
+.realPyFlowActions button {
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 13px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  padding: 9px 12px;
+  font-weight: 950;
+}
+
+.realPyFlowStatus {
+  margin-bottom: 10px;
+  color: #aebbd2;
+  font-weight: 850;
+}
+
+.realPyFlowStatus.warn {
+  color: #fde68a;
+}
+
+.realPyFlowViewer {
+  width: 100%;
+  height: min(70vh, 760px);
+  min-height: 420px;
+
+  overflow: auto;
+
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 16px;
+
+  background: #030914;
+  padding: 10px;
+}
+
+.realPyFlowViewer svg,
+.realPyFlowSvg {
+  display: block;
+  max-width: none;
+  min-width: 900px;
+  height: auto;
+
+  background: #030914;
+}
+
+.realPyFlowPlaceholder {
+  padding: 16px;
+  color: #cbd5e1;
+  font-weight: 850;
+}
+
+.realPyFlowDetails {
+  margin-top: 12px;
+  color: #cbd5e1;
+}
+
+.realPyFlowDetails summary {
+  cursor: pointer;
+  color: #facc15;
+  font-weight: 950;
+}
+
+.realPyFlowDetails pre,
+.realPyFlowError {
+  overflow: auto;
+
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 14px;
+
+  background: #020814;
+  color: #eaf2ff;
+
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .realPyFlowBox {
+    padding: 12px;
+  }
+
+  .realPyFlowViewer {
+    height: 62vh;
+    min-height: 380px;
+  }
+
+  .realPyFlowViewer svg,
+  .realPyFlowSvg {
+    min-width: 950px;
+  }
+}

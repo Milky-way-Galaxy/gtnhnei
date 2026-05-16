@@ -1,0 +1,35 @@
+/* === GTNH Workbench top strip cleanup v1 === */
+
+/* Hide only the main top Flow button, not the calculator gtnh-flow tab. */
+.gtnhTopFlowHidden {
+  display: none !important;
+}
+
+/* Make database version look like a status badge, not a fat nav button. */
+.gtnhDbBadgeClean {
+  pointer-events: none !important;
+  cursor: default !important;
+
+  border-color: rgba(125, 211, 252, 0.16) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  color: #8fa3bd !important;
+  opacity: 0.9 !important;
+
+  padding: 6px 8px !important;
+  min-height: 0 !important;
+  height: auto !important;
+
+  font-size: 0.9rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Mobile: keep top strip horizontally scrollable but less bulky. */
+@media (max-width: 700px) {
+  .gtnhDbBadgeClean {
+    font-size: 0.82rem !important;
+    padding: 5px 6px !important;
+  }
+}

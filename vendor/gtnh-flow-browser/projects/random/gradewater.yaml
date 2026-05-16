@@ -1,0 +1,75 @@
+- m: Ore Washing Plant
+  tier: max+1
+  I:
+    G7Water: 1000
+  O:
+    G8Water: 900
+  eut: 3932160
+  dur: 250
+  target:
+    G8Water: 20000
+
+- m: Mega Distillation Tower
+  tier: max+4
+  I:
+    G6Water: 860
+  O:
+    G7Water: 900
+  eut: 1966080
+  dur: 250
+
+- m: Large Processing Factory
+  tier: max+1
+  I:
+    G5Water: 1000
+  O:
+    G6Water: 900
+  eut: 983040
+  dur: 250
+
+- m: Mega Large Chemical Reactor
+  tier: max+1
+  I:
+    G4Water: 1000
+  O:
+    G5Water: 900
+  eut: 491520
+  dur: 250
+
+- m: Large Processing Factory
+  tier: max+1
+  I:
+    G3Water: 1000
+  O:
+    G4Water: 900
+
+  eut: 245760
+  dur: 250
+
+- m: Mega Distillation Tower
+  tier: max+4
+  I:
+    G2Water: 860
+  O:
+    G3Water: 900
+  eut: 122880
+  dur: 250
+
+- m: Thermic Heating Device
+  tier: max
+  I:
+    G1Water: 1000
+  O:
+    G2Water: 900
+
+  eut: 61440
+  dur: 250
+
+- m: Large Sifter
+  tier: max+1
+  I:
+    Water: 1000
+  O:
+    G1Water: 900
+  eut: 30720
+  dur: 250

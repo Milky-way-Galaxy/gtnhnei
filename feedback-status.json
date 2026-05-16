@@ -1,9 +1,19 @@
 {
-  "version": "2026-05-16-official-status-v1",
+  "version": "2026-05-16-public-reports-board-v1",
   "updated": "2026-05-16",
-  "headline": "Official status system",
-  "message": "Bug reports and suggestions can be public, but official answers come from maintainer status updates.",
+  "headline": "Public reports board added",
+  "message": "Bug reports and suggestions can now be viewed, searched, filtered, and prioritized by GitHub thumbs-up reactions.",
   "items": [
+    {
+      "id": "feedback-board-001",
+      "type": "feature",
+      "area": "Feedback",
+      "title": "Public reports and votes tab",
+      "status": "done",
+      "summary": "Added a public Reports / votes tab that reads GitHub Issues.",
+      "resolution": "Users can search bugs/suggestions, filter open/closed reports, and use GitHub thumbs-up reactions as priority votes.",
+      "public": true
+    },
     {
       "id": "official-status-001",
       "type": "policy",

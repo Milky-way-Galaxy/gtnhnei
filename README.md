@@ -138,3 +138,26 @@ Only maintainer-controlled project updates are official:
 - the website **Status / updates** panel
 
 If another user comments on an issue, that is discussion only.
+
+## Public reports and voting
+
+GTNH Workbench uses public GitHub Issues for bug reports and suggestions.
+
+The website includes a **Reports / votes** tab that can:
+
+- list public bug reports
+- list public suggestions
+- search report titles, labels, body text, area, and status
+- filter open/closed reports
+- sort by priority
+- sort by most liked
+- show GitHub thumbs-up counts
+- open the report on GitHub
+
+Voting uses GitHub reactions:
+
+- open a report
+- click the `👍` reaction on GitHub
+- reports with more `👍` reactions are treated as higher priority
+
+Official answers still come from maintainer labels, commits, and `feedback-status.json`.

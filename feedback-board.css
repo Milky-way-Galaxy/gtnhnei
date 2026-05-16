@@ -1,0 +1,312 @@
+/* === GTNH Workbench Public Reports Board v1 === */
+
+.gtnhReportsToolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: 9px;
+  align-items: center;
+}
+
+.gtnhReportsToolbar input,
+.gtnhReportsToolbar select {
+  min-height: 42px;
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 14px;
+  background: rgba(2, 8, 18, 0.86);
+  color: #eaf2ff;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.gtnhReportsToolbar button {
+  min-height: 42px;
+  border: 1px solid rgba(125, 211, 252, 0.42);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 950;
+}
+
+.gtnhReportsToolbar button:active {
+  transform: translateY(1px);
+}
+
+.gtnhReportsMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gtnhReportsMeta b {
+  color: #7dd3fc;
+}
+
+.gtnhReportsList {
+  display: grid;
+  gap: 10px;
+}
+
+.gtnhReportCard {
+  border: 1px solid rgba(75, 106, 145, 0.58);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.08), transparent 36%),
+    rgba(3, 9, 20, 0.62);
+  padding: 12px;
+}
+
+.gtnhReportCard.isBug {
+  border-left: 4px solid rgba(248, 113, 113, 0.78);
+}
+
+.gtnhReportCard.isSuggestion {
+  border-left: 4px solid rgba(96, 165, 250, 0.78);
+}
+
+.gtnhReportCard.isClosed {
+  opacity: 0.82;
+}
+
+.gtnhReportTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.gtnhReportTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+.gtnhReportTitle a {
+  color: #eaf2ff;
+  text-decoration: none;
+}
+
+.gtnhReportTitle a:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
+}
+
+.gtnhReportNumber {
+  color: #64748b;
+  font-weight: 900;
+}
+
+.gtnhReportVotes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  justify-items: end;
+}
+
+.gtnhReportVoteBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 74px;
+  justify-content: center;
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  border-radius: 999px;
+  background: rgba(120, 70, 0, 0.16);
+  color: #fde68a;
+  padding: 6px 9px;
+  font-weight: 950;
+}
+
+.gtnhReportVoteButton {
+  border: 1px solid rgba(125, 211, 252, 0.42);
+  border-radius: 999px;
+  background: rgba(8, 18, 34, 0.95);
+  color: #7dd3fc;
+  padding: 7px 10px;
+  text-decoration: none;
+  font-weight: 950;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.gtnhReportVoteButton:hover {
+  border-color: rgba(125, 211, 252, 0.8);
+}
+
+.gtnhReportBody {
+  margin: 9px 0 0;
+  color: #cbd5e1;
+  line-height: 1.38;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.gtnhReportLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.gtnhReportLabel {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.gtnhReportLabel.bug {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.gtnhReportLabel.enhancement,
+.gtnhReportLabel.suggestion {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(30, 64, 175, 0.18);
+}
+
+.gtnhReportLabel.fixed,
+.gtnhReportLabel.done,
+.gtnhReportLabel.closed {
+  color: #99f6e4;
+  border-color: rgba(94, 234, 212, 0.45);
+  background: rgba(13, 148, 136, 0.15);
+}
+
+.gtnhReportLabel.changed,
+.gtnhReportLabel.implemented-differently {
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.45);
+  background: rgba(120, 70, 0, 0.18);
+}
+
+.gtnhReportFoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gtnhReportFoot a {
+  color: #7dd3fc;
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.gtnhReportFoot a:hover {
+  text-decoration: underline;
+}
+
+.gtnhReportsEmpty,
+.gtnhReportsLoading,
+.gtnhReportsError {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 18px;
+  background: rgba(3, 9, 20, 0.55);
+  padding: 16px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.gtnhReportsError {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.gtnhReportsHelp {
+  border: 1px solid rgba(125, 211, 252, 0.30);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.10), transparent 38%),
+    rgba(3, 9, 20, 0.48);
+  padding: 12px;
+  color: #cbd5e1;
+  line-height: 1.38;
+}
+
+.gtnhReportsHelp h3 {
+  margin: 0 0 8px;
+  color: #7dd3fc;
+}
+
+.gtnhReportsHelp p {
+  margin: 6px 0;
+}
+
+.gtnhReportsHelp code {
+  background: rgba(2, 8, 18, 0.78);
+  border: 1px solid rgba(75, 106, 145, 0.45);
+  border-radius: 8px;
+  padding: 1px 5px;
+  color: #fde68a;
+}
+
+.gtnhReportsMiniActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gtnhReportsMiniActions a,
+.gtnhReportsMiniActions button {
+  border: 1px solid rgba(75, 106, 145, 0.65);
+  border-radius: 12px;
+  background: rgba(8, 18, 34, 0.92);
+  color: #eaf2ff;
+  padding: 8px 10px;
+  text-decoration: none;
+  font-weight: 950;
+  font-size: 12px;
+}
+
+@media (max-width: 780px) {
+  .gtnhReportsToolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gtnhReportsToolbar input {
+    grid-column: 1 / -1;
+  }
+
+  .gtnhReportsToolbar button {
+    grid-column: 1 / -1;
+  }
+
+  .gtnhReportTop {
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhReportVotes {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .gtnhReportTitle {
+    font-size: 16px;
+  }
+
+  .gtnhReportBody {
+    font-size: 13px;
+  }
+}

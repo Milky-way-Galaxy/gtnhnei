@@ -1,0 +1,48 @@
+{
+  "version": "2026-05-16-official-status-v1",
+  "updated": "2026-05-16",
+  "headline": "Official status system",
+  "message": "Bug reports and suggestions can be public, but official answers come from maintainer status updates.",
+  "items": [
+    {
+      "id": "official-status-001",
+      "type": "policy",
+      "area": "Feedback",
+      "title": "Official maintainer status clarified",
+      "status": "done",
+      "summary": "Feedback reports are public discussion, but final answers are only official when published by the maintainer.",
+      "resolution": "The Status / updates panel is the official notification channel for fixed, done, changed, or declined reports.",
+      "public": true
+    },
+    {
+      "id": "feedback-001",
+      "type": "feature",
+      "area": "Feedback",
+      "title": "Feedback panel added",
+      "status": "done",
+      "summary": "Added a Feedback button for bug reports, suggestions, and update status.",
+      "resolution": "Users can copy a formatted report or open a prefilled GitHub issue.",
+      "public": true
+    },
+    {
+      "id": "flow-zoom-001",
+      "type": "bug",
+      "area": "gtnh-flow",
+      "title": "Diagram viewer was annoying to view",
+      "status": "changed",
+      "summary": "Added zoom/pan controls for the gtnh-flow viewer.",
+      "resolution": "Implemented with viewer-local zoom controls instead of resizing the whole page.",
+      "public": true
+    },
+    {
+      "id": "planner-filter-001",
+      "type": "suggestion",
+      "area": "Planner",
+      "title": "Planner filters were too vague",
+      "status": "changed",
+      "summary": "Planner filter wording was expanded with explanations.",
+      "resolution": "Changed checkbox labels and grouped free inputs separately from recursive expansion options.",
+      "public": true
+    }
+  ]
+}

@@ -102,3 +102,39 @@ Run locally:
 ```bash
 cd ~/gtnhnei
 python3 -m http.server 5520
+
+## Bug reports, suggestions, and update status
+
+Users can report bugs or suggestions from the **Feedback** button in the website.
+
+The feedback panel can:
+
+- create a formatted bug report
+- create a formatted suggestion
+- copy the report text
+- open a prefilled GitHub issue
+- show public update status from `feedback-status.json`
+
+Status labels used by the project:
+
+- `planned` = accepted but not built yet
+- `investigating` = being checked
+- `fixed` = bug fixed
+- `done` = feature/request completed
+- `changed` = implemented differently from the original suggestion
+- `not doing` = intentionally not planned
+
+To notify users about fixes or changed implementations, edit `feedback-status.json`, change the `version`, and push the update.
+
+## Official feedback status
+
+Bug reports and suggestions may have public discussion on GitHub Issues.
+
+Only maintainer-controlled project updates are official:
+
+- issue labels/status set by the repository maintainer
+- commits pushed by the repository maintainer
+- `feedback-status.json`
+- the website **Status / updates** panel
+
+If another user comments on an issue, that is discussion only.

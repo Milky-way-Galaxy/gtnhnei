@@ -1,0 +1,341 @@
+/* === GTNH Workbench mobile UI polish override === */
+/* Loaded last. Fixes ugly horizontal overflow and nested planner panels. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Top tool strip: horizontal scroll, no crushing. */
+#topTools,
+.topTools,
+.toolStrip,
+.toolbar,
+nav {
+  max-width: 100vw;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+#topTools button,
+.topTools button,
+.toolStrip button,
+.toolbar button,
+nav button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Planner overlay: prevent the entire app from drifting sideways. */
+#gtnhCalcOverlay,
+#gtnhCalcOverlay * {
+  min-width: 0;
+}
+
+#gtnhCalcOverlay {
+  overflow-x: hidden !important;
+}
+
+#gtnhCalcOverlay pre,
+#gtnhCalcOverlay code,
+#gtnhCalcOverlay textarea {
+  max-width: 100% !important;
+  overflow: auto !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+/* Browser gtnh-flow panel cleanup. */
+.gtnhFlowBrowserPanel,
+.gtnhFlowBrowserBox,
+.gtnhFlowBrowserViewer,
+.gtnhFlowBrowserDetails,
+.gtnhFlowBrowserDetails pre {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.gtnhFlowBrowserBox {
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(7, 20, 36, 0.96), rgba(3, 9, 18, 0.96));
+}
+
+.gtnhFlowBrowserHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gtnhFlowBrowserHead h3 {
+  margin: 0;
+  color: #7dd3fc;
+  letter-spacing: -0.02em;
+}
+
+.gtnhFlowBrowserHead p {
+  margin: 4px 0 0;
+  color: #aebbd2;
+}
+
+.gtnhFlowBrowserBadge {
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #5eead4;
+  background: rgba(13, 148, 136, 0.12);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.gtnhFlowBrowserActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gtnhFlowBrowserActions button {
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.gtnhFlowBrowserViewer {
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  border-radius: 14px;
+  background: #030914;
+}
+
+.gtnhFlowBrowserViewer svg,
+.gtnhFlowBrowserSvg {
+  display: block;
+  max-width: none !important;
+}
+
+.gtnhFlowBrowserStatus {
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Make old nested card edges less nasty. */
+#gtnhCalcOverlay section,
+#gtnhCalcOverlay article,
+#gtnhCalcOverlay .panel,
+#gtnhCalcOverlay .card {
+  max-width: 100%;
+}
+
+/* Mobile-specific remake. */
+@media (max-width: 780px) {
+  body {
+    overflow-x: hidden !important;
+  }
+
+  #gtnhCalcOverlay {
+    position: fixed !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  /* First child is usually the planner modal/card. */
+  #gtnhCalcOverlay > * {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  /* Header */
+  #gtnhCalcOverlay h1,
+  #gtnhCalcOverlay h2 {
+    letter-spacing: -0.035em;
+  }
+
+  #gtnhCalcOverlay button {
+    min-height: 44px;
+    border-radius: 14px !important;
+  }
+
+  /* Planner tab row: single horizontal strip, not a huge block. */
+  #gtnhCalcOverlay [role="tablist"],
+  #gtnhCalcOverlay .tabs,
+  #gtnhCalcOverlay .tabbar,
+  #gtnhCalcOverlay .tabBar,
+  #gtnhCalcOverlay .calcTabs,
+  #gtnhCalcOverlay .codeTabs,
+  #gtnhCalcOverlay .exportTabs {
+    display: flex !important;
+    gap: 8px !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px !important;
+    scrollbar-width: thin;
+  }
+
+  #gtnhCalcOverlay [role="tablist"] button,
+  #gtnhCalcOverlay .tabs button,
+  #gtnhCalcOverlay .tabbar button,
+  #gtnhCalcOverlay .tabBar button,
+  #gtnhCalcOverlay .calcTabs button,
+  #gtnhCalcOverlay .codeTabs button,
+  #gtnhCalcOverlay .exportTabs button {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+
+  /* Any direct big content wrapper should stop being desktop-width. */
+  #gtnhCalcOverlay [class*="Grid"],
+  #gtnhCalcOverlay [class*="grid"],
+  #gtnhCalcOverlay [class*="Layout"],
+  #gtnhCalcOverlay [class*="layout"],
+  #gtnhCalcOverlay [class*="Columns"],
+  #gtnhCalcOverlay [class*="columns"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Code / Export panel cleanup. */
+  #gtnhCalcOverlay [class*="Export"],
+  #gtnhCalcOverlay [class*="export"],
+  #gtnhCalcOverlay [class*="Code"],
+  #gtnhCalcOverlay [class*="code"] {
+    max-width: 100% !important;
+  }
+
+  #gtnhCalcOverlay textarea,
+  #gtnhCalcOverlay pre {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  /* gtnh-flow panel: card style, no sideways page movement. */
+  .gtnhFlowBrowserPanel {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .gtnhFlowBrowserBox {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+    overflow-x: hidden !important;
+  }
+
+  .gtnhFlowBrowserHead {
+    display: block !important;
+  }
+
+  .gtnhFlowBrowserHead h3 {
+    font-size: 24px !important;
+  }
+
+  .gtnhFlowBrowserHead p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+  }
+
+  .gtnhFlowBrowserBadge {
+    display: inline-flex;
+    margin-top: 8px;
+  }
+
+  .gtnhFlowBrowserActions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+  }
+
+  .gtnhFlowBrowserActions button {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+  }
+
+  .gtnhFlowBrowserStatus {
+    margin-top: 10px !important;
+    padding: 9px 10px !important;
+    font-size: 13px !important;
+  }
+
+  .gtnhFlowBrowserViewer {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 52vh !important;
+    min-height: 330px !important;
+    margin-top: 10px !important;
+    overflow: auto !important;
+    border-radius: 14px !important;
+  }
+
+  /* gtnh-flow SVG sizing is controlled by gtnhflow-zoom.js. */
+  .gtnhFlowBrowserViewer svg,
+  .gtnhFlowBrowserSvg {
+    max-width: none !important;
+  }
+
+  .gtnhFlowBrowserDetails {
+    margin-top: 10px !important;
+  }
+
+  .gtnhFlowBrowserDetails summary {
+    font-size: 15px !important;
+  }
+
+  .gtnhFlowBrowserDetails pre,
+  .gtnhFlowBrowserError {
+    max-height: 42vh !important;
+    overflow: auto !important;
+    font-size: 12px !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* Generic action buttons inside export panels */
+  #gtnhCalcOverlay .actions,
+  #gtnhCalcOverlay .buttonRow,
+  #gtnhCalcOverlay .btnRow {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    max-width: 100% !important;
+  }
+
+  #gtnhCalcOverlay .actions button,
+  #gtnhCalcOverlay .buttonRow button,
+  #gtnhCalcOverlay .btnRow button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}

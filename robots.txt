@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://milky-way-galaxy.github.io/gtnhnei/sitemap.xml
+Sitemap: https://milky-way-galaxy.github.io/gtnhnei/sitemap.txt
+Sitemap: https://milky-way-galaxy.github.io/gtnhnei/sitemap_index.xml

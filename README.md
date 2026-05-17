@@ -1,16 +1,16 @@
 # GTNH Atlas
 
-GTNH Atlas is a GregTech: New Horizons recipe planning site with NEI-style recipe and usage search, material calculation, route planning, favorites, public bug/suggestion reports, and gtnh-flow diagram/export tools.
+GTNH Atlas is a mobile-friendly GTNH recipe planner with recipe/usage search, material calculation, route choices, favorites, public bug reports, and gtnh-flow diagram/export tools.
 
-Main features:
+## Features
 
-- NEI-style item and fluid recipe search
-- Recipe and usage lookup
-- Material calculator for GTNH crafting chains
-- Route planner with machine and recipe choices
-- gtnh-flow diagram/export integration
+- Recipe and usage search
+- Material calculator
+- Route choices
 - Favorites
-- Public bug/suggestion reports with GitHub issue voting
+- gtnh-flow diagrams/export
+- Public bug and suggestion reports
+
 
 ## Status
 

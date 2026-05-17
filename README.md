@@ -1,4 +1,4 @@
-# GTNH Workbench
+# GTNH Atlas
 
 A mobile-friendly GregTech: New Horizons recipe workbench.
 
@@ -6,7 +6,7 @@ Live site:
 
 https://milky-way-galaxy.github.io/gtnhnei/
 
-GTNH Workbench is built for quick recipe lookup, usage lookup, route planning, material calculation, favorites, and gtnh-flow export/diagram work.
+GTNH Atlas is built for quick recipe lookup, usage lookup, route planning, material calculation, favorites, and gtnh-flow export/diagram work.
 
 ## Status
 
@@ -141,7 +141,7 @@ If another user comments on an issue, that is discussion only.
 
 ## Public reports and voting
 
-GTNH Workbench uses public GitHub Issues for bug reports and suggestions.
+GTNH Atlas uses public GitHub Issues for bug reports and suggestions.
 
 The website includes a **Reports / votes** tab that can:
 
@@ -161,3 +161,17 @@ Voting uses GitHub reactions:
 - reports with more `👍` reactions are treated as higher priority
 
 Official answers still come from maintainer labels, commits, and `feedback-status.json`.
+
+
+## Search name
+
+Public name: **GTNH Atlas**
+
+Search terms supported in title, description, and body text:
+
+- GTNH recipe search
+- GTNH material calculator
+- GTNH planner
+- GTNH NEI-style recipe search
+- GregTech New Horizons recipe planner
+- gtnh-flow export

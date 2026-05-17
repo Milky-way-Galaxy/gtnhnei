@@ -1,10 +1,10 @@
-/* === real OrderedSet86/gtnh-flow in-browser panel === */
+/* === gtnh-flow browser panel === */
 
-.realPyFlowPanel {
+.gtnhFlowBrowserPanel {
   width: 100%;
 }
 
-.realPyFlowBox {
+.gtnhFlowBrowserBox {
   border: 1px solid rgba(125, 211, 252, 0.35);
   border-radius: 18px;
 
@@ -16,7 +16,7 @@
   color: #eaf2ff;
 }
 
-.realPyFlowHead {
+.gtnhFlowBrowserHead {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -26,19 +26,19 @@
   border-bottom: 1px solid rgba(75, 106, 145, 0.55);
 }
 
-.realPyFlowHead h3 {
+.gtnhFlowBrowserHead h3 {
   margin: 0;
   color: #7dd3fc;
   font-size: clamp(30px, 5vw, 52px);
   line-height: 1;
 }
 
-.realPyFlowHead p {
+.gtnhFlowBrowserHead p {
   margin: 8px 0 0;
   color: #aebbd2;
 }
 
-.realPyFlowBadge {
+.gtnhFlowBrowserBadge {
   border: 1px solid rgba(94, 234, 212, 0.55);
   border-radius: 999px;
 
@@ -49,7 +49,7 @@
   font-weight: 950;
 }
 
-.realPyFlowActions {
+.gtnhFlowBrowserActions {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
@@ -57,7 +57,7 @@
   margin: 14px 0;
 }
 
-.realPyFlowActions button {
+.gtnhFlowBrowserActions button {
   border: 1px solid rgba(75, 106, 145, 0.75);
   border-radius: 13px;
 
@@ -68,17 +68,17 @@
   font-weight: 950;
 }
 
-.realPyFlowStatus {
+.gtnhFlowBrowserStatus {
   margin-bottom: 10px;
   color: #aebbd2;
   font-weight: 850;
 }
 
-.realPyFlowStatus.warn {
+.gtnhFlowBrowserStatus.warn {
   color: #fde68a;
 }
 
-.realPyFlowViewer {
+.gtnhFlowBrowserViewer {
   width: 100%;
   height: min(70vh, 760px);
   min-height: 420px;
@@ -92,8 +92,8 @@
   padding: 10px;
 }
 
-.realPyFlowViewer svg,
-.realPyFlowSvg {
+.gtnhFlowBrowserViewer svg,
+.gtnhFlowBrowserSvg {
   display: block;
   max-width: none;
   min-width: 900px;
@@ -102,25 +102,25 @@
   background: #030914;
 }
 
-.realPyFlowPlaceholder {
+.gtnhFlowBrowserPlaceholder {
   padding: 16px;
   color: #cbd5e1;
   font-weight: 850;
 }
 
-.realPyFlowDetails {
+.gtnhFlowBrowserDetails {
   margin-top: 12px;
   color: #cbd5e1;
 }
 
-.realPyFlowDetails summary {
+.gtnhFlowBrowserDetails summary {
   cursor: pointer;
   color: #facc15;
   font-weight: 950;
 }
 
-.realPyFlowDetails pre,
-.realPyFlowError {
+.gtnhFlowBrowserDetails pre,
+.gtnhFlowBrowserError {
   overflow: auto;
 
   border: 1px solid rgba(75, 106, 145, 0.55);
@@ -134,17 +134,17 @@
 }
 
 @media (max-width: 700px) {
-  .realPyFlowBox {
+  .gtnhFlowBrowserBox {
     padding: 12px;
   }
 
-  .realPyFlowViewer {
+  .gtnhFlowBrowserViewer {
     height: 62vh;
     min-height: 380px;
   }
 
-  .realPyFlowViewer svg,
-  .realPyFlowSvg {
+  .gtnhFlowBrowserViewer svg,
+  .gtnhFlowBrowserSvg {
     min-width: 950px;
   }
 }

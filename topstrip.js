@@ -1,4 +1,4 @@
-/* === GTNH Workbench top strip v3: no redundant Flow button === */
+/* === GTNH Atlas top strip v3: no redundant Flow button === */
 (() => {
   "use strict";
 
@@ -291,10 +291,10 @@
     ov.className = "gtnhHelpOverlay";
 
     ov.innerHTML = `
-      <div class="gtnhHelpPanel" role="dialog" aria-modal="true" aria-label="GTNH Workbench help">
+      <div class="gtnhHelpPanel" role="dialog" aria-modal="true" aria-label="GTNH Atlas help">
         <div class="gtnhHelpHead">
           <div>
-            <h2>GTNH Workbench</h2>
+            <h2>GTNH Atlas</h2>
             <p>NEI search, calculator planning, and gtnh-flow export.</p>
           </div>
           <button id="gtnhHelpClose" class="gtnhHelpClose" type="button" aria-label="Close help">×</button>
@@ -411,7 +411,7 @@
       const strip = document.createElement("nav");
       strip.id = "gtnhToolStrip";
       strip.className = "gtnhToolStrip";
-      strip.setAttribute("aria-label", "GTNH Workbench tools");
+      strip.setAttribute("aria-label", "GTNH Atlas tools");
 
       strip.innerHTML = `
         <button id="toolNei" class="gtnhToolBtn active" type="button">NEI ▾</button>

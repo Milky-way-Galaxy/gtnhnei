@@ -1,0 +1,534 @@
+/* === GTNH material calculator v4 === */
+
+.gtnhMatCalcOverlay,
+.gtnhIgnorePickerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+
+  display: none;
+  align-items: stretch;
+  justify-content: center;
+
+  padding: 8px;
+
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.gtnhIgnorePickerOverlay {
+  z-index: 1000001;
+}
+
+.gtnhMatCalcOverlay.show,
+.gtnhIgnorePickerOverlay.show {
+  display: flex;
+}
+
+.gtnhMatCalcCard,
+.gtnhIgnorePickerCard {
+  width: min(1180px, 100%);
+  height: min(94vh, 920px);
+
+  overflow: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 22px;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.10), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(251, 140, 207, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(9, 22, 40, 0.98), rgba(4, 10, 22, 0.98));
+
+  color: #eaf2ff;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
+}
+
+.gtnhIgnorePickerCard {
+  width: min(820px, 100%);
+}
+
+.gtnhMatCalcHead,
+.gtnhIgnorePickerHead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+
+  padding: 14px;
+
+  border-bottom: 1px solid rgba(75, 106, 145, 0.65);
+  background: rgba(5, 10, 22, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.gtnhMatCalcHead h2,
+.gtnhIgnorePickerHead h2 {
+  margin: 0;
+
+  color: #7dd3fc;
+  font-size: clamp(28px, 5vw, 42px);
+  line-height: 1.05;
+}
+
+.gtnhMatCalcHead p,
+.gtnhIgnorePickerHead p {
+  margin: 7px 0 0;
+  color: #aebbd2;
+  font-size: clamp(14px, 3.5vw, 18px);
+  line-height: 1.35;
+}
+
+.gtnhMatCalcClose,
+#gtnhIgnorePickerClose {
+  min-width: 50px;
+  min-height: 50px;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 16px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.gtnhMatCalcGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 430px) minmax(0, 1fr);
+  gap: 12px;
+
+  padding: 12px;
+}
+
+.gtnhMatCalcPanel {
+  min-width: 0;
+
+  border: 1px solid rgba(75, 106, 145, 0.65);
+  border-radius: 18px;
+
+  background: rgba(5, 13, 24, 0.75);
+  padding: 14px;
+}
+
+.gtnhMatCalcPanel h3 {
+  margin: 0 0 12px;
+
+  color: #7dd3fc;
+  font-size: clamp(24px, 4.5vw, 34px);
+  line-height: 1.1;
+}
+
+.gtnhMatCalcPanel label {
+  display: grid;
+  gap: 7px;
+
+  margin-bottom: 12px;
+
+  color: #cbd5e1;
+  font-weight: 850;
+}
+
+.gtnhMatCalcPanel input,
+.gtnhMatCalcPanel select,
+.gtnhIgnoreManualAdd input {
+  width: 100%;
+  min-width: 0;
+
+  border: 1px solid rgba(75, 106, 145, 0.9);
+  border-radius: 14px;
+
+  background: #030914;
+  color: #eaf2ff;
+
+  padding: 11px 12px;
+
+  font: inherit;
+  font-size: 16px;
+}
+
+.matInline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.gtnhMatCalcTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gtnhMatCheckGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+
+  margin: 10px 0 12px;
+}
+
+.matCheck {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 10px;
+
+  margin: 0 !important;
+
+  font-size: 15px;
+}
+
+.matCheck input {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  accent-color: #38bdf8;
+}
+
+.matFilters {
+  margin-top: 12px;
+
+  border: 1px solid rgba(75, 106, 145, 0.45);
+  border-radius: 14px;
+
+  padding: 10px;
+  background: rgba(3, 9, 20, 0.35);
+}
+
+.matFilters summary {
+  cursor: pointer;
+  color: #7dd3fc;
+  font-weight: 950;
+}
+
+.matManualIgnoredSummary {
+  margin-top: 12px;
+  padding: 10px 12px;
+
+  border: 1px solid rgba(75, 106, 145, 0.45);
+  border-radius: 14px;
+
+  background: rgba(3, 9, 20, 0.35);
+  color: #cbd5e1;
+
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.matManualIgnoredSummary b {
+  color: #7dd3fc;
+}
+
+.gtnhMatCalcActions,
+.gtnhIgnorePickerActions,
+.gtnhIgnoreManualAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+
+  margin-top: 12px;
+}
+
+.gtnhIgnoreManualAdd,
+.gtnhIgnorePickerActions {
+  padding: 0 14px;
+}
+
+.gtnhIgnoreManualAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.gtnhMatCalcActions button,
+.matInline button,
+.gtnhIgnorePickerActions button,
+.gtnhIgnoreManualAdd button,
+.matIgnoreInlineBtn {
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 13px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  padding: 10px 12px;
+  font-weight: 950;
+  font-size: 15px;
+}
+
+.gtnhMatCalcActions button.primary,
+#gtnhIgnoreRecalc {
+  border-color: rgba(125, 211, 252, 0.75);
+  color: #dff7ff;
+}
+
+.gtnhMatCalcResultHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+#matResultCount {
+  border: 1px solid rgba(94, 234, 212, 0.45);
+  border-radius: 999px;
+
+  padding: 6px 10px;
+
+  color: #5eead4;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.gtnhMatCalcErrors {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.gtnhMatCalcErrors div {
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 12px;
+
+  background: rgba(120, 70, 0, 0.18);
+  color: #fde68a;
+
+  padding: 8px 10px;
+  font-weight: 800;
+}
+
+.gtnhMatCalcResults {
+  max-height: 58vh;
+  overflow: auto;
+
+  border: 1px solid rgba(75, 106, 145, 0.45);
+  border-radius: 14px;
+
+  background: #030914;
+}
+
+.gtnhMatCalcResults table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gtnhMatCalcResults th,
+.gtnhMatCalcResults td {
+  border-bottom: 1px solid rgba(75, 106, 145, 0.35);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.gtnhMatCalcResults th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  background: #081222;
+  color: #7dd3fc;
+}
+
+.gtnhMatCalcResults td:first-child {
+  width: 110px;
+  font-weight: 950;
+  color: #eaf2ff;
+}
+
+.matIgnoreInlineBtn {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #fda4af;
+}
+
+.matEmpty {
+  padding: 14px;
+  color: #aebbd2;
+}
+
+.gtnhIgnoreChips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 9px;
+
+  padding: 14px;
+}
+
+.gtnhIgnoreChip {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 14px;
+
+  background: rgba(12, 26, 44, 0.95);
+  color: #eaf2ff;
+
+  padding: 10px 12px;
+
+  text-align: left;
+  font-weight: 900;
+}
+
+.gtnhIgnoreChip b {
+  color: #5eead4;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.gtnhIgnoreChip.ignored {
+  border-color: rgba(251, 113, 133, 0.75);
+  background: rgba(69, 10, 10, 0.72);
+}
+
+.gtnhIgnoreChip.ignored b {
+  color: #fda4af;
+}
+
+.gtnhIgnoreEmpty {
+  padding: 14px;
+  border: 1px solid rgba(75, 106, 145, 0.45);
+  border-radius: 14px;
+  color: #aebbd2;
+}
+
+#toolMatCalc {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 780px) {
+  .gtnhMatCalcOverlay,
+  .gtnhIgnorePickerOverlay {
+    padding: 0 !important;
+  }
+
+  .gtnhMatCalcCard,
+  .gtnhIgnorePickerCard {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+
+  .gtnhMatCalcHead,
+  .gtnhIgnorePickerHead {
+    padding: 12px !important;
+  }
+
+  .gtnhMatCalcHead h2,
+  .gtnhIgnorePickerHead h2 {
+    font-size: 28px !important;
+    letter-spacing: -0.03em;
+  }
+
+  .gtnhMatCalcHead p,
+  .gtnhIgnorePickerHead p {
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    max-width: 280px;
+  }
+
+  .gtnhMatCalcClose,
+  #gtnhIgnorePickerClose {
+    min-width: 46px !important;
+    min-height: 46px !important;
+    border-radius: 14px !important;
+  }
+
+  .gtnhMatCalcGrid {
+    display: block;
+    padding: 8px !important;
+  }
+
+  .gtnhMatCalcPanel {
+    margin-bottom: 10px;
+    border-radius: 16px !important;
+    padding: 12px !important;
+  }
+
+  .gtnhMatCalcPanel h3 {
+    font-size: 24px !important;
+  }
+
+  .gtnhMatCalcPanel input,
+  .gtnhMatCalcPanel select,
+  .gtnhIgnoreManualAdd input {
+    font-size: 15px !important;
+    padding: 10px 11px !important;
+    border-radius: 12px !important;
+  }
+
+  .matInline,
+  .gtnhIgnoreManualAdd {
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhMatCalcTwo {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .matCheck {
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+
+  .matCheck input {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .gtnhMatCalcActions,
+  .gtnhIgnorePickerActions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .gtnhMatCalcActions button,
+  .matInline button,
+  .gtnhIgnorePickerActions button,
+  .gtnhIgnoreManualAdd button {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 14px !important;
+    padding: 10px 8px !important;
+    border-radius: 12px !important;
+  }
+
+  .gtnhIgnoreChips {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .gtnhMatCalcResults {
+    max-height: 48vh !important;
+  }
+
+  .gtnhMatCalcResults th,
+  .gtnhMatCalcResults td {
+    padding: 9px 8px !important;
+    font-size: 14px !important;
+  }
+
+  .gtnhMatCalcResults th:nth-child(4),
+  .gtnhMatCalcResults td:nth-child(4) {
+    display: none;
+  }
+
+  .gtnhMatCalcResults td:first-child {
+    width: 74px !important;
+  }
+}

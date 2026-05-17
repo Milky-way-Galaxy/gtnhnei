@@ -111,7 +111,7 @@
       <section class="gtnhCalcPanel" role="dialog" aria-label="GTNH calculator">
         <header class="gtnhCalcHead">
           <div>
-            <h2>GTNH Calculator</h2>
+            <h2>Material Calculator</h2>
             <p>Target → route choice → machines → recursive tree → export.</p>
           </div>
           <button class="gtnhCalcClose" id="gtnhCalcClose" type="button">×</button>

@@ -1,4 +1,4 @@
-/* === GTNH Workbench Feedback Hub v1 === */
+/* === GTNH Atlas Feedback Hub v1 === */
 (() => {
   "use strict";
 
@@ -212,8 +212,8 @@
     const bug = type === "bug";
 
     const title = bug
-      ? `[Bug] ${val("gtfbBugTitle") || val("gtfbBugArea") || "GTNH Workbench bug"}`
-      : `[Suggestion] ${val("gtfbSugTitle") || val("gtfbSugArea") || "GTNH Workbench suggestion"}`;
+      ? `[Bug] ${val("gtfbBugTitle") || val("gtfbBugArea") || "GTNH Atlas bug"}`
+      : `[Suggestion] ${val("gtfbSugTitle") || val("gtfbSugArea") || "GTNH Atlas suggestion"}`;
 
     const labels = bug
       ? `bug,area:${val("gtfbBugArea") || "Other"}`

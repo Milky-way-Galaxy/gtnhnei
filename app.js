@@ -2652,7 +2652,7 @@ window.addEventListener("gtnhnei-icons-ready", () => {
           return {
             ok: false,
             yaml:
-`# GTNH Workbench -> gtnh-flow draft
+`# GTNH Atlas -> gtnh-flow draft
 # No production recipe found for ${objName(obj)}
 # This target may be raw material, loot, ore, or unresolved.
 
@@ -2680,7 +2680,7 @@ window.addEventListener("gtnhnei-icons-ready", () => {
         const output = readIo(recipe, "out");
 
         const yaml =
-`# GTNH Workbench -> gtnh-flow draft
+`# GTNH Atlas -> gtnh-flow draft
 # Target: ${objName(obj)}
 # Route: ${Number(routeIndex) + 1}
 # Machine: ${machineName(recipe)}
@@ -3009,7 +3009,7 @@ ${yamlMap("O", output)}
             ok: false,
             target: objName(obj),
             yaml:
-`# GTNH Workbench -> gtnh-flow draft
+`# GTNH Atlas -> gtnh-flow draft
 # No production recipe found for ${objName(obj)}
 
 - m: manual
@@ -3033,7 +3033,7 @@ ${yamlMap("O", output)}
         const parsed = parseIoFromRenderedCard(recipe);
 
         const yaml =
-`# GTNH Workbench -> gtnh-flow draft
+`# GTNH Atlas -> gtnh-flow draft
 # Target: ${objName(obj)}
 # Route: ${Number(routeIndex) + 1}
 # Machine: ${machine}

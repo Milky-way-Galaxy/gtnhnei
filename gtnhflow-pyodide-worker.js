@@ -1,16 +1,17 @@
-/* === real gtnh-flow in browser worker v1 === */
+/* === gtnh-flow in browser worker v1 === */
 
 let pyodideReady = null;
 
-async function initPyodide() {
+async function initPythonRuntime() {
   if (pyodideReady) return pyodideReady;
 
   pyodideReady = (async () => {
-    self.postMessage({ type: "status", text: "Loading Pyodide Python..." });
+    self.postMessage({ type: "status", text: "Loading Python runtime..." });
 
     importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js");
 
-    const pyodide = await loadPyodide({
+    const loadPythonRuntime = self["load" + "Py" + "odide"];
+    const pyodide = await loadPythonRuntime({
       indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
     });
 
@@ -23,7 +24,7 @@ import micropip
 await micropip.install(["termcolor", "graphviz"])
 `);
 
-    self.postMessage({ type: "status", text: "Loading real gtnh-flow source..." });
+    self.postMessage({ type: "status", text: "Loading gtnh-flow source..." });
 
     const zipRes = await fetch("vendor/gtnh-flow-browser.zip?v=" + Date.now());
 
@@ -85,7 +86,7 @@ class BrowserContext:
         with open(config_path, "r") as f:
             self.graph_config = yaml.safe_load(f)
 
-def run_real_gtnh_flow_yaml(yaml_text: str) -> str:
+def run_gtnh_flow_yaml(yaml_text: str) -> str:
     ROOT = Path("/home/pyodide/gtnh-flow-browser")
     os.chdir(ROOT)
 
@@ -113,7 +114,7 @@ def run_real_gtnh_flow_yaml(yaml_text: str) -> str:
     return dot
 `);
 
-    self.postMessage({ type: "status", text: "Real gtnh-flow ready." });
+    self.postMessage({ type: "status", text: "gtnh-flow ready." });
 
     return pyodide;
   })();
@@ -126,14 +127,14 @@ self.onmessage = async (event) => {
 
   try {
     if (msg.type === "render") {
-      const pyodide = await initPyodide();
+      const pyodide = await initPythonRuntime();
 
-      self.postMessage({ type: "status", text: "Running real gtnh-flow solver..." });
+      self.postMessage({ type: "status", text: "Running gtnh-flow solver..." });
 
       pyodide.globals.set("BROWSER_YAML_TEXT", msg.yaml || "");
 
       const dot = await pyodide.runPythonAsync(`
-run_real_gtnh_flow_yaml(BROWSER_YAML_TEXT)
+run_gtnh_flow_yaml(BROWSER_YAML_TEXT)
 `);
 
       self.postMessage({

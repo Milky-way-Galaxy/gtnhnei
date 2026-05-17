@@ -1,0 +1,464 @@
+/* === GTNH Maker Choice UI === */
+
+.gtnhMakerChoiceOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000002;
+
+  display: none;
+  align-items: stretch;
+  justify-content: center;
+
+  padding: 8px;
+
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.gtnhMakerChoiceOverlay.show {
+  display: flex;
+}
+
+.gtnhMakerChoiceCard {
+  width: min(1040px, 100%);
+  height: min(94vh, 900px);
+
+  overflow: auto;
+  overscroll-behavior: contain;
+
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  border-radius: 22px;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.12), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(251, 113, 133, 0.10), transparent 34%),
+    linear-gradient(180deg, rgba(8, 21, 38, 0.98), rgba(3, 8, 18, 0.98));
+
+  color: #eaf2ff;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.58);
+}
+
+.gtnhMakerChoiceHead {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+
+  padding: 14px;
+
+  border-bottom: 1px solid rgba(75, 106, 145, 0.65);
+  background: rgba(5, 10, 22, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.gtnhMakerChoiceHead h2 {
+  margin: 0;
+  color: #7dd3fc;
+  font-size: clamp(28px, 5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.gtnhMakerChoiceHead p {
+  margin: 7px 0 0;
+  color: #aebbd2;
+  font-size: clamp(14px, 3.3vw, 17px);
+  line-height: 1.35;
+}
+
+#gtnhMakerChoiceClose {
+  min-width: 50px;
+  min-height: 50px;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 16px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.gtnhMakerChoiceBody {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.gtnhMakerChoiceTarget,
+.gtnhMakerChoiceSection,
+.gtnhMakerRoute,
+.gtnhMakerNoRoutes {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 18px;
+  background: rgba(3, 9, 20, 0.55);
+}
+
+.gtnhMakerChoiceTarget {
+  padding: 14px;
+}
+
+.gtnhMakerTargetName {
+  color: #eaf2ff;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.gtnhMakerStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  margin-top: 9px;
+  padding: 6px 10px;
+
+  border-radius: 999px;
+  border: 1px solid rgba(75, 106, 145, 0.65);
+
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.78);
+
+  font-weight: 950;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.gtnhMakerStatus.missing {
+  border-color: rgba(248, 113, 113, 0.7);
+  color: #fecaca;
+  background: rgba(69, 10, 10, 0.6);
+}
+
+.gtnhMakerStatus.selected {
+  border-color: rgba(94, 234, 212, 0.55);
+  color: #99f6e4;
+  background: rgba(13, 148, 136, 0.14);
+}
+
+.gtnhMakerStatus.external,
+.gtnhMakerStatus.raw {
+  border-color: rgba(250, 204, 21, 0.5);
+  color: #fde68a;
+  background: rgba(120, 70, 0, 0.18);
+}
+
+.gtnhMakerTargetNote {
+  margin-top: 8px;
+  color: #aebbd2;
+  line-height: 1.35;
+}
+
+.gtnhMakerChoiceMainActions,
+.gtnhMakerRouteTop,
+.gtnhMakerRouteIo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.gtnhMakerChoiceMainActions button,
+.gtnhMakerRouteTop button,
+.makerChoiceInlineBtn,
+.makerChoiceMiniBtn {
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 13px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  padding: 10px 12px;
+  font-weight: 950;
+  font-size: 14px;
+}
+
+.gtnhMakerChoiceSection {
+  padding: 14px;
+}
+
+.gtnhMakerChoiceSection h3 {
+  margin: 0;
+  color: #7dd3fc;
+  font-size: 24px;
+}
+
+.gtnhMakerChoiceSection p {
+  margin: 5px 0 12px;
+  color: #aebbd2;
+}
+
+.gtnhMakerRoutes {
+  display: grid;
+  gap: 10px;
+}
+
+.gtnhMakerRoute {
+  padding: 12px;
+}
+
+.gtnhMakerRoute.selected {
+  border-color: rgba(94, 234, 212, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.28);
+}
+
+.gtnhMakerRouteTop {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.gtnhMakerRouteTop h4 {
+  margin: 0;
+  color: #eaf2ff;
+  font-size: 18px;
+}
+
+.gtnhMakerRouteTop p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+}
+
+.gtnhMakerRouteTop button {
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+.gtnhMakerRoute.selected .gtnhMakerRouteTop button {
+  border-color: rgba(94, 234, 212, 0.7);
+  color: #99f6e4;
+}
+
+.gtnhMakerRouteIo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  margin-top: 12px;
+}
+
+.gtnhMakerRouteIo > div {
+  min-width: 0;
+
+  border: 1px solid rgba(75, 106, 145, 0.38);
+  border-radius: 14px;
+
+  padding: 10px;
+
+  background: rgba(3, 9, 20, 0.38);
+}
+
+.gtnhMakerRouteIo b {
+  display: block;
+  margin-bottom: 7px;
+  color: #7dd3fc;
+}
+
+.gtnhMakerRouteIo span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding: 4px 0;
+
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.22);
+}
+
+.gtnhMakerRouteIo span b {
+  display: inline;
+  margin: 0;
+  color: #eaf2ff;
+}
+
+.gtnhMakerRouteIo em {
+  color: #64748b;
+}
+
+.gtnhMakerNoRoutes {
+  padding: 14px;
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.38);
+  background: rgba(120, 70, 0, 0.16);
+}
+
+/* Calculator table decoration. */
+#matResults tr.makerChoiceMissing {
+  background: rgba(69, 10, 10, 0.20);
+}
+
+#matResults tr.makerChoiceMissing td:nth-child(2) {
+  box-shadow: inset 4px 0 0 rgba(248, 113, 113, 0.75);
+}
+
+#matResults tr.makerChoiceSelected {
+  background: rgba(13, 148, 136, 0.10);
+}
+
+#matResults tr.makerChoiceExternal {
+  background: rgba(120, 70, 0, 0.10);
+}
+
+.makerChoiceInlineBtn {
+  margin-left: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.makerChoiceRowBadge {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 3px 7px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 950;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+.makerChoiceRowBadge.missing {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.65);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+}
+
+.makerChoiceRowBadge.selected {
+  color: #99f6e4;
+  background: rgba(13, 148, 136, 0.18);
+  border: 1px solid rgba(94, 234, 212, 0.45);
+}
+
+.makerChoiceRowBadge.external,
+.makerChoiceRowBadge.raw {
+  color: #fde68a;
+  background: rgba(120, 70, 0, 0.18);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+}
+
+/* Planner/card icon marker where dataset names are exposed. */
+.makerChoiceIconMissing {
+  position: relative !important;
+  outline: 2px solid rgba(248, 113, 113, 0.75) !important;
+  outline-offset: -2px;
+}
+
+.makerChoiceIconMissing::after {
+  content: "⚠";
+  position: absolute;
+  left: -4px;
+  bottom: -4px;
+  z-index: 3;
+
+  display: grid;
+  place-items: center;
+
+  width: 18px;
+  height: 18px;
+
+  border: 1px solid rgba(254, 202, 202, 0.8);
+  border-radius: 999px;
+
+  background: rgba(127, 29, 29, 0.95);
+  color: #fee2e2;
+
+  font-size: 11px;
+  line-height: 1;
+}
+
+.makerChoiceMiniBtn {
+  position: absolute;
+  left: -5px;
+  bottom: -5px;
+  z-index: 4;
+
+  width: 20px;
+  height: 20px;
+  min-width: 20px !important;
+  min-height: 20px !important;
+
+  display: grid;
+  place-items: center;
+
+  padding: 0;
+  border-radius: 999px;
+
+  background: rgba(127, 29, 29, 0.95);
+  color: #fee2e2;
+
+  font-size: 11px;
+}
+
+@media (max-width: 780px) {
+  .gtnhMakerChoiceOverlay {
+    padding: 0;
+  }
+
+  .gtnhMakerChoiceCard {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .gtnhMakerChoiceHead {
+    padding: 12px;
+  }
+
+  .gtnhMakerChoiceHead h2 {
+    font-size: 28px;
+  }
+
+  .gtnhMakerChoiceHead p {
+    max-width: 280px;
+    font-size: 13px;
+  }
+
+  #gtnhMakerChoiceClose {
+    min-width: 46px;
+    min-height: 46px;
+    border-radius: 14px;
+  }
+
+  .gtnhMakerChoiceBody {
+    padding: 9px;
+  }
+
+  .gtnhMakerTargetName {
+    font-size: 22px;
+  }
+
+  .gtnhMakerChoiceMainActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gtnhMakerChoiceMainActions button {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .gtnhMakerRouteTop {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhMakerRouteTop button {
+    width: 100%;
+  }
+
+  .gtnhMakerRouteIo {
+    grid-template-columns: 1fr;
+  }
+
+  .gtnhMakerRouteIo span {
+    font-size: 13px;
+  }
+}

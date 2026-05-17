@@ -198,7 +198,7 @@
     if (!Number.isFinite(dur) || dur <= 1) dur = guessDurationSeconds(1);
 
     const yaml =
-`# GTNH Workbench -> gtnh-flow draft
+`# GTNH Atlas -> gtnh-flow draft
 # Target: ${target}
 # Route: ${getRouteIndex(target) + 1}
 # Machine: ${machine}
@@ -418,7 +418,7 @@ ${yamlMap("O", O)}
       <div class="gtnhFlowHeader">
         <div>
           <div class="gtnhFlowTitle">gtnh-flow</div>
-          <div class="gtnhFlowSub">Browser preview. Export YAML/SVG from here.</div>
+          <div class="gtnhFlowSub">Generate gtnh-flow diagram and export YAML/SVG.</div>
         </div>
       </div>
       <div class="gtnhFlowSvgWrap">${lastSvg}</div>

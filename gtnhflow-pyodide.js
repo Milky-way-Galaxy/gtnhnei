@@ -1,4 +1,4 @@
-/* === GTNH Workbench real gtnh-flow browser integration v1 === */
+/* === GTNH Atlas gtnh-flow browser integration v1 === */
 (() => {
   "use strict";
 
@@ -128,7 +128,7 @@
         if (result?.yaml) return result.yaml;
       }
     } catch (err) {
-      console.warn("[real gtnh-flow] YAML API failed:", err);
+      console.warn("[gtnh-flow] YAML API failed:", err);
     }
 
     const fromUi = findYamlFromUI();
@@ -153,9 +153,9 @@
       }
 
       if (msg.type === "error") {
-        setStatus("real gtnh-flow failed.", true);
-        setViewer(`<pre class="realPyFlowError">${esc(msg.text || "unknown error")}</pre>`);
-        toast("real gtnh-flow failed.");
+        setStatus("gtnh-flow failed.", true);
+        setViewer(`<pre class="gtnhFlowBrowserError">${esc(msg.text || "unknown error")}</pre>`);
+        toast("gtnh-flow failed.");
         return;
       }
 
@@ -168,21 +168,21 @@
           const viz = await getViz();
           const svgEl = viz.renderSVGElement(lastDot);
 
-          svgEl.classList.add("realPyFlowSvg");
+          svgEl.classList.add("gtnhFlowBrowserSvg");
 
           lastSvg = new XMLSerializer().serializeToString(svgEl);
 
-          const viewer = document.getElementById("realPyFlowViewer");
+          const viewer = document.getElementById("gtnhFlowBrowserViewer");
           if (viewer) {
             viewer.innerHTML = "";
             viewer.appendChild(svgEl);
           }
 
-          setStatus("Rendered real gtnh-flow DOT -> SVG.");
-          toast("real gtnh-flow rendered.");
+          setStatus("Rendered gtnh-flow DOT -> SVG.");
+          toast("gtnh-flow rendered.");
         } catch (err) {
           setStatus("Viz.js render failed.", true);
-          setViewer(`<pre class="realPyFlowError">${esc(String(err?.stack || err))}</pre>`);
+          setViewer(`<pre class="gtnhFlowBrowserError">${esc(String(err?.stack || err))}</pre>`);
         }
       }
     });
@@ -199,7 +199,7 @@
   }
 
   function setStatus(text, warn = false) {
-    const el = document.getElementById("realPyFlowStatus");
+    const el = document.getElementById("gtnhFlowBrowserStatus");
     if (!el) return;
 
     el.textContent = text;
@@ -207,7 +207,7 @@
   }
 
   function setViewer(html) {
-    const el = document.getElementById("realPyFlowViewer");
+    const el = document.getElementById("gtnhFlowBrowserViewer");
     if (el) el.innerHTML = html;
   }
 
@@ -234,7 +234,7 @@
       .filter(el => {
         const t = el.innerText || "";
         return (
-          /Browser preview\. Export YAML\/SVG from here/i.test(t) ||
+          /gtnh-flow preview\. Export YAML\/SVG from here/i.test(t) ||
           /gtnh-flow:\s*/i.test(t) ||
           /Copy YAML[\s\S]*Download SVG/i.test(t) ||
           /Live Graphviz SVG generated/i.test(t)
@@ -257,12 +257,12 @@
       const t = "value" in el ? el.value : el.innerText || el.textContent || "";
 
       if (
-        /Browser preview\. Export YAML\/SVG from here/i.test(t) ||
+        /gtnh-flow preview\. Export YAML\/SVG from here/i.test(t) ||
         /Live Graphviz SVG generated/i.test(t) ||
         /gtnh-flow:\s*/i.test(t) ||
         /-\s*m:\s*/i.test(t)
       ) {
-        if (el.id !== "realPyFlowPanel" && !el.closest("#realPyFlowPanel")) {
+        if (el.id !== "gtnhFlowBrowserPanel" && !el.closest("#gtnhFlowBrowserPanel")) {
           el.style.display = "none";
         }
       }
@@ -270,14 +270,14 @@
   }
 
   function ensurePanel() {
-    let panel = document.getElementById("realPyFlowPanel");
+    let panel = document.getElementById("gtnhFlowBrowserPanel");
     if (panel) return panel;
 
     const parent = findPanelParent();
 
     panel = document.createElement("div");
-    panel.id = "realPyFlowPanel";
-    panel.className = "realPyFlowPanel";
+    panel.id = "gtnhFlowBrowserPanel";
+    panel.className = "gtnhFlowBrowserPanel";
 
     parent.appendChild(panel);
 
@@ -291,89 +291,89 @@
     panel.style.display = "block";
 
     panel.innerHTML = `
-      <div class="realPyFlowBox">
-        <div class="realPyFlowHead">
+      <div class="gtnhFlowBrowserBox">
+        <div class="gtnhFlowBrowserHead">
           <div>
             <h3>gtnh-flow</h3>
-            <p>Actual OrderedSet86/gtnh-flow Python running in-browser through Pyodide, then Graphviz SVG rendered by Viz.js.</p>
+            <p>Running gtnh-flow in browser, then Graphviz SVG rendered by Viz.js.</p>
           </div>
-          <span class="realPyFlowBadge">real</span>
+          <span class="gtnhFlowBrowserBadge">browser</span>
         </div>
 
-        <div class="realPyFlowActions">
-          <button type="button" id="realPyFlowRun">Run real gtnh-flow</button>
-          <button type="button" id="realPyFlowCopyYaml">Copy YAML</button>
-          <button type="button" id="realPyFlowCopyDot">Copy DOT</button>
-          <button type="button" id="realPyFlowDownloadSvg">Download SVG</button>
-          <button type="button" id="realPyFlowDownloadYaml">Download YAML</button>
+        <div class="gtnhFlowBrowserActions">
+          <button type="button" id="gtnhFlowBrowserRun">Run gtnh-flow</button>
+          <button type="button" id="gtnhFlowBrowserCopyYaml">Copy YAML</button>
+          <button type="button" id="gtnhFlowBrowserCopyDot">Copy DOT</button>
+          <button type="button" id="gtnhFlowBrowserDownloadSvg">Download SVG</button>
+          <button type="button" id="gtnhFlowBrowserDownloadYaml">Download YAML</button>
         </div>
 
-        <div id="realPyFlowStatus" class="realPyFlowStatus">
-          Ready. Press “Run real gtnh-flow”.
+        <div id="gtnhFlowBrowserStatus" class="gtnhFlowBrowserStatus">
+          Ready. Press “Run gtnh-flow”.
         </div>
 
-        <div id="realPyFlowViewer" class="realPyFlowViewer">
-          <div class="realPyFlowPlaceholder">
-            This will load Python + real gtnh-flow. First run can take a while on mobile.
+        <div id="gtnhFlowBrowserViewer" class="gtnhFlowBrowserViewer">
+          <div class="gtnhFlowBrowserPlaceholder">
+            This will load Python + gtnh-flow. First run can take a while on mobile.
           </div>
         </div>
 
-        <details class="realPyFlowDetails">
+        <details class="gtnhFlowBrowserDetails">
           <summary>YAML sent to gtnh-flow</summary>
-          <pre id="realPyFlowYamlPre"></pre>
+          <pre id="gtnhFlowBrowserYamlPre"></pre>
         </details>
       </div>
     `;
 
-    panel.querySelector("#realPyFlowRun").addEventListener("click", runRealFlow);
+    panel.querySelector("#gtnhFlowBrowserRun").addEventListener("click", runGtnhFlow);
 
-    panel.querySelector("#realPyFlowCopyYaml").addEventListener("click", async () => {
+    panel.querySelector("#gtnhFlowBrowserCopyYaml").addEventListener("click", async () => {
       if (!lastYaml) lastYaml = makeYamlForCurrentTarget();
       await navigator.clipboard.writeText(lastYaml);
       toast("Copied YAML.");
     });
 
-    panel.querySelector("#realPyFlowCopyDot").addEventListener("click", async () => {
+    panel.querySelector("#gtnhFlowBrowserCopyDot").addEventListener("click", async () => {
       await navigator.clipboard.writeText(lastDot || "");
       toast(lastDot ? "Copied DOT." : "No DOT yet.");
     });
 
-    panel.querySelector("#realPyFlowDownloadSvg").addEventListener("click", () => {
+    panel.querySelector("#gtnhFlowBrowserDownloadSvg").addEventListener("click", () => {
       if (!lastSvg) {
         toast("No SVG yet.");
         return;
       }
 
       downloadText(
-        `real_gtnh-flow_${fileSafe(getTarget())}.svg`,
+        `gtnh-flow_${fileSafe(getTarget())}.svg`,
         lastSvg,
         "image/svg+xml;charset=utf-8"
       );
     });
 
-    panel.querySelector("#realPyFlowDownloadYaml").addEventListener("click", () => {
+    panel.querySelector("#gtnhFlowBrowserDownloadYaml").addEventListener("click", () => {
       if (!lastYaml) lastYaml = makeYamlForCurrentTarget();
 
       downloadText(
-        `real_gtnh-flow_${fileSafe(getTarget())}.yaml`,
+        `gtnh-flow_${fileSafe(getTarget())}.yaml`,
         lastYaml,
         "text/yaml;charset=utf-8"
       );
     });
 
-    runRealFlow();
+    runGtnhFlow();
   }
 
-  function runRealFlow() {
+  function runGtnhFlow() {
     lastYaml = makeYamlForCurrentTarget();
     lastDot = "";
     lastSvg = "";
 
-    const pre = document.getElementById("realPyFlowYamlPre");
+    const pre = document.getElementById("gtnhFlowBrowserYamlPre");
     if (pre) pre.textContent = lastYaml;
 
-    setViewer(`<div class="realPyFlowPlaceholder">Running real gtnh-flow...</div>`);
-    setStatus("Starting real gtnh-flow Python worker...");
+    setViewer(`<div class="gtnhFlowBrowserPlaceholder">Running gtnh-flow...</div>`);
+    setStatus("Starting gtnh-flow Python worker...");
 
     ensureWorker().postMessage({
       type: "render",
@@ -411,8 +411,8 @@
   }, true);
 
   const mo = new MutationObserver(() => {
-    clearTimeout(window.__realPyFlowRenameTimer);
-    window.__realPyFlowRenameTimer = setTimeout(renameFlow, 80);
+    clearTimeout(window.__gtnhFlowBrowserRenameTimer);
+    window.__gtnhFlowBrowserRenameTimer = setTimeout(renameFlow, 80);
   });
 
   function start() {
@@ -428,6 +428,6 @@
 
   window.GTNH_REAL_PYODIDE_FLOW = {
     showPanel,
-    runRealFlow
+    runGtnhFlow
   };
 })();

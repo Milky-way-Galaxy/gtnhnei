@@ -1,4 +1,4 @@
-/* === GTNH Workbench top strip v3 === */
+/* === GTNH Atlas top strip v3 === */
 
 .gtnhToolStrip {
   display: flex;
@@ -307,7 +307,7 @@
   }
 }
 
-/* === GTNH Workbench inline Favorites modal v1 === */
+/* === GTNH Atlas inline Favorites modal v1 === */
 
 #gtnhFavOverlay {
   position: fixed;

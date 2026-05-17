@@ -1,9 +1,19 @@
 {
-  "version": "2026-05-16-public-reports-board-v1",
-  "updated": "2026-05-16",
-  "headline": "Public reports board added",
-  "message": "Bug reports and suggestions can now be viewed, searched, filtered, and prioritized by GitHub thumbs-up reactions.",
+  "version": "2026-05-17-discord-nasa-workbench-report-v1",
+  "updated": "2026-05-17",
+  "headline": "NASA Workbench recipe report added",
+  "message": "A Discord report was logged for missing NASA Workbench rocket crafting recipes.",
   "items": [
+    {
+      "id": "data-nasa-workbench-001",
+      "type": "bug",
+      "area": "Data / recipe",
+      "title": "Missing NASA Workbench rocket crafting recipes",
+      "status": "investigating",
+      "summary": "Discord report: some rocket crafting recipes are missing, especially recipes made in the NASA Workbench.",
+      "resolution": "Needs parser/data support for NASA Workbench recipe type or a confirmed recipe data source.",
+      "public": true
+    },
     {
       "id": "feedback-board-001",
       "type": "feature",

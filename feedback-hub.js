@@ -210,6 +210,7 @@
 
   function issueUrl(type) {
     const bug = type === "bug";
+
     const title = bug
       ? `[Bug] ${val("gtfbBugTitle") || val("gtfbBugArea") || "GTNH Workbench bug"}`
       : `[Suggestion] ${val("gtfbSugTitle") || val("gtfbSugArea") || "GTNH Workbench suggestion"}`;
@@ -218,16 +219,23 @@
       ? `bug,area:${val("gtfbBugArea") || "Other"}`
       : `enhancement,suggestion,area:${val("gtfbSugArea") || "Other"}`;
 
+    const template = bug ? "bug_report.md" : "feature_request.md";
+
+    // Keep the URL small. Mobile GitHub can choke on huge encoded bodies.
+    // The body is copied to clipboard separately before opening GitHub.
     const params = new URLSearchParams({
+      template,
       title,
-      body: reportBody(type),
       labels
     });
 
     return `${GH}/issues/new?${params.toString()}`;
   }
 
-  function openIssue(type) {
+  async function openIssue(type) {
+    const body = reportBody(type);
+    await copyText(body);
+    toast("Report copied. Paste it into GitHub if the body is empty.");
     window.open(issueUrl(type), "_blank", "noopener,noreferrer");
   }
 

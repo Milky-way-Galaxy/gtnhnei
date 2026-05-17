@@ -3,37 +3,37 @@
 <head>
   <meta name="google-site-verification" content="siKqZRNoAEc6Sj7FrOv6OZ1SjhKerbEaIOl6ADf2qzo" />
   <meta charset="utf-8">
-  <title>GTNH Atlas — GTNH Recipes, Calculator &amp; Planner</title>
+  <title>GTNH Atlas — Recipe Search, Calculator &amp; gtnh-flow Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 
-  <meta name="description" content="GTNH Atlas is a mobile-friendly GregTech: New Horizons recipe search, usage lookup, material calculator, route planner, favorites list, public bug report board, and gtnh-flow exporter with NEI-style recipe grids.">
+  <meta name="description" content="GTNH Atlas: NEI-style recipe/usage search, material calculator, route planner, favorites, public bug reports, and gtnh-flow diagrams/export.">
   <meta name="keywords" content="GTNH, GregTech New Horizons, NEI, recipe search, usage search, GregTech, Minecraft modpack, GTNH calculator">
   <meta name="author" content="Milky-way-Galaxy">
   <meta name="robots" content="index, follow">
 
-  <meta property="og:title" content="GTNH Atlas — GTNH Recipes, Calculator &amp; Planner">
-  <meta property="og:description" content="GTNH Atlas is a mobile-friendly GregTech: New Horizons recipe search, usage lookup, material calculator, route planner, favorites list, public bug report board, and gtnh-flow exporter with NEI-style recipe grids.">
+  <meta property="og:title" content="GTNH Atlas — Recipe Search, Calculator &amp; gtnh-flow Planner">
+  <meta property="og:description" content="GTNH Atlas: NEI-style recipe/usage search, material calculator, route planner, favorites, public bug reports, and gtnh-flow diagrams/export.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://milky-way-galaxy.github.io/gtnhnei/">
 
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="GTNH Atlas — GTNH Recipes, Calculator &amp; Planner">
-  <meta name="twitter:description" content="GTNH Atlas is a mobile-friendly GregTech: New Horizons recipe search, usage lookup, material calculator, route planner, favorites list, public bug report board, and gtnh-flow exporter with NEI-style recipe grids.">
+  <meta name="twitter:title" content="GTNH Atlas — Recipe Search, Calculator &amp; gtnh-flow Planner">
+  <meta name="twitter:description" content="GTNH Atlas: NEI-style recipe/usage search, material calculator, route planner, favorites, public bug reports, and gtnh-flow diagrams/export.">
 
   <link rel="stylesheet" href="extras.css?v=1778628271">
-  <link rel="stylesheet" href="topstrip.css?v=1779000632">
-  <link rel="stylesheet" href="calc.css?v=1779000632">
-  <link rel="stylesheet" href="flowcalc.css?v=1779000632">
+  <link rel="stylesheet" href="topstrip.css?v=1779006186">
+  <link rel="stylesheet" href="calc.css?v=1779006186">
+  <link rel="stylesheet" href="flowcalc.css?v=1779006186">
   <link rel="stylesheet" href="flowlayoutfix.css?v=1778894594">
-<link rel="stylesheet" href="gtnhflow-pyodide.css?v=1778987596">
-  <link rel="stylesheet" href="materialcalc.css?v=1779000632">
-  <link rel="stylesheet" href="mobilepolish.css?v=1778987596">
+<link rel="stylesheet" href="gtnhflow-pyodide.css?v=1779006186">
+  <link rel="stylesheet" href="materialcalc.css?v=1779006186">
+  <link rel="stylesheet" href="mobilepolish.css?v=1779006186">
   <link rel="stylesheet" href="makerchoice.css?v=1778987596">
   <link rel="stylesheet" href="gtnhflow-zoom.css?v=1778987596">
   <meta name="application-name" content="GTNH Atlas">
   <meta property="og:site_name" content="GTNH Atlas">
-  <link rel="stylesheet" href="feedback-hub.css?v=1779000632">
+  <link rel="stylesheet" href="feedback-hub.css?v=1779006186">
   <meta name="theme-color" content="#071426">
   <link rel="canonical" href="https://milky-way-galaxy.github.io/gtnhnei/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -45,20 +45,35 @@
   "name": "GTNH Atlas",
   "alternateName": [
     "GTNH Recipe Search",
-    "GTNH Planner",
     "GTNH Material Calculator",
+    "GTNH Planner",
     "GTNH NEI-style Recipe Search",
-    "GregTech New Horizons Recipe Planner",
-    "GregTech New Horizons Calculator"
+    "gtnh-flow Planner",
+    "GregTech New Horizons Recipe Planner"
   ],
   "url": "https://milky-way-galaxy.github.io/gtnhnei/",
   "applicationCategory": "GameApplication",
-  "description": "GTNH Atlas is a mobile-friendly GregTech: New Horizons tool for recipe search, usage lookup, material calculation, route planning, favorites, public bug reports, and gtnh-flow export. Includes NEI-style recipe grids."
+  "operatingSystem": "Web",
+  "description": "GTNH Atlas is a GregTech: New Horizons planning site with NEI-style recipe and usage search, material calculator, route planner, favorites, public bug and suggestion reports, and gtnh-flow diagram/export tools."
 }
   </script>
 </head>
 
 <body>
+
+  <section id="seoIntro" class="seoIntro" aria-label="GTNH Atlas overview">
+    <h1>GTNH Atlas</h1>
+    <p>GTNH Atlas is a GregTech: New Horizons planning site with NEI-style recipe and usage search, material calculator, route planner, favorites, public bug and suggestion reports, and gtnh-flow diagram/export tools.</p>
+    <ul>
+      <li>NEI-style item and fluid recipe search</li>
+      <li>Recipe and usage lookup</li>
+      <li>Material calculator for GTNH crafting chains</li>
+      <li>Route planner with machine and recipe choices</li>
+      <li>gtnh-flow diagram and export tools</li>
+      <li>Favorites and public bug/suggestion reports</li>
+    </ul>
+  </section>
+
 
 <div id="bootLoader" class="bootLoader">
   <div class="bootBox">
@@ -89,20 +104,20 @@
 
   <div id="tip"></div>
 
-  <script type="module" src="app.js?v=1779000632"></script>
+  <script type="module" src="app.js?v=1779006186"></script>
   <script src="extras.js?v=1778628271" defer></script>
-  <script src="topstrip.js?v=1779000632" defer></script>
+  <script src="topstrip.js?v=1779006186" defer></script>
   <script src="flowfix.js?v=1778894594"></script>
-  <script src="calc.js?v=1779000632" defer></script>
-  <script src="flowcalc.js?v=1779000632"></script>
+  <script src="calc.js?v=1779006186" defer></script>
+  <script src="flowcalc.js?v=1779006186"></script>
   <script src="flowlayoutfix.js?v=1778894594"></script>
   <script src="loaderguard.js?v=1778987596"></script>
-<script src="gtnhflow-pyodide.js?v=1778987596"></script>
-  <script src="materialcalc.js?v=1779000632"></script>
+<script src="gtnhflow-pyodide.js?v=1779006186"></script>
+  <script src="materialcalc.js?v=1779006186"></script>
   <script src="navsplit.js?v=1778987596"></script>
-  <script src="mobilepolish.js?v=1778987596"></script>
+  <script src="mobilepolish.js?v=1779006186"></script>
   <script src="makerchoice.js?v=1778987596"></script>
   <script src="gtnhflow-zoom.js?v=1778987596"></script>
-  <script src="feedback-hub.js?v=1779000632"></script>
+  <script src="feedback-hub.js?v=1779006186"></script>
 </body>
 </html>

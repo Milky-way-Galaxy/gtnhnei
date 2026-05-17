@@ -1550,3 +1550,63 @@ button:disabled {
     padding: 3px 7px !important;
   }
 }
+
+/* === GTNH Atlas crawlable intro copy === */
+.seoIntro {
+  max-width: 1100px;
+  margin: 12px auto;
+  padding: 14px 16px;
+  border: 1px solid rgba(88, 125, 172, 0.38);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.10), transparent 38%),
+    rgba(3, 9, 20, 0.52);
+  color: #dbeafe;
+}
+
+.seoIntro h1 {
+  margin: 0 0 6px;
+  color: #7dd3fc;
+  font-size: clamp(24px, 4vw, 42px);
+  letter-spacing: -0.04em;
+}
+
+.seoIntro p {
+  margin: 0 0 8px;
+  color: #cbd5e1;
+  line-height: 1.38;
+}
+
+.seoIntro ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seoIntro li {
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 18, 34, 0.82);
+  color: #eaf2ff;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 780px) {
+  .seoIntro {
+    margin: 8px;
+    padding: 12px;
+  }
+
+  .seoIntro ul {
+    gap: 6px;
+  }
+
+  .seoIntro li {
+    font-size: 11px;
+  }
+}

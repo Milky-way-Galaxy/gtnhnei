@@ -1,0 +1,534 @@
+/* === GTNH Workbench Feedback Hub v1 === */
+
+:root {
+  --fb-bg: #030914;
+  --fb-card: rgba(7, 18, 34, .94);
+  --fb-card2: rgba(11, 27, 49, .92);
+  --fb-line: rgba(88, 125, 172, .52);
+  --fb-line2: rgba(125, 211, 252, .42);
+  --fb-text: #eaf2ff;
+  --fb-muted: #9fb0ca;
+  --fb-cyan: #7dd3fc;
+  --fb-yellow: #fde68a;
+  --fb-red: #fecaca;
+  --fb-green: #99f6e4;
+}
+
+#gtfbOpen,
+.gtfbFab {
+  white-space: nowrap;
+}
+
+.gtfbFab {
+  position: fixed;
+  right: 14px;
+  bottom: 76px;
+  z-index: 999990;
+  border: 1px solid var(--fb-line2);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(22, 43, 73, .98), rgba(7, 16, 32, .98));
+  color: var(--fb-text);
+  padding: 11px 14px;
+  font-weight: 950;
+  box-shadow: 0 18px 42px rgba(0,0,0,.48);
+}
+
+.gtfbOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000010;
+  display: none;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(10px);
+  padding: 10px;
+  color: var(--fb-text);
+}
+
+.gtfbOverlay.show {
+  display: grid;
+  place-items: center;
+}
+
+.gtfbPanel {
+  width: min(1120px, 100%);
+  height: min(92dvh, 920px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--fb-line2);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125,211,252,.14), transparent 35%),
+    radial-gradient(circle at 100% 0%, rgba(251,113,133,.10), transparent 34%),
+    linear-gradient(180deg, rgba(8,21,38,.99), rgba(3,8,18,.99));
+  box-shadow: 0 30px 90px rgba(0,0,0,.66);
+}
+
+.gtfbHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--fb-line);
+  background: rgba(4, 9, 20, .82);
+}
+
+.gtfbHead h2 {
+  margin: 0;
+  color: var(--fb-cyan);
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1;
+  letter-spacing: -.045em;
+}
+
+.gtfbHead p {
+  margin: 8px 0 0;
+  color: var(--fb-muted);
+  line-height: 1.35;
+  max-width: 780px;
+}
+
+.gtfbClose {
+  min-width: 54px;
+  min-height: 54px;
+  border: 1px solid var(--fb-line);
+  border-radius: 17px;
+  background: linear-gradient(180deg, rgba(18,34,58,.97), rgba(7,17,34,.97));
+  color: var(--fb-text);
+  font-size: 34px;
+  font-weight: 950;
+}
+
+.gtfbTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fb-line);
+  background: rgba(4, 9, 20, .72);
+}
+
+.gtfbTabs button {
+  flex: 0 0 auto;
+  border: 1px solid var(--fb-line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(19,34,58,.94), rgba(8,18,34,.94));
+  color: #dbeafe;
+  padding: 10px 14px;
+  font-weight: 950;
+}
+
+.gtfbTabs button.active {
+  color: var(--fb-cyan);
+  border-color: var(--fb-line2);
+  background:
+    radial-gradient(circle at 0 0, rgba(125,211,252,.22), transparent 55%),
+    linear-gradient(180deg, rgba(22,45,76,.98), rgba(8,18,34,.98));
+}
+
+.gtfbBody {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.gtfbView {
+  display: none;
+}
+
+.gtfbView.active {
+  display: grid;
+  gap: 14px;
+}
+
+.gtfbCard {
+  border: 1px solid var(--fb-line);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125,211,252,.07), transparent 38%),
+    rgba(3,9,20,.56);
+  padding: 14px;
+}
+
+.gtfbCard h3 {
+  margin: 0 0 10px;
+  color: var(--fb-cyan);
+  font-size: 24px;
+  letter-spacing: -.025em;
+}
+
+.gtfbGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gtfbField {
+  display: grid;
+  gap: 6px;
+}
+
+.gtfbField.full {
+  grid-column: 1 / -1;
+}
+
+.gtfbField label {
+  color: #cbd5e1;
+  font-weight: 950;
+}
+
+.gtfbField input,
+.gtfbField select,
+.gtfbField textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(88,125,172,.75);
+  border-radius: 14px;
+  background: rgba(2,8,18,.88);
+  color: var(--fb-text);
+  padding: 11px 12px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.gtfbField textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.gtfbActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.gtfbActions button,
+.gtfbActions a {
+  border: 1px solid rgba(88,125,172,.75);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(19,34,58,.96), rgba(8,18,34,.96));
+  color: var(--fb-text);
+  padding: 11px 13px;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.gtfbActions .primary {
+  border-color: var(--fb-line2);
+  color: var(--fb-cyan);
+}
+
+.gtfbPreview {
+  max-height: 280px;
+  overflow: auto;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(88,125,172,.48);
+  border-radius: 16px;
+  background: rgba(2,8,18,.78);
+  color: #dbeafe;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.gtfbToolbar {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) auto auto auto auto;
+  gap: 9px;
+  align-items: center;
+}
+
+.gtfbToolbar input,
+.gtfbToolbar select,
+.gtfbToolbar button {
+  min-height: 42px;
+  border: 1px solid rgba(88,125,172,.75);
+  border-radius: 14px;
+  background: rgba(2,8,18,.86);
+  color: var(--fb-text);
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 900;
+}
+
+.gtfbToolbar button {
+  border-color: var(--fb-line2);
+  background: linear-gradient(180deg, rgba(19,34,58,.96), rgba(8,18,34,.96));
+}
+
+.gtfbMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--fb-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.gtfbMeta b {
+  color: var(--fb-cyan);
+}
+
+.gtfbReports {
+  display: grid;
+  gap: 10px;
+}
+
+.gtfbReport {
+  border: 1px solid rgba(88,125,172,.58);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0 0, rgba(125,211,252,.08), transparent 36%),
+    rgba(3,9,20,.62);
+  padding: 12px;
+}
+
+.gtfbReport.bug {
+  border-left: 4px solid rgba(248,113,113,.80);
+}
+
+.gtfbReport.suggestion {
+  border-left: 4px solid rgba(96,165,250,.80);
+}
+
+.gtfbReport.closed {
+  opacity: .82;
+}
+
+.gtfbReportTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.gtfbReport h4 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.18;
+}
+
+.gtfbReport h4 a {
+  color: var(--fb-text);
+  text-decoration: none;
+}
+
+.gtfbReport h4 a:hover {
+  color: var(--fb-cyan);
+  text-decoration: underline;
+}
+
+.gtfbNum {
+  color: #64748b;
+}
+
+.gtfbReportBody {
+  margin-top: 8px;
+  color: #cbd5e1;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+}
+
+.gtfbVotes {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.gtfbVoteBadge {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-width: 74px;
+  border: 1px solid rgba(250,204,21,.42);
+  border-radius: 999px;
+  background: rgba(120,70,0,.16);
+  color: var(--fb-yellow);
+  padding: 6px 9px;
+  font-weight: 950;
+}
+
+.gtfbVoteLink {
+  border: 1px solid var(--fb-line2);
+  border-radius: 999px;
+  background: rgba(8,18,34,.95);
+  color: var(--fb-cyan);
+  padding: 7px 10px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.gtfbLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.gtfbLabel {
+  border: 1px solid rgba(88,125,172,.55);
+  border-radius: 999px;
+  background: rgba(15,23,42,.72);
+  color: #cbd5e1;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.gtfbLabel.bug {
+  color: var(--fb-red);
+  border-color: rgba(248,113,113,.45);
+  background: rgba(127,29,29,.18);
+}
+
+.gtfbLabel.enhancement,
+.gtfbLabel.suggestion {
+  color: #bfdbfe;
+  border-color: rgba(96,165,250,.45);
+  background: rgba(30,64,175,.18);
+}
+
+.gtfbLabel.fixed,
+.gtfbLabel.done,
+.gtfbLabel.closed {
+  color: var(--fb-green);
+  border-color: rgba(94,234,212,.45);
+  background: rgba(13,148,136,.15);
+}
+
+.gtfbLabel.changed {
+  color: var(--fb-yellow);
+  border-color: rgba(250,204,21,.45);
+  background: rgba(120,70,0,.18);
+}
+
+.gtfbFoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  justify-content: space-between;
+  margin-top: 10px;
+  color: var(--fb-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.gtfbFoot a {
+  color: var(--fb-cyan);
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.gtfbNotice,
+.gtfbEmpty,
+.gtfbError,
+.gtfbLoading {
+  border: 1px solid rgba(88,125,172,.55);
+  border-radius: 18px;
+  background: rgba(3,9,20,.55);
+  padding: 14px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.gtfbError {
+  color: var(--fb-red);
+  border-color: rgba(248,113,113,.45);
+}
+
+.gtfbToast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1000012;
+  display: none;
+  transform: translateX(-50%);
+  border: 1px solid var(--fb-line2);
+  border-radius: 999px;
+  background: rgba(3,9,20,.94);
+  color: var(--fb-text);
+  padding: 9px 13px;
+  font-weight: 950;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+
+.gtfbToast.show {
+  display: block;
+}
+
+@media (max-width: 780px) {
+  .gtfbOverlay {
+    padding: 0;
+  }
+
+  .gtfbPanel {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .gtfbHead {
+    padding: 12px;
+  }
+
+  .gtfbHead h2 {
+    font-size: 30px;
+  }
+
+  .gtfbHead p {
+    font-size: 13px;
+    max-width: 292px;
+  }
+
+  .gtfbClose {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 30px;
+  }
+
+  .gtfbTabs {
+    padding: 8px;
+  }
+
+  .gtfbBody {
+    padding: 9px;
+  }
+
+  .gtfbGrid,
+  .gtfbToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .gtfbReportTop {
+    grid-template-columns: 1fr;
+  }
+
+  .gtfbVotes {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .gtfbActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gtfbActions button,
+  .gtfbActions a {
+    width: 100%;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}

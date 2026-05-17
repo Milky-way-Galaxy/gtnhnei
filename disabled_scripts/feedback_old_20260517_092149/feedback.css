@@ -1,0 +1,541 @@
+/* === GTNH Workbench Feedback / Reports / Status === */
+
+.gtnhFeedbackButton {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.gtnhFeedbackFab {
+  position: fixed;
+  right: 14px;
+  bottom: 78px;
+  z-index: 999990;
+
+  display: none;
+
+  border: 1px solid rgba(125, 211, 252, 0.38);
+  border-radius: 999px;
+
+  background:
+    radial-gradient(circle at 20% 0%, rgba(125, 211, 252, 0.22), transparent 45%),
+    linear-gradient(180deg, rgba(20, 38, 65, 0.98), rgba(7, 16, 32, 0.98));
+
+  color: #eaf2ff;
+
+  padding: 11px 14px;
+  font-weight: 950;
+
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.gtnhFeedbackOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000010;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 10px;
+
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.gtnhFeedbackOverlay.show {
+  display: flex;
+}
+
+.gtnhFeedbackPanel {
+  width: min(1080px, 100%);
+  height: min(92dvh, 900px);
+
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+
+  overflow: hidden;
+
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 24px;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.13), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(251, 113, 133, 0.11), transparent 34%),
+    linear-gradient(180deg, rgba(8, 21, 38, 0.98), rgba(3, 8, 18, 0.98));
+
+  color: #eaf2ff;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+}
+
+.gtnhFeedbackHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+
+  padding: 16px;
+
+  border-bottom: 1px solid rgba(75, 106, 145, 0.65);
+  background: rgba(5, 10, 22, 0.86);
+}
+
+.gtnhFeedbackHeader h2 {
+  margin: 0;
+  color: #7dd3fc;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.gtnhFeedbackHeader p {
+  margin: 8px 0 0;
+  color: #aebbd2;
+  font-size: 15px;
+  line-height: 1.35;
+  max-width: 740px;
+}
+
+.gtnhFeedbackClose {
+  min-width: 54px;
+  min-height: 54px;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 17px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  font-size: 34px;
+  font-weight: 950;
+}
+
+.gtnhFeedbackTabs {
+  display: flex;
+  gap: 8px;
+
+  padding: 10px 14px;
+
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(75, 106, 145, 0.65);
+  background: rgba(4, 9, 20, 0.72);
+}
+
+.gtnhFeedbackTabs button {
+  flex: 0 0 auto;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 14px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.92), rgba(8, 18, 34, 0.92));
+  color: #dbeafe;
+
+  padding: 10px 14px;
+  font-weight: 950;
+}
+
+.gtnhFeedbackTabs button.active {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.65);
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.22), transparent 55%),
+    linear-gradient(180deg, rgba(20, 42, 72, 0.98), rgba(8, 18, 34, 0.98));
+}
+
+.gtnhFeedbackBody {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.gtnhFeedbackView {
+  display: none;
+}
+
+.gtnhFeedbackView.active {
+  display: grid;
+  gap: 14px;
+}
+
+.gtnhFeedbackCard {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 20px;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(125, 211, 252, 0.06), transparent 38%),
+    rgba(3, 9, 20, 0.55);
+
+  padding: 14px;
+}
+
+.gtnhFeedbackCard h3 {
+  margin: 0 0 10px;
+  color: #7dd3fc;
+  font-size: 24px;
+  letter-spacing: -0.025em;
+}
+
+.gtnhFeedbackGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gtnhFeedbackField {
+  display: grid;
+  gap: 6px;
+}
+
+.gtnhFeedbackField.full {
+  grid-column: 1 / -1;
+}
+
+.gtnhFeedbackField label {
+  color: #cbd5e1;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.gtnhFeedbackField input,
+.gtnhFeedbackField select,
+.gtnhFeedbackField textarea {
+  width: 100%;
+  min-width: 0;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 14px;
+
+  background: rgba(2, 8, 18, 0.86);
+  color: #eaf2ff;
+
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.gtnhFeedbackField textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.gtnhFeedbackField small {
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.gtnhFeedbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+
+  margin-top: 12px;
+}
+
+.gtnhFeedbackActions button,
+.gtnhFeedbackActions a {
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 14px;
+
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.96), rgba(8, 18, 34, 0.96));
+  color: #eaf2ff;
+
+  padding: 11px 13px;
+
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.gtnhFeedbackActions .primary {
+  border-color: rgba(125, 211, 252, 0.68);
+  color: #7dd3fc;
+}
+
+.gtnhFeedbackPreview {
+  max-height: 320px;
+  overflow: auto;
+
+  margin-top: 12px;
+  padding: 12px;
+
+  border: 1px solid rgba(75, 106, 145, 0.48);
+  border-radius: 16px;
+
+  background: rgba(2, 8, 18, 0.78);
+  color: #dbeafe;
+
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.gtnhFeedbackStatusTop {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+
+  padding: 12px;
+
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 18px;
+
+  background: rgba(3, 9, 20, 0.55);
+}
+
+.gtnhFeedbackStatusTop h3 {
+  margin: 0;
+  color: #7dd3fc;
+}
+
+.gtnhFeedbackStatusTop p {
+  margin: 4px 0 0;
+  color: #aebbd2;
+}
+
+.gtnhFeedbackStatusList {
+  display: grid;
+  gap: 10px;
+}
+
+.gtnhFeedbackStatusItem {
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 18px;
+
+  background: rgba(3, 9, 20, 0.55);
+
+  padding: 12px;
+}
+
+.gtnhFeedbackStatusItemHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gtnhFeedbackStatusItem h4 {
+  margin: 0;
+  color: #eaf2ff;
+  font-size: 17px;
+}
+
+.gtnhFeedbackStatusItem p {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.gtnhFeedbackStatusItem .resolution {
+  color: #94a3b8;
+}
+
+.gtnhFeedbackStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  border: 1px solid rgba(75, 106, 145, 0.55);
+  border-radius: 999px;
+
+  padding: 5px 9px;
+
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.gtnhFeedbackStatusBadge.done,
+.gtnhFeedbackStatusBadge.fixed {
+  color: #99f6e4;
+  border-color: rgba(94, 234, 212, 0.55);
+  background: rgba(13, 148, 136, 0.15);
+}
+
+.gtnhFeedbackStatusBadge.changed {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(30, 64, 175, 0.18);
+}
+
+.gtnhFeedbackStatusBadge.planned,
+.gtnhFeedbackStatusBadge.investigating {
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.45);
+  background: rgba(120, 70, 0, 0.18);
+}
+
+.gtnhFeedbackStatusBadge.rejected,
+.gtnhFeedbackStatusBadge.notdoing {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.50);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.gtnhFeedbackNotice {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1000011;
+
+  display: none;
+  transform: translateX(-50%);
+
+  width: min(620px, calc(100vw - 24px));
+
+  border: 1px solid rgba(125, 211, 252, 0.40);
+  border-radius: 18px;
+
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.18), transparent 45%),
+    linear-gradient(180deg, rgba(15, 30, 52, 0.98), rgba(5, 13, 28, 0.98));
+
+  color: #eaf2ff;
+
+  padding: 12px;
+
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.gtnhFeedbackNotice.show {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gtnhFeedbackNotice b {
+  color: #7dd3fc;
+}
+
+.gtnhFeedbackNotice span {
+  color: #cbd5e1;
+}
+
+.gtnhFeedbackNotice button {
+  flex: 0 0 auto;
+
+  border: 1px solid rgba(75, 106, 145, 0.75);
+  border-radius: 12px;
+
+  background: rgba(8, 18, 34, 0.95);
+  color: #eaf2ff;
+
+  padding: 8px 10px;
+  font-weight: 950;
+}
+
+.gtnhFeedbackToast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1000012;
+
+  display: none;
+  transform: translateX(-50%);
+
+  max-width: calc(100vw - 22px);
+
+  border: 1px solid rgba(125, 211, 252, 0.40);
+  border-radius: 999px;
+
+  background: rgba(3, 9, 20, 0.92);
+  color: #eaf2ff;
+
+  padding: 9px 13px;
+
+  font-weight: 900;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+.gtnhFeedbackToast.show {
+  display: block;
+}
+
+@media (max-width: 780px) {
+  .gtnhFeedbackOverlay {
+    padding: 0;
+  }
+
+  .gtnhFeedbackPanel {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .gtnhFeedbackHeader {
+    padding: 12px;
+  }
+
+  .gtnhFeedbackHeader h2 {
+    font-size: 30px;
+  }
+
+  .gtnhFeedbackHeader p {
+    font-size: 13px;
+    max-width: 285px;
+  }
+
+  .gtnhFeedbackClose {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 30px;
+  }
+
+  .gtnhFeedbackTabs {
+    padding: 8px;
+  }
+
+  .gtnhFeedbackTabs button {
+    padding: 9px 12px;
+  }
+
+  .gtnhFeedbackBody {
+    padding: 9px;
+  }
+
+  .gtnhFeedbackGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .gtnhFeedbackCard {
+    padding: 12px;
+    border-radius: 17px;
+  }
+
+  .gtnhFeedbackCard h3 {
+    font-size: 22px;
+  }
+
+  .gtnhFeedbackActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gtnhFeedbackActions button,
+  .gtnhFeedbackActions a {
+    width: 100%;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .gtnhFeedbackPreview {
+    font-size: 12px;
+  }
+
+  .gtnhFeedbackNotice.show {
+    align-items: flex-start;
+  }
+
+  .gtnhFeedbackFab {
+    display: block;
+  }
+}

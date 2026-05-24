@@ -36,40 +36,287 @@ let activeMachine = "All";
 let currentRecipes = [];
 let currentRecipeGroups = new Map();
 
-const MAX_GRID_TOTAL = 420;
-const GRID_PAGE_SIZE = 160;
-const RECIPE_PAGE_SIZE = 8;
+const GRID_LIMIT_MIN = 420;
+const GRID_LIMIT_MAX = 10000;
+const GRID_LIMIT_STEP = 420;
+const GRID_LIMIT_KEY = "gtnh_atlas_item_grid_limit_v3";
+const GRID_LIMIT_MODE_KEY = "gtnh_atlas_item_grid_mode_v3";
 
-const machineIconCache = new Map();
-
-let oreAnimTick = 0;
-const animatedOreIcons = new Set();
-
-function registerOreIcon(el, obj) {
-  if (!(obj instanceof OreDict)) return;
-  animatedOreIcons.add({ el, obj });
+function clampGridLimit(n) {
+  n = Number(n);
+  if (!Number.isFinite(n)) n = GRID_LIMIT_MIN;
+  return Math.max(GRID_LIMIT_MIN, Math.min(GRID_LIMIT_MAX, Math.floor(n)));
 }
 
-setInterval(() => {
-  if (animatedOreIcons.size === 0) return;
+function autoGridLimit() {
+  const vv = window.visualViewport;
+  const w = vv?.width || window.innerWidth || 390;
+  const h = vv?.height || window.innerHeight || 800;
 
-  oreAnimTick++;
+  const cell = w >= 1200 ? 58 : w >= 800 ? 66 : 82;
+  const cols = Math.max(4, Math.floor(w / cell));
+  const rows = Math.max(6, Math.ceil(h / cell));
 
-  for (const entry of Array.from(animatedOreIcons)) {
-    if (!entry.el.isConnected) {
-      animatedOreIcons.delete(entry);
-      continue;
-    }
+  const screens = w >= 1200 ? 12 : w >= 800 ? 8 : 5;
+  const raw = cols * rows * screens;
+  const rounded = Math.ceil(raw / GRID_LIMIT_STEP) * GRID_LIMIT_STEP;
 
-    const items = entry.obj.items;
-    if (!items || items.length === 0) continue;
+  return clampGridLimit(rounded);
+}
 
-    const shown = items[oreAnimTick % items.length];
-    if (shown?.iconId !== undefined) {
-      setIcon(entry.el, shown.iconId);
-    }
+function getGridLimitMode() {
+  return localStorage.getItem(GRID_LIMIT_MODE_KEY) || "auto";
+}
+
+function getMaxGridTotal() {
+  const saved = clampGridLimit(localStorage.getItem(GRID_LIMIT_KEY) || GRID_LIMIT_MIN);
+
+  if (getGridLimitMode() === "auto") {
+    return clampGridLimit(Math.max(saved, autoGridLimit()));
   }
-}, 550);
+
+  return saved;
+}
+
+function setMaxGridTotal(n, mode = "manual") {
+  const limit = clampGridLimit(n);
+  localStorage.setItem(GRID_LIMIT_KEY, String(limit));
+  localStorage.setItem(GRID_LIMIT_MODE_KEY, mode);
+  return limit;
+}
+
+function findMainSearchInput() {
+  return (
+    document.querySelector('input[type="search"]') ||
+    document.querySelector('input[placeholder*="Search" i]') ||
+    document.querySelector('input[placeholder*="item" i]') ||
+    document.querySelector('input[placeholder*="fluid" i]')
+  );
+}
+
+function triggerSearchRefresh(oldStatusText = "") {
+  const input = findMainSearchInput();
+
+  if (input) {
+    const v = input.value;
+
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
+
+    input.value = v + " ";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    input.value = v;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  window.dispatchEvent(new Event("resize"));
+
+  // Fallback: if the local renderer did not rerun, reload once.
+  setTimeout(() => {
+    const status = document.querySelector("[data-atlas-grid-status='1']");
+    if (status && oldStatusText && status.textContent === oldStatusText) {
+      location.reload();
+    }
+  }, 220);
+}
+
+function mountGridLimitControls(status, total) {
+  if (!status || !status.parentNode) return;
+
+  status.dataset.atlasGridStatus = "1";
+
+  let panel = document.getElementById("atlasGridLimitPanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "atlasGridLimitPanel";
+    panel.className = "atlasGridLimitPanel";
+    status.insertAdjacentElement("afterend", panel);
+  }
+
+  const limit = getMaxGridTotal();
+  const mode = getGridLimitMode();
+
+  panel.innerHTML = `
+    <div class="atlasGridLimitText">
+      <b>Item grid</b>
+      <span>auto-loads while scrolling · loaded up to ${limit} of ${total || "?"}</span>
+    </div>
+    <div class="atlasGridLimitBtns">
+      <button type="button" data-grid-limit="more">Load now</button>
+      <button type="button" data-grid-limit="1000">1000</button>
+      <button type="button" data-grid-limit="2500">2500</button>
+      <button type="button" data-grid-limit="5000">5000</button>
+      <button type="button" data-grid-limit="auto">${mode === "auto" ? "Auto ✓" : "Auto"}</button>
+    </div>
+  `;
+
+  panel.onclick = (ev) => {
+    const btn = ev.target.closest("[data-grid-limit]");
+    if (!btn) return;
+
+    const action = btn.dataset.gridLimit;
+    const before = status.textContent;
+
+    if (action === "more") {
+      atlasAutoGrowGridLimit("button");
+      return;
+    } else if (action === "auto") {
+      setMaxGridTotal(autoGridLimit(), "auto");
+    } else {
+      setMaxGridTotal(Number(action), "manual");
+    }
+
+    triggerSearchRefresh(before);
+  };
+}
+
+let atlasGridAutoGrowBusy = false;
+let atlasGridAutoGrowLast = 0;
+
+function atlasFindScrollParent(el) {
+  let n = el;
+  while (n && n !== document.body && n !== document.documentElement) {
+    const st = getComputedStyle(n);
+    const oy = st.overflowY;
+    if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight + 80) {
+      return n;
+    }
+    n = n.parentElement;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function atlasNearBottom(scroller, px = 900) {
+  if (!scroller) return false;
+
+  if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    const h = window.innerHeight || document.documentElement.clientHeight || 0;
+    const full = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+    return y + h >= full - px;
+  }
+
+  return scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - px;
+}
+
+function atlasAutoGrowGridLimit(reason = "scroll") {
+  if (atlasGridAutoGrowBusy) return false;
+
+  const now = Date.now();
+  if (now - atlasGridAutoGrowLast < 260) return false;
+  atlasGridAutoGrowLast = now;
+
+  const oldLimit = getMaxGridTotal();
+  if (oldLimit >= GRID_LIMIT_MAX) return false;
+
+  const next = clampGridLimit(oldLimit + GRID_LIMIT_STEP);
+  if (next <= oldLimit) return false;
+
+  atlasGridAutoGrowBusy = true;
+  setMaxGridTotal(next, "manual");
+
+  const status = document.querySelector("[data-atlas-grid-status='1']");
+  if (status) status.textContent = `Loading more items... ${oldLimit} → ${next}`;
+
+  try {
+    if (typeof allGoods !== "undefined" && Array.isArray(allGoods)) {
+      currentSearchList = allGoods.slice(0, next);
+    }
+
+    const grid =
+      document.querySelector("#itemGrid") ||
+      document.querySelector(".itemGrid") ||
+      document.querySelector(".goodsGrid") ||
+      document.querySelector(".grid");
+
+    /*
+      Important:
+      Do NOT reset renderedGridCount to 0 here.
+      Existing lazy renderer should continue from previous count.
+      If previous broken state rendered nothing, force a restart.
+    */
+    if (typeof renderedGridCount !== "undefined") {
+      if (renderedGridCount > currentSearchList.length) renderedGridCount = 0;
+      if (renderedGridCount === 0 && grid && grid.children.length > 0) renderedGridCount = grid.children.length;
+    }
+
+    if (typeof renderMoreGrid === "function") {
+      renderMoreGrid();
+      renderMoreGrid();
+      renderMoreGrid();
+    } else if (typeof renderGridMore === "function") {
+      renderGridMore();
+      renderGridMore();
+      renderGridMore();
+    } else if (typeof renderGrid === "function") {
+      renderGrid();
+    } else {
+      triggerSearchRefresh("");
+    }
+
+    const st = document.querySelector("[data-atlas-grid-status='1']");
+    if (st && typeof allGoods !== "undefined") {
+      st.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
+      mountGridLimitControls(st, allGoods.length);
+    }
+  } catch (err) {
+    console.warn("[GTNH Atlas] auto grid grow failed:", err);
+    triggerSearchRefresh("");
+  }
+
+  setTimeout(() => {
+    atlasGridAutoGrowBusy = false;
+
+    /*
+      If user is still at the bottom after rendering, keep feeding more.
+      This is what makes zoomed-out / tall screens fill properly.
+    */
+    const status = document.querySelector("[data-atlas-grid-status='1']");
+    const scroller = atlasFindScrollParent(status || document.body);
+    if (atlasNearBottom(scroller, 900)) {
+      atlasAutoGrowGridLimit("followup");
+    }
+  }, 180);
+
+  return true;
+}
+
+function atlasInstallGridAutoScroll(status) {
+  if (!status || status.dataset.atlasAutoScrollInstalled === "1") return;
+  status.dataset.atlasAutoScrollInstalled = "1";
+
+  const scroller = atlasFindScrollParent(status);
+
+  const onScroll = () => {
+    if (atlasNearBottom(scroller, 900)) {
+      atlasAutoGrowGridLimit("scroll");
+    }
+  };
+
+  if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+    window.addEventListener("scroll", onScroll, { passive: true });
+  } else {
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
+
+  window.addEventListener("resize", () => {
+    if (atlasNearBottom(scroller, 1200)) atlasAutoGrowGridLimit("resize");
+  }, { passive: true });
+
+  /*
+    Fill empty/tall screen:
+    if there is still blank space after initial render, auto-grow until there is content below.
+  */
+  setTimeout(onScroll, 120);
+  setTimeout(onScroll, 420);
+  setTimeout(onScroll, 900);
+}
+
+
 
 let currentSearchList = [];
 let renderedGridCount = 0;
@@ -281,8 +528,10 @@ function renderSearchGrid(push = true) {
   const q = search.value.trim();
 
   if (!q) {
-    currentSearchList = allGoods.slice(0, MAX_GRID_TOTAL);
+    currentSearchList = allGoods.slice(0, getMaxGridTotal());
     status.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
+    mountGridLimitControls(status, allGoods.length);
+    atlasInstallGridAutoScroll(status);
   } else {
     const query = new SearchQuery(q);
     currentSearchList = [];
@@ -290,11 +539,13 @@ function renderSearchGrid(push = true) {
     for (const obj of allGoods) {
       if (repo.IsObjectMatchingSearch(obj, query)) {
         currentSearchList.push(obj);
-        if (currentSearchList.length >= MAX_GRID_TOTAL) break;
+        if (currentSearchList.length >= getMaxGridTotal()) break;
       }
     }
 
-    status.textContent = `${currentSearchList.length} result(s), capped at ${MAX_GRID_TOTAL}`;
+    status.textContent = `${currentSearchList.length} result(s), loaded limit ${getMaxGridTotal()}`;
+      mountGridLimitControls(status, allGoods.length);
+    atlasInstallGridAutoScroll(status);
   }
 
   grid.innerHTML = "";

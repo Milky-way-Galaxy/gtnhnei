@@ -1,0 +1,321 @@
+/* === GTNH Atlas item grid load-more controller v1 === */
+(() => {
+  "use strict";
+
+  if (window.__GTNH_ATLAS_ITEM_LOAD_MORE_V1__) return;
+  window.__GTNH_ATLAS_ITEM_LOAD_MORE_V1__ = true;
+
+  const KEY_LIMIT = "gtnh_atlas_item_grid_limit_v1";
+  const KEY_MODE = "gtnh_atlas_item_grid_mode_v1";
+
+  const DEFAULT_MIN = 420;
+  const STEP = 420;
+  const HARD_SAFE_MAX = 5000;
+
+  function qs(sel, root = document) {
+    return root.querySelector(sel);
+  }
+
+  function qsa(sel, root = document) {
+    return [...root.querySelectorAll(sel)];
+  }
+
+  function clamp(n, a, b) {
+    n = Number(n);
+    if (!Number.isFinite(n)) n = a;
+    return Math.max(a, Math.min(b, Math.floor(n)));
+  }
+
+  function getSavedLimit() {
+    return clamp(localStorage.getItem(KEY_LIMIT) || DEFAULT_MIN, DEFAULT_MIN, HARD_SAFE_MAX);
+  }
+
+  function setSavedLimit(n) {
+    n = clamp(n, DEFAULT_MIN, HARD_SAFE_MAX);
+    localStorage.setItem(KEY_LIMIT, String(n));
+    window.GTNH_ATLAS_GRID_LIMIT = n;
+    return n;
+  }
+
+  function getMode() {
+    return localStorage.getItem(KEY_MODE) || "auto";
+  }
+
+  function setMode(mode) {
+    localStorage.setItem(KEY_MODE, mode);
+  }
+
+  function autoLimit() {
+    const vv = window.visualViewport;
+    const w = vv?.width || window.innerWidth || 390;
+    const h = vv?.height ||;
+    const w = vv?.width || window.innerWidth || 390;
+    const h = vv?. window.innerHeight || 800;
+
+    /*
+      Approx item button size:
+      mobile ~80-92 px, desktop ~58-76 px.
+      If browser zooms out, CSS viewport usually becomes bigger,
+      so this naturally allows more items.
+    */
+    const cell = w >= 1100 ? 62 : w >= 760 ? 68 : 82;
+    const cols = Math.max(4, Math.floor(w / cell));
+    const rows = Math.max(7, Math.ceil(h / cell));
+
+    /*
+      Render multiple screens, not just one viewport.
+      This keeps scrolling useful without instantly dumping 42k DOM nodes.
+    */
+    const screens = w >= 1100 ? 10 : w >= 760 ? 7 : 5;
+    const raw = cols * rows * screens;
+
+    const rounded = Math.ceil(raw / STEP) * STEP;
+    return clamp(rounded, DEFAULT_MIN, HARD_SAFE_MAX);
+  }
+
+  function getEffectiveLimit() {
+    const mode = getMode();
+    const saved = getSavedLimit();
+
+    if (mode === "manual") return saved;
+
+    return clamp(Math.max(saved, autoLimit()), DEFAULT_MIN, HARD_SAFE_MAX);
+  }
+
+  window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+  window.getAtlasGridLimit = function getAtlasGridLimit() {
+    window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+    return window.GTNH_ATLAS_GRID_LIMIT;
+  };
+
+  function toast(msg) {
+    let el = qs("#atlasLoadToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "atlasLoadToast";
+      el.className = "atlasLoadToast";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("show"), 1400);
+  }
+
+  function findSearchInput() {
+    return (
+      qs('input[type="search"]') ||
+      qs('input[placeholder*="Search" i]') ||
+      qs('input[placeholder*="item" i]') ||
+      qs('input[placeholder*="fluid" i]')
+    );
+  }
+
+  function forceRefresh() {
+    window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+
+    const input = findSearchInput();
+
+    if (input) {
+      const oldValue = input.value;
+
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
+
+      // Force stubborn search renderers to rerun even if value did not change.
+      input.value = oldValue + " ";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.value = oldValue;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    window.dispatchEvent(new Event("resize"));
+
+    document.dispatchEvent(new CustomEvent("gtnh-atlas-grid-limit-changed", {
+      detail: { limit: window.GTNH_ATLAS_GRID_LIMIT }
+    }));
+
+    // Known app hooks, if present.
+    for (const name of [
+      "renderSearch",
+      "renderItems",
+      "renderItemGrid",
+      "updateSearch",
+      "doSearch",
+      "refreshSearch",
+      "searchGoods"
+    ]) {
+      try {
+        if (typeof window[name] === "function") window[name]();
+      } catch {}
+    }
+
+    setTimeout(() => {
+      if (input) input.dispatchEvent(new Event("input", { bubbles: true }));
+      window.dispatchEvent(new Event("resize"));
+    }, 80);
+  }
+
+  function parseShowingText() {
+    const nodes = qsa("body *").filter(el => {
+      const t = (el.textContent || "").trim();
+      return /^Showing\s+\d+\s+of\s+\d+\s+items\/fluids/i.test(t);
+    });
+
+    const el = nodes[0];
+    if (!el) return null;
+
+    const text = (el.textContent || "").trim();
+    const m = text.match(/Showing\s+(\d+)\s+of\s+(\d+)\s+items\/fluids/i);
+    if (!m) return null;
+
+    return {
+      el,
+      shown: Number(m[1]),
+      total: Number(m[2]),
+      text
+    };
+  }
+
+  function ensurePanel() {
+    let panel = qs("#atlasLoadMorePanel");
+    const info = parseShowingText();
+
+    if (!info) {
+      if (panel) panel.remove();
+      return;
+    }
+
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "atlasLoadMorePanel";
+      panel.className = "atlasLoadMorePanel";
+      panel.innerHTML = `
+        <div class="atlasLoadMoreMain">
+          <div>
+            <b id="atlasLoadMoreTitle">Item render limit</b>
+            <span id="atlasLoadMoreInfo"></span>
+          </div>
+          <div class="atlasLoadMoreActions">
+            <button type="button" data-atlas-load="more">Load more</button>
+            <button type="button" data-atlas-load="1000">1000</button>
+            <button type="button" data-atlas-load="2500">2500</button>
+            <button type="button" data-atlas-load="5000">5000</button>
+            <button type="button" data-atlas-load="auto">Auto</button>
+          </div>
+        </div>
+      `;
+
+      panel.addEventListener("click", e => {
+        const btn = e.target.closest("[data-atlas-load]");
+        if (!btn) return;
+
+        const act = btn.dataset.atlasLoad;
+
+        if (act === "more") {
+          setMode("manual");
+          const next = setSavedLimit(getSavedLimit() + STEP);
+          toast(`Showing up to ${next} items`);
+          forceRefresh();
+          return;
+        }
+
+        if (act === "auto") {
+          setMode("auto");
+          const next = setSavedLimit(autoLimit());
+          toast(`Auto limit: ${next}`);
+          forceRefresh();
+          return;
+        }
+
+        const n = Number(act);
+        if (Number.isFinite(n)) {
+          setMode("manual");
+          const next = setSavedLimit(n);
+          toast(`Showing up to ${next} items`);
+          forceRefresh();
+        }
+      });
+    }
+
+    const host =
+      info.el.parentElement ||
+      qs(".neiPanel") ||
+      qs("main") ||
+      document.body;
+
+    if (panel.parentElement !== host) {
+      info.el.insertAdjacentElement("afterend", panel);
+    }
+
+    const limit = getEffectiveLimit();
+    const infoEl = qs("#atlasLoadMoreInfo", panel);
+    if (infoEl) {
+      infoEl.textContent = `Showing ${info.shown}/${info.total}. Limit ${limit}.`;
+    }
+
+    panel.classList.toggle("isFullEnough", info.shown >= Math.min(info.total, HARD_SAFE_MAX));
+  }
+
+  function patchStatusText() {
+    const info = parseShowingText();
+    if (!info) return;
+
+    const limit = getEffectiveLimit();
+
+    // Add a small hint after the existing status line without replacing original text.
+    if (!info.el.dataset.atlasLoadMoreHinted) {
+      info.el.dataset.atlasLoadMoreHinted = "1";
+    }
+
+    info.el.title = `Render limit: ${limit}. Use Load more to show more items.`;
+  }
+
+  function tick() {
+    window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+    ensurePanel();
+    patchStatusText();
+  }
+
+  const mo = new MutationObserver(() => {
+    clearTimeout(window.__atlasLoadMoreTimer);
+    window.__atlasLoadMoreTimer = setTimeout(tick, 80);
+  });
+
+  function start() {
+    window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+
+    mo.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    tick();
+
+    window.addEventListener("resize", () => {
+      if (getMode() === "auto") {
+        window.GTNH_ATLAS_GRID_LIMIT = getEffectiveLimit();
+        clearTimeout(window.__atlasLoadMoreResizeTimer);
+        window.__atlasLoadMoreResizeTimer = setTimeout(forceRefresh, 180);
+      }
+    });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        if (getMode() === "auto") {
+          clearTimeout(window.__atlasLoadMoreZoomTimer);
+          window.__atlasLoadMoreZoomTimer = setTimeout(forceRefresh, 220);
+        }
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();

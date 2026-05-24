@@ -1610,3 +1610,193 @@ button:disabled {
     font-size: 11px;
   }
 }
+
+/* === GTNH Atlas closeable SEO intro fix === */
+#seoIntro.seoIntro {
+  position: relative;
+  margin: 10px auto 8px;
+  padding: 14px 48px 14px 16px;
+  max-width: min(1120px, calc(100vw - 20px));
+}
+
+.seoIntroClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(88, 125, 172, 0.65);
+  border-radius: 12px;
+  background: rgba(8, 18, 34, 0.94);
+  color: #eaf2ff;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.seoIntroClose:active {
+  transform: translateY(1px);
+}
+
+#seoIntro.seoIntroHidden {
+  display: none !important;
+}
+
+.seoIntroShow {
+  flex: 0 0 auto;
+  border: 1px solid rgba(88, 125, 172, 0.65);
+  border-radius: 14px;
+  background: rgba(8, 18, 34, 0.92);
+  color: #7dd3fc;
+  padding: 10px 13px;
+  font: inherit;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  #seoIntro.seoIntro {
+    margin: 8px;
+    padding: 12px 44px 12px 12px;
+  }
+
+  #seoIntro.seoIntro h1 {
+    font-size: 28px;
+  }
+
+  #seoIntro.seoIntro p {
+    font-size: 15px;
+  }
+
+  #seoIntro.seoIntro ul {
+    gap: 6px;
+  }
+
+  #seoIntro.seoIntro li {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .seoIntroClose {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+
+
+/* === GTNH Atlas item grid limit controls === */
+.atlasGridLimitPanel {
+  margin: 8px;
+  padding: 9px;
+  border: 1px solid rgba(88, 125, 172, 0.55);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0 0, rgba(125, 211, 252, 0.08), transparent 42%),
+    rgba(3, 9, 20, 0.62);
+  color: #dbeafe;
+}
+
+.atlasGridLimitText {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.atlasGridLimitText b {
+  color: #7dd3fc;
+  font-size: 13px;
+}
+
+.atlasGridLimitText span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.atlasGridLimitBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.atlasGridLimitBtns button {
+  border: 1px solid rgba(88, 125, 172, 0.68);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(19, 34, 58, 0.98), rgba(8, 18, 34, 0.98));
+  color: #eaf2ff;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.atlasGridLimitBtns button[data-grid-limit="more"],
+.atlasGridLimitBtns button[data-grid-limit="auto"] {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+.atlasGridLimitBtns button:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 780px) {
+  .atlasGridLimitText {
+    display: block;
+  }
+
+  .atlasGridLimitText span {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .atlasGridLimitBtns button {
+    padding: 8px 9px;
+    font-size: 11px;
+  }
+}
+
+/* === GTNH Atlas auto item loading polish === */
+.atlasGridLimitPanel {
+  margin: 6px 8px 8px !important;
+  padding: 7px !important;
+  border-radius: 14px !important;
+}
+
+.atlasGridLimitText {
+  margin-bottom: 6px !important;
+}
+
+.atlasGridLimitText b {
+  font-size: 12px !important;
+}
+
+.atlasGridLimitText span {
+  font-size: 11px !important;
+}
+
+.atlasGridLimitBtns {
+  gap: 5px !important;
+}
+
+.atlasGridLimitBtns button {
+  padding: 6px 8px !important;
+  font-size: 11px !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 780px) {
+  .atlasGridLimitPanel {
+    margin: 5px 7px 7px !important;
+  }
+
+  .atlasGridLimitBtns button[data-grid-limit="2500"],
+  .atlasGridLimitBtns button[data-grid-limit="5000"] {
+    display: none;
+  }
+}

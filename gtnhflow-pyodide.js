@@ -12,6 +12,7 @@
   let lastYaml = "";
   let lastDot = "";
   let lastSvg = "";
+  let requestId = 0;
 
   function root() {
     return (
@@ -143,10 +144,11 @@
   function ensureWorker() {
     if (worker) return worker;
 
-    worker = new Worker("gtnhflow-pyodide-worker.js?v=" + Date.now());
+    worker = new Worker("gtnhflow-pyodide-worker.js?v=20261020");
 
     worker.addEventListener("message", async (event) => {
       const msg = event.data || {};
+      if (msg.id !== undefined && msg.id !== requestId) return;
 
       if (msg.type === "status") {
         setStatus(msg.text || "Working...");
@@ -167,6 +169,7 @@
 
         try {
           const viz = await getViz();
+          if (msg.id !== undefined && msg.id !== requestId) return;
           const svgEl = viz.renderSVGElement(lastDot);
 
           svgEl.classList.add("gtnhFlowBrowserSvg");
@@ -188,6 +191,11 @@
       }
     });
 
+    worker.addEventListener("error", error => {
+      setStatus("Python worker failed. Press Run to retry.", true);
+      setViewer(`<pre class="gtnhFlowBrowserError">${esc(error.message || "Worker could not start")}</pre>`);
+      worker.terminate(); worker = null;
+    });
     return worker;
   }
 
@@ -378,6 +386,7 @@
 
     ensureWorker().postMessage({
       type: "render",
+      id: ++requestId,
       yaml: lastYaml
     });
   }

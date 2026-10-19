@@ -2,12 +2,18 @@ import { recipeBalance } from "./production-engine.js";
 const scalar = value => JSON.stringify(value);
 const mapYaml = (key, entries, label = io => io.name) => {
   const grouped = new Map();
-  for (const entry of entries) grouped.set(label(entry), (grouped.get(label(entry)) || 0) + entry.amount);
-  return grouped.size ? `  ${key}:\n` + [...grouped].map(([name, amount]) => `    ${scalar(name.toLowerCase())}: ${amount}`).join("\n") : `  ${key}: {}`;
+  for (const entry of entries) {
+    const name = label(entry).toLowerCase();
+    grouped.set(name, (grouped.get(name) || 0) + entry.amount);
+  }
+  return grouped.size ? `  ${key}:\n` + [...grouped].map(([name, amount]) => `    ${scalar(name)}: ${amount}`).join("\n") : `  ${key}: {}`;
 };
 export function exportRecipeYaml(catalog, query, index = 0) {
-  const object = catalog.resolve(query) || catalog.findCompatible(query);
-  if (!object) return { ok: false, error: "Target not found", yaml: "# Target not found.\n" };
+  const object = catalog.resolve(query);
+  if (!object) {
+    const error = catalog.matches(query).length > 1 ? "Several goods have this name. Select an exact item/fluid ID." : "Target not found. Select an exact name or item/fluid ID.";
+    return { ok: false, error, yaml: `# ${error}\n`, input: {}, output: {} };
+  }
   const recipes = catalog.recipes(object);
   const recipe = recipes[Number(index)];
   if (!recipe) return { ok: false, error: "Production route not found", yaml: "# No such production route.\n", input: {}, output: {} };
@@ -37,9 +43,9 @@ export function exportPlanYaml(plan) {
   if (!plan.steps.length) return "# Build a resolved production plan first.\n";
   const idsByName = new Map();
   for (const step of plan.steps) for (const io of [...step.recipe.inputs,...step.recipe.outputs]) {
-    const ids = idsByName.get(io.name) || new Set(); ids.add(io.id); idsByName.set(io.name,ids);
+    const name = io.name.toLowerCase(), ids = idsByName.get(name) || new Set(); ids.add(io.id); idsByName.set(name,ids);
   }
-  const label = io => idsByName.get(io.name)?.size > 1 ? `${io.name} [${io.id}]` : io.name;
+  const label = io => idsByName.get(io.name.toLowerCase())?.size > 1 ? `${io.name} [${io.id}]` : io.name;
   const lines = [`# Dataset: ${plan.dataset.id}`, "# Quantities are base recipes; chance outputs use expected values.", "# Review machine-specific modifiers and byproduct/recycling links before solving."];
   for (const step of plan.steps) {
     const recipe = step.recipe, balance = recipeBalance(recipe);

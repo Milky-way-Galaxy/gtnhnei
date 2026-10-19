@@ -154,14 +154,14 @@ Targeted unused-variable linting guards the maintained calculator/data modules.
 
 ## Verification
 
-Final application results: **59 Node tests and 58 browser scenarios passed**.
+Final application results: **61 Node tests and 58 browser scenarios passed**.
 The Node tests passed on both Node 24 and Node 22 (the CI runtime). The suite
 includes the inherited startup/search/recipe regressions and new calculator,
 version, import/export, filtering, navigation and accessibility scenarios.
 
 | Check | Result |
 | --- | --- |
-| Node tests | 59 passed |
+| Node tests | 61 passed |
 | Desktop and Pixel 7 touch-emulated browser tests | **58 passed** |
 | ESLint | Passed |
 | Static site/module validation | Passed |
@@ -188,6 +188,12 @@ Implementation commits:
 - `1f3481b` — calculation precision, state migration, accurate recipe information and flow power correction.
 - `48a00f2` — finite inventory, native stacks, manual routes and configured machine power.
 - `f331723` — exact-ID makers/ignored inputs, stable initialization, structured picker/legacy flow preview, storage recovery and stricter lint.
+
+The final export audit found five real name groups that differ only by
+capitalization, including item/fluid Sweet Coffee. YAML identity checks now use
+the same case folding as the solver, retaining separate ID labels for those
+goods. Recipe exports also reject ambiguous/partial queries instead of choosing
+a fuzzy match. Regression cases use the real goods' IDs and names.
 
 Follow-up documentation records final coverage and limitations. The first clean CI runner exposed a transitive graphviz dependency in the focused Python test; the CI follow-up installs the vendor's declared requirements rather than relying on packages already present locally. PR #4 is stacked
 on #3; review/merge #3 first, then retarget #4 to main for its own review. GitHub

@@ -173,6 +173,22 @@ test("flow exports preserve distinct IDs even when different fluids share the sa
   assert.match(yaml,/steam \[f:moda:steam\]/);
   assert.match(yaml,/steam \[f:modb:steam\]/);
 });
+test("flow export disambiguates real item/fluid names that differ only by capitalization", () => {
+  const item = catalog.describe(catalog.resolve("i:gregtech:gt.metaitem.02:32001"));
+  const fluid = catalog.describe(catalog.resolve("f:gregtech:potion.sweetcoffee"));
+  assert.equal(item.name, "Sweet coffee"); assert.equal(fluid.name, "Sweet Coffee");
+  const c = fixture([recipe("coffee test", [{ ...item, amount: 1, probability: 1 }, { ...fluid, amount: 1000, probability: 1 }], [io("product", 1)])]);
+  const yaml = exportPlanYaml(calculateProduction(c, options));
+  assert.match(yaml, /sweet coffee \[i:gregtech:gt.metaitem.02:32001\]/);
+  assert.match(yaml, /sweet coffee \[f:gregtech:potion.sweetcoffee\]/);
+});
+test("recipe exports reject ambiguous or partial names instead of picking an arbitrary good", () => {
+  const ambiguous = exportRecipeYaml(catalog, "Sweet Coffee", 0);
+  assert.equal(ambiguous.ok, false);
+  assert.match(ambiguous.error, /Several goods/);
+  assert.equal(exportRecipeYaml(catalog, "epichlor", 0).ok, false);
+  assert.equal(exportRecipeYaml(catalog, epichlorohydrin.id, 0).ok, true);
+});
 test("ordinary names and prototype property names never enter the raw ID lookup", () => {
   assert.equal(catalog.resolve("constructor"),null);
   assert.equal(catalog.resolve("__proto__"),null);

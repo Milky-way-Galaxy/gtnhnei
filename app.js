@@ -7,6 +7,8 @@ import {
   RecipeIoType
 } from "./dist/repository.js";
 import { SearchQuery } from "./dist/searchQuery.js";
+import { fetchDatabase } from "./data-loader.js";
+import { onRetry, setLoadState } from "./loaderguard.js";
 
 const search = document.getElementById("search");
 const clear = document.getElementById("clear");
@@ -20,6 +22,9 @@ const recipePage = document.getElementById("recipePage");
 const tip = document.getElementById("tip");
 
 let repo;
+let resolveDataReady;
+const dataReady = new Promise(resolve => { resolveDataReady = resolve; });
+let loading = false;
 let allGoods = [];
 let allItems = [];
 let timer = null;
@@ -36,6 +41,8 @@ let activeMachine = "All";
 let currentRecipes = [];
 let currentRecipeGroups = new Map();
 
+const GRID_PAGE_SIZE = 180;
+const RECIPE_PAGE_SIZE = 24;
 const GRID_LIMIT_MIN = 420;
 const GRID_LIMIT_MAX = 10000;
 const GRID_LIMIT_STEP = 420;
@@ -85,44 +92,6 @@ function setMaxGridTotal(n, mode = "manual") {
   return limit;
 }
 
-function findMainSearchInput() {
-  return (
-    document.querySelector('input[type="search"]') ||
-    document.querySelector('input[placeholder*="Search" i]') ||
-    document.querySelector('input[placeholder*="item" i]') ||
-    document.querySelector('input[placeholder*="fluid" i]')
-  );
-}
-
-function triggerSearchRefresh(oldStatusText = "") {
-  const input = findMainSearchInput();
-
-  if (input) {
-    const v = input.value;
-
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
-
-    input.value = v + " ";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-
-    input.value = v;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  window.dispatchEvent(new Event("resize"));
-
-  // Fallback: if the local renderer did not rerun, reload once.
-  setTimeout(() => {
-    const status = document.querySelector("[data-atlas-grid-status='1']");
-    if (status && oldStatusText && status.textContent === oldStatusText) {
-      location.reload();
-    }
-  }, 220);
-}
-
 function mountGridLimitControls(status, total) {
   if (!status || !status.parentNode) return;
 
@@ -142,7 +111,7 @@ function mountGridLimitControls(status, total) {
   panel.innerHTML = `
     <div class="atlasGridLimitText">
       <b>Item grid</b>
-      <span>auto-loads while scrolling · loaded up to ${limit} of ${total || "?"}</span>
+      <span>auto-loads while scrolling · loaded up to ${limit} of ${total ?? "?"}</span>
     </div>
     <div class="atlasGridLimitBtns">
       <button type="button" data-grid-limit="more">Load now</button>
@@ -158,10 +127,9 @@ function mountGridLimitControls(status, total) {
     if (!btn) return;
 
     const action = btn.dataset.gridLimit;
-    const before = status.textContent;
 
     if (action === "more") {
-      atlasAutoGrowGridLimit("button");
+      atlasAutoGrowGridLimit();
       return;
     } else if (action === "auto") {
       setMaxGridTotal(autoGridLimit(), "auto");
@@ -169,154 +137,53 @@ function mountGridLimitControls(status, total) {
       setMaxGridTotal(Number(action), "manual");
     }
 
-    triggerSearchRefresh(before);
+    refreshGridLimit();
   };
 }
 
-let atlasGridAutoGrowBusy = false;
-let atlasGridAutoGrowLast = 0;
+// The full matching list is computed once per query. Growing the visible slice
+// must never switch back to allGoods or rebuild already rendered slots.
+let searchResults = [];
+let gridFillFrame = null;
 
-function atlasFindScrollParent(el) {
-  let n = el;
-  while (n && n !== document.body && n !== document.documentElement) {
-    const st = getComputedStyle(n);
-    const oy = st.overflowY;
-    if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight + 80) {
-      return n;
-    }
-    n = n.parentElement;
+function refreshGridLimit() {
+  if (currentView.type !== "grid") return;
+  currentSearchList = searchResults.slice(0, getMaxGridTotal());
+  if (renderedGridCount > currentSearchList.length) {
+    grid.replaceChildren();
+    renderedGridCount = 0;
   }
-  return document.scrollingElement || document.documentElement;
+  status.textContent = search.value.trim()
+    ? `${searchResults.length} result(s), loaded limit ${getMaxGridTotal()}`
+    : `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
+  mountGridLimitControls(status, searchResults.length);
+  appendGridItems();
+  scheduleGridFill();
 }
 
-function atlasNearBottom(scroller, px = 900) {
-  if (!scroller) return false;
-
-  if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
-    const y = window.scrollY || document.documentElement.scrollTop || 0;
-    const h = window.innerHeight || document.documentElement.clientHeight || 0;
-    const full = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
-    return y + h >= full - px;
-  }
-
-  return scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - px;
-}
-
-function atlasAutoGrowGridLimit(reason = "scroll") {
-  if (atlasGridAutoGrowBusy) return false;
-
-  const now = Date.now();
-  if (now - atlasGridAutoGrowLast < 260) return false;
-  atlasGridAutoGrowLast = now;
-
+function atlasAutoGrowGridLimit() {
+  if (currentView.type !== "grid" || currentSearchList.length >= searchResults.length) return false;
   const oldLimit = getMaxGridTotal();
   if (oldLimit >= GRID_LIMIT_MAX) return false;
-
-  const next = clampGridLimit(oldLimit + GRID_LIMIT_STEP);
-  if (next <= oldLimit) return false;
-
-  atlasGridAutoGrowBusy = true;
-  setMaxGridTotal(next, "manual");
-
-  const status = document.querySelector("[data-atlas-grid-status='1']");
-  if (status) status.textContent = `Loading more items... ${oldLimit} → ${next}`;
-
-  try {
-    if (typeof allGoods !== "undefined" && Array.isArray(allGoods)) {
-      currentSearchList = allGoods.slice(0, next);
-    }
-
-    const grid =
-      document.querySelector("#itemGrid") ||
-      document.querySelector(".itemGrid") ||
-      document.querySelector(".goodsGrid") ||
-      document.querySelector(".grid");
-
-    /*
-      Important:
-      Do NOT reset renderedGridCount to 0 here.
-      Existing lazy renderer should continue from previous count.
-      If previous broken state rendered nothing, force a restart.
-    */
-    if (typeof renderedGridCount !== "undefined") {
-      if (renderedGridCount > currentSearchList.length) renderedGridCount = 0;
-      if (renderedGridCount === 0 && grid && grid.children.length > 0) renderedGridCount = grid.children.length;
-    }
-
-    if (typeof renderMoreGrid === "function") {
-      renderMoreGrid();
-      renderMoreGrid();
-      renderMoreGrid();
-    } else if (typeof renderGridMore === "function") {
-      renderGridMore();
-      renderGridMore();
-      renderGridMore();
-    } else if (typeof renderGrid === "function") {
-      renderGrid();
-    } else {
-      triggerSearchRefresh("");
-    }
-
-    const st = document.querySelector("[data-atlas-grid-status='1']");
-    if (st && typeof allGoods !== "undefined") {
-      st.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
-      mountGridLimitControls(st, allGoods.length);
-    }
-  } catch (err) {
-    console.warn("[GTNH Atlas] auto grid grow failed:", err);
-    triggerSearchRefresh("");
-  }
-
-  setTimeout(() => {
-    atlasGridAutoGrowBusy = false;
-
-    /*
-      If user is still at the bottom after rendering, keep feeding more.
-      This is what makes zoomed-out / tall screens fill properly.
-    */
-    const status = document.querySelector("[data-atlas-grid-status='1']");
-    const scroller = atlasFindScrollParent(status || document.body);
-    if (atlasNearBottom(scroller, 900)) {
-      atlasAutoGrowGridLimit("followup");
-    }
-  }, 180);
-
+  setMaxGridTotal(oldLimit + GRID_LIMIT_STEP, getGridLimitMode());
+  refreshGridLimit();
   return true;
 }
 
-function atlasInstallGridAutoScroll(status) {
-  if (!status || status.dataset.atlasAutoScrollInstalled === "1") return;
-  status.dataset.atlasAutoScrollInstalled = "1";
-
-  const scroller = atlasFindScrollParent(status);
-
-  const onScroll = () => {
-    if (atlasNearBottom(scroller, 900)) {
-      atlasAutoGrowGridLimit("scroll");
+function scheduleGridFill() {
+  if (gridFillFrame !== null) return;
+  gridFillFrame = requestAnimationFrame(() => {
+    gridFillFrame = null;
+    if (currentView.type !== "grid" || grid.clientHeight === 0) return;
+    if (grid.scrollTop + grid.clientHeight < grid.scrollHeight - 260) return;
+    if (renderedGridCount < currentSearchList.length) {
+      appendGridItems();
+      scheduleGridFill();
+    } else {
+      atlasAutoGrowGridLimit();
     }
-  };
-
-  if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
-    window.addEventListener("scroll", onScroll, { passive: true });
-  } else {
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-  }
-
-  window.addEventListener("resize", () => {
-    if (atlasNearBottom(scroller, 1200)) atlasAutoGrowGridLimit("resize");
-  }, { passive: true });
-
-  /*
-    Fill empty/tall screen:
-    if there is still blank space after initial render, auto-grow until there is content below.
-  */
-  setTimeout(onScroll, 120);
-  setTimeout(onScroll, 420);
-  setTimeout(onScroll, 900);
+  });
 }
-
-
 
 let currentSearchList = [];
 let renderedGridCount = 0;
@@ -461,35 +328,41 @@ function refreshTipPosition() {
 window.addEventListener("scroll", refreshTipPosition, true);
 window.addEventListener("resize", refreshTipPosition);
 
-async function load() { console.time("GTNH_LOAD_DEBUG_V1_total"); console.log("[GTNH] load start");
-  console.time("GTNH_LOAD_DEBUG_V1_fetch"); const res = await fetch("data/data.bin"); console.timeEnd("GTNH_LOAD_DEBUG_V1_fetch"); console.log("[GTNH] fetch status", res.status, res.headers.get("content-length"));
-  if (!res.ok) throw new Error("Failed to fetch data/data.bin");
-
-  const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
-  console.time("GTNH_LOAD_DEBUG_V1_gzip"); const buffer = await new Response(stream).arrayBuffer(); console.timeEnd("GTNH_LOAD_DEBUG_V1_gzip"); console.log("[GTNH] decompressed bytes", buffer.byteLength);
-
-  console.time("GTNH_LOAD_DEBUG_V1_repo"); repo = Repository.load(buffer); console.timeEnd("GTNH_LOAD_DEBUG_V1_repo"); console.log("[GTNH] repo loaded");
-
-  allGoods = [];
-  allItems = [];
-
-  for (const ptr of repo.items) {
-    const item = repo.GetObject(ptr, Item);
-    if (item) {
-      allGoods.push(item);
-      allItems.push(item);
+async function load() {
+  if (loading) return;
+  loading = true;
+  setLoadState("fetch", "Fetching and decompressing recipe database…");
+  try {
+    const buffer = await fetchDatabase(({ received, total }) => {
+      const mb = (received / 1000000).toFixed(1);
+      const size = total ? ` of ${(total / 1000000).toFixed(1)} MB` : " MB";
+      setLoadState("fetch", `Downloading and decompressing: ${mb}${size}…`);
+    });
+    setLoadState("index", "Building the item and recipe index…");
+    // Give the browser a paint opportunity before synchronous index construction.
+    await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    repo = Repository.load(buffer);
+    allGoods = [];
+    allItems = [];
+    for (const ptr of repo.items) {
+      const item = repo.GetObject(ptr, Item);
+      if (item) {
+        allGoods.push(item);
+        allItems.push(item);
+      }
     }
+    for (const ptr of repo.fluids) {
+      const fluid = repo.GetObject(ptr, Fluid);
+      if (fluid) allGoods.push(fluid);
+    }
+    resolveDataReady();
+    // Install dependent APIs in registration order before enabling the UI.
+    await dataReady;
+    renderSearchGrid(false);
+    setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
+  } finally {
+    loading = false;
   }
-
-  for (const ptr of repo.fluids) {
-    const fluid = repo.GetObject(ptr, Fluid);
-    if (fluid) allGoods.push(fluid);
-  }
-
-  status.textContent = `Loaded ${allGoods.length} items/fluids`;
-      installAddonIconApi();
-      
-renderSearchGrid(false);
 }
 
 function updateNav() {
@@ -517,6 +390,7 @@ function restoreView(view) {
 }
 
 function renderSearchGrid(push = true) {
+  if (!repo) return;
   if (push) pushView({ type: "grid" });
   currentView = { type: "grid" };
 
@@ -527,41 +401,22 @@ function renderSearchGrid(push = true) {
 
   const q = search.value.trim();
 
-  if (!q) {
-    currentSearchList = allGoods.slice(0, getMaxGridTotal());
-    status.textContent = `Showing ${currentSearchList.length} of ${allGoods.length} items/fluids`;
-    mountGridLimitControls(status, allGoods.length);
-    atlasInstallGridAutoScroll(status);
-  } else {
-    const query = new SearchQuery(q);
-    currentSearchList = [];
-
-    for (const obj of allGoods) {
-      if (repo.IsObjectMatchingSearch(obj, query)) {
-        currentSearchList.push(obj);
-        if (currentSearchList.length >= getMaxGridTotal()) break;
-      }
-    }
-
-    status.textContent = `${currentSearchList.length} result(s), loaded limit ${getMaxGridTotal()}`;
-      mountGridLimitControls(status, allGoods.length);
-    atlasInstallGridAutoScroll(status);
-  }
+  const newQuery = q ? new SearchQuery(q) : null;
+  searchResults = !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
 
   grid.innerHTML = "";
   renderedGridCount = 0;
 
-  if (currentSearchList.length === 0) {
-    grid.innerHTML = `<div class="empty">No results</div>`;
-    updateNav();
-    return;
-  }
-
-  appendGridItems();
+  grid.scrollTop = 0;
+  refreshGridLimit();
   updateNav();
 }
 
 function appendGridItems() {
+  if (currentSearchList.length === 0) {
+    grid.innerHTML = '<div class="empty">No results</div>';
+    return;
+  }
   if (renderedGridCount >= currentSearchList.length) return;
 
   const frag = document.createDocumentFragment();
@@ -1227,7 +1082,7 @@ function ioBox(io) {
   const icon = document.createElement("div");
   icon.className = "icon";
   if (shown) setIcon(icon, shown.iconId);
-  registerOreIcon(icon, io.goods);
+  window.registerOreIcon(icon, io.goods);
 
   const text = document.createElement("div");
   text.className = "goodsName";
@@ -1368,12 +1223,8 @@ function recipeCard(recipe) {
   return card;
 }
 
-grid.addEventListener("scroll", () => {
-  if (currentView.type !== "grid") return;
-
-  const nearBottom = grid.scrollTop + grid.clientHeight > grid.scrollHeight - 260;
-  if (nearBottom) appendGridItems();
-});
+grid.addEventListener("scroll", scheduleGridFill, { passive: true });
+window.addEventListener("resize", scheduleGridFill, { passive: true });
 
 recipePage.addEventListener("scroll", () => {
   if (currentView.type !== "recipes") return;
@@ -1440,8 +1291,8 @@ function makeNeiSlot(io) {
 
   if (shown) setIcon(icon, shown.iconId);
 
-  if (typeof registerOreIcon === "function") {
-    registerOreIcon(icon, io.goods);
+  if (typeof window.registerOreIcon === "function") {
+    window.registerOreIcon(icon, io.goods);
   }
 
   slot.appendChild(icon);
@@ -1675,10 +1526,15 @@ navForward.addEventListener("click", () => {
   restoreView(next);
 });
 
-load().catch(err => {
-  console.error(err);
-  status.textContent = "ERROR: " + err.message;
-});
+function startLoading() {
+  load().catch(err => {
+    console.error(err);
+    status.textContent = "ERROR: " + err.message;
+    setLoadState("error", err.message);
+  });
+}
+onRetry(startLoading);
+startLoading();
 
 // Hide tooltip when tapping/clicking empty space
 function hideTip() {
@@ -1748,130 +1604,8 @@ machineTabs.addEventListener("pointerdown", () => {
 
 
 
-/* === GTNH NEI ADDON ICON API START === */
-function installAddonIconApi() {
-  try {
-    window.GTNHNEI_ICON_API = {
-      ready: true,
-
-      findObjectByName(rawName) {
-        const q = String(rawName || "").trim();
-        const qLower = q.toLowerCase();
-        const compact = qLower.replace(/[^a-z0-9]/g, "");
-
-        if (!qLower || !Array.isArray(allGoods)) return null;
-
-        function objName(o) {
-          try {
-            return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
-          } catch {
-            return String(o?.name || o?.id || "").toLowerCase();
-          }
-        }
-
-        function objCompact(o) {
-          return objName(o).replace(/[^a-z0-9]/g, "");
-        }
-
-        let obj =
-          allGoods.find(o => objName(o) === qLower) ||
-          allGoods.find(o => objCompact(o) === compact) ||
-          allGoods.find(o => objName(o).includes(qLower)) ||
-          allGoods.find(o => objCompact(o).includes(compact));
-
-        // Stronger fallback: use the same GTNH calculator search engine.
-        if (!obj && typeof SearchQuery !== "undefined" && repo) {
-          try {
-            const query = new SearchQuery(q);
-            obj = allGoods.find(o => repo.IsObjectMatchingSearch(o, query));
-          } catch {}
-        }
-
-        return obj || null;
-      },
-
-      setIconByName(el, rawName) {
-        const obj = this.findObjectByName(rawName);
-
-        if (!obj || obj.iconId === undefined || obj.iconId === null) {
-          return false;
-        }
-
-        el.classList.add("icon");
-        el.textContent = "";
-
-        try {
-          setIcon(el, obj.iconId);
-          el.dataset.gtnhIconOk = "1";
-          el.dataset.gtnhIconName = String(obj.name || obj.id || rawName);
-          return true;
-        } catch {
-          return false;
-        }
-      }
-    };
-
-    window.dispatchEvent(new Event("gtnhnei-icons-ready"));
-    console.log("GTNHNEI_ICON_API ready:", allGoods?.length || 0);
-  } catch (err) {
-    console.warn("Failed to install addon icon API", err);
-  }
-}
-/* === GTNH NEI ADDON ICON API END === */
-
-
-/* === GTNH NEI ICON DEBUG PANEL START === */
-window.addEventListener("gtnhnei-icons-ready", () => {
-  window.GTNHNEI_DEBUG_ICONS = function(rawQuery = "microprocessor") {
-    const api = window.GTNHNEI_ICON_API;
-    if (!api) {
-      alert("GTNHNEI_ICON_API missing");
-      return [];
-    }
-
-    const q = String(rawQuery || "").toLowerCase();
-    const results = [];
-
-    try {
-      for (const obj of allGoods) {
-        let n = "";
-        try {
-          n = String(nameOf(obj) || obj?.name || obj?.id || "");
-        } catch {
-          n = String(obj?.name || obj?.id || "");
-        }
-
-        if (n.toLowerCase().includes(q)) {
-          results.push({
-            name: n,
-            id: obj?.id,
-            iconId: obj?.iconId
-          });
-        }
-
-        if (results.length >= 40) break;
-      }
-    } catch (err) {
-      alert("check failed: " + err.message);
-      return [];
-    }
-
-    console.table(results);
-    alert(
-      "Found " + results.length + " result(s) for: " + rawQuery + "\n\n" +
-      results.slice(0, 12).map(x => x.name + " | iconId=" + x.iconId).join("\n")
-    );
-
-    return results;
-  };
-});
-/* === GTNH NEI ICON DEBUG PANEL END === */
-
-
-
 /* === GTNH NEI ICON API HARD OVERRIDE v10 START === */
 (function installIconApiHardOverrideV10() {
-  let tries = 0;
 
   function safeName(o) {
     try {
@@ -1885,7 +1619,6 @@ window.addEventListener("gtnhnei-icons-ready", () => {
   }
 
   function installNow() {
-    tries++;
 
     try {
       if (
@@ -1985,12 +1718,7 @@ window.addEventListener("gtnhnei-icons-ready", () => {
     }
   }
 
-  const timer = setInterval(() => {
-    if (installNow() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_ICON_API v10 gave up.");
-    }
-  }, 250);
+  dataReady.then(installNow);
 })();
  /* === GTNH NEI ICON API HARD OVERRIDE v10 END === */
 
@@ -2041,10 +1769,6 @@ window.addEventListener("gtnhnei-icons-ready", () => {
           return true;
         }
 
-        if (typeof showRecipes === "function") {
-          showRecipes(obj, "Production", true);
-          return true;
-        }
       } catch {}
 
       return false;
@@ -2060,10 +1784,6 @@ window.addEventListener("gtnhnei-icons-ready", () => {
           return true;
         }
 
-        if (typeof showRecipes === "function") {
-          showRecipes(obj, "Usage", true);
-          return true;
-        }
       } catch {}
 
       return false;
@@ -2083,103 +1803,15 @@ window.addEventListener("gtnhnei-icons-ready", () => {
 })();
  /* === GTNH NEI MAIN NAV API v17 END === */
 
-/* === GTNH NEI MAIN NAV API v17 START === */
-(() => {
-  if (window.__GTNHNEI_MAIN_NAV_API_V17__) return;
-  window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
 
-  function findByNameV17(name) {
-    try {
-      if (window.GTNHNEI_ICON_API?.findObjectByName) {
-        return window.GTNHNEI_ICON_API.findObjectByName(name);
-      }
-    } catch {}
-
-    try {
-      const q = String(name || "").trim().toLowerCase();
-      const compact = q.replace(/[^a-z0-9]/g, "");
-
-      function n(o) {
-        try {
-          return String(nameOf(o) || o?.name || o?.id || "").toLowerCase();
-        } catch {
-          return String(o?.name || o?.id || "").toLowerCase();
-        }
-      }
-
-      return (
-        allGoods.find(o => n(o) === q) ||
-        allGoods.find(o => n(o).replace(/[^a-z0-9]/g, "") === compact) ||
-        allGoods.find(o => n(o).includes(q)) ||
-        null
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  window.GTNHNEI_MAIN_API = {
-    recipe(name) {
-      const obj = findByNameV17(name);
-      if (!obj) return false;
-
-      try {
-        if (typeof openProduction === "function") {
-          openProduction(obj);
-          return true;
-        }
-
-        if (typeof showRecipes === "function") {
-          showRecipes(obj, "Production", true);
-          return true;
-        }
-      } catch {}
-
-      return false;
-    },
-
-    usage(name) {
-      const obj = findByNameV17(name);
-      if (!obj) return false;
-
-      try {
-        if (typeof openUsage === "function") {
-          openUsage(obj);
-          return true;
-        }
-
-        if (typeof showRecipes === "function") {
-          showRecipes(obj, "Usage", true);
-          return true;
-        }
-      } catch {}
-
-      return false;
-    },
-
-    async copy(name) {
-      try {
-        await navigator.clipboard.writeText(String(name || ""));
-        return true;
-      } catch {
-        return false;
-      }
-    }
-  };
-
-  console.log("GTNHNEI_MAIN_API v17 ready");
-})();
- /* === GTNH NEI MAIN NAV API v17 END === */
 
 /* === GTNHNEI DATA API v1 START === */
 (() => {
   if (window.__GTNHNEI_DATA_API_V1__) return;
   window.__GTNHNEI_DATA_API_V1__ = true;
 
-  let tries = 0;
 
   function installDataApi() {
-    tries++;
 
     try {
       if (
@@ -2430,12 +2062,7 @@ window.addEventListener("gtnhnei-icons-ready", () => {
     }
   }
 
-  const timer = setInterval(() => {
-    if (installDataApi() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_DATA_API v1 gave up.");
-    }
-  }, 250);
+  dataReady.then(installDataApi);
 })();
 /* === GTNHNEI DATA API v1 END === */
 
@@ -2444,10 +2071,8 @@ window.addEventListener("gtnhnei-icons-ready", () => {
   if (window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__) return;
   window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__ = true;
 
-  let tries = 0;
 
   function installLiveCardApi() {
-    tries++;
 
     try {
       if (
@@ -2537,464 +2162,21 @@ window.addEventListener("gtnhnei-icons-ready", () => {
     }
   }
 
-  const timer = setInterval(() => {
-    if (installLiveCardApi() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 gave up.");
-    }
-  }, 250);
+  dataReady.then(installLiveCardApi);
 })();
 /* === GTNHNEI LIVE RECIPE CARD API v1 END === */
 
-/* === GTNHNEI LIVE RECIPE CARD API v1 START === */
-(() => {
-  if (window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__) return;
-  window.__GTNHNEI_LIVE_RECIPE_CARD_API_V1__ = true;
 
-  let tries = 0;
 
-  function installLiveCardApi() {
-    tries++;
 
-    try {
-      if (
-        typeof allGoods === "undefined" ||
-        !Array.isArray(allGoods) ||
-        allGoods.length === 0 ||
-        typeof recipesFor !== "function" ||
-        typeof recipeCardNei !== "function"
-      ) {
-        return false;
-      }
-
-      function compact(s) {
-        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      }
-
-      function objName(o) {
-        try {
-          if (typeof nameOf === "function") return String(nameOf(o) || o?.name || o?.id || "");
-        } catch {}
-        return String(o?.name || o?.id || "");
-      }
-
-      function findObject(rawName) {
-        const q = String(rawName || "").trim();
-        const qLower = q.toLowerCase();
-        const qCompact = compact(q);
-
-        if (!qLower) return null;
-
-        try {
-          if (window.GTNHNEI_ICON_API?.findObjectByName) {
-            const x = window.GTNHNEI_ICON_API.findObjectByName(q);
-            if (x) return x;
-          }
-        } catch {}
-
-        return (
-          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
-          allGoods.find(o => compact(objName(o)) === qCompact) ||
-          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
-          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
-          null
-        );
-      }
-
-      function getRecipe(rawName, mode, index) {
-        const obj = findObject(rawName);
-        if (!obj) return null;
-
-        const list = recipesFor(obj, mode) || [];
-        return list[Number(index)] || null;
-      }
-
-      window.GTNHNEI_LIVE_RECIPE_CARD_API = {
-        ready: true,
-
-        mountProduction(rawName, index, mount) {
-          const recipe = getRecipe(rawName, "Production", index);
-          if (!recipe || !mount) return false;
-
-          const card = recipeCardNei(recipe);
-          if (!card) return false;
-
-          mount.replaceChildren(card);
-          return true;
-        },
-
-        mountUsage(rawName, index, mount) {
-          const recipe = getRecipe(rawName, "Usage", index);
-          if (!recipe || !mount) return false;
-
-          const card = recipeCardNei(recipe);
-          if (!card) return false;
-
-          mount.replaceChildren(card);
-          return true;
-        }
-      };
-
-      window.dispatchEvent(new Event("gtnhnei-live-card-api-ready"));
-      console.log("GTNHNEI_LIVE_RECIPE_CARD_API v1 ready");
-      return true;
-    } catch (err) {
-      console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 failed:", err);
-      return false;
-    }
-  }
-
-  const timer = setInterval(() => {
-    if (installLiveCardApi() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_LIVE_RECIPE_CARD_API v1 gave up.");
-    }
-  }, 250);
-})();
-/* === GTNHNEI LIVE RECIPE CARD API v1 END === */
-
-/* === GTNH-FLOW YAML EXPORT API v1 START === */
-(() => {
-  if (window.__GTNHNEI_FLOW_EXPORT_API_V1__) return;
-  window.__GTNHNEI_FLOW_EXPORT_API_V1__ = true;
-
-  let tries = 0;
-
-  function installFlowExportApi() {
-    tries++;
-
-    try {
-      if (
-        typeof allGoods === "undefined" ||
-        !Array.isArray(allGoods) ||
-        allGoods.length === 0 ||
-        typeof recipesFor !== "function"
-      ) {
-        return false;
-      }
-
-      function compact(s) {
-        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      }
-
-      function objName(o) {
-        try {
-          if (typeof nameOf === "function") {
-            const n = String(nameOf(o) || "");
-            if (n && n !== "[object Object]") return n;
-          }
-        } catch {}
-
-        return String(o?.name || o?.id || "");
-      }
-
-      function findObject(rawName) {
-        const q = String(rawName || "").trim();
-        const qLower = q.toLowerCase();
-        const qCompact = compact(q);
-
-        if (!qLower) return null;
-
-        try {
-          if (window.GTNHNEI_ICON_API?.findObjectByName) {
-            const viaIcon = window.GTNHNEI_ICON_API.findObjectByName(q);
-            if (viaIcon) return viaIcon;
-          }
-        } catch {}
-
-        return (
-          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
-          allGoods.find(o => compact(objName(o)) === qCompact) ||
-          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
-          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
-          null
-        );
-      }
-
-      function machineName(recipe) {
-        try {
-          if (typeof recipeMachineName === "function") {
-            const m = recipeMachineName(recipe);
-            if (m) return String(m);
-          }
-        } catch {}
-
-        return String(
-          recipe?.machine ||
-          recipe?.m ||
-          recipe?.machineName ||
-          recipe?.map ||
-          "machine"
-        );
-      }
-
-      function machineText(recipe) {
-        try {
-          if (typeof machineRecipeText === "function") {
-            const t = machineRecipeText(recipe);
-            if (t) return String(t);
-          }
-        } catch {}
-
-        try {
-          const card = typeof recipeCardNei === "function" ? recipeCardNei(recipe) : null;
-          if (card) return String(card.textContent || "");
-        } catch {}
-
-        return "";
-      }
-
-      function parseAmount(raw) {
-        if (raw === null || raw === undefined) return 1;
-        if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-
-        let s = String(raw).trim().toLowerCase();
-        if (!s) return 1;
-
-        s = s.replace(/,/g, "");
-
-        const m = s.match(/([0-9]+(?:\.[0-9]+)?)([kmb])?/i);
-        if (!m) return 1;
-
-        let n = Number(m[1]);
-        const suffix = (m[2] || "").toLowerCase();
-
-        if (suffix === "k") n *= 1000;
-        if (suffix === "m") n *= 1000000;
-        if (suffix === "b") n *= 1000000000;
-
-        if (!Number.isFinite(n)) return 1;
-        return Math.round(n);
-      }
-
-      function ioAmount(io) {
-        try {
-          if (typeof amountText === "function") {
-            const t = amountText(io);
-            if (t) return parseAmount(t);
-          }
-        } catch {}
-
-        return parseAmount(
-          io?.amount ??
-          io?.count ??
-          io?.qty ??
-          io?.n ??
-          io?.size ??
-          io?.stackSize ??
-          1
-        );
-      }
-
-      function ioName(io) {
-        const candidates = [
-          io?.obj,
-          io?.object,
-          io?.type,
-          io?.item,
-          io?.fluid,
-          io?.stack,
-          io?.ingredient,
-          io?.value,
-          io
-        ];
-
-        for (const c of candidates) {
-          if (!c) continue;
-
-          if (typeof c === "string") {
-            const s = c.trim();
-            if (s && s !== "[object Object]") return s;
-          }
-
-          if (typeof c === "object") {
-            const n = objName(c).trim();
-            if (n && n !== "[object Object]") return n;
-          }
-        }
-
-        return "";
-      }
-
-      function addIo(map, io) {
-        const name = ioName(io);
-        if (!name) return;
-
-        const amount = ioAmount(io);
-        map[name] = (map[name] || 0) + amount;
-      }
-
-      function readIo(recipe, side) {
-        const map = {};
-
-        const inputFns = [];
-        const outputFns = [];
-
-        try { if (typeof inputItemTypes === "function") inputFns.push(inputItemTypes); } catch {}
-        try { if (typeof inputFluidTypes === "function") inputFns.push(inputFluidTypes); } catch {}
-        try { if (typeof outputItemTypes === "function") outputFns.push(outputItemTypes); } catch {}
-        try { if (typeof outputFluidTypes === "function") outputFns.push(outputFluidTypes); } catch {}
-
-        const fns = side === "in" ? inputFns : outputFns;
-
-        for (const fn of fns) {
-          try {
-            const arr = fn(recipe) || [];
-            for (const io of arr) addIo(map, io);
-          } catch {}
-        }
-
-        return map;
-      }
-
-      function parseTier(text) {
-        const m = String(text || "").match(/\b(ULV|LV|MV|HV|EV|IV|LuV|ZPM|UV|UHV|UEV|UIV|UMV|UXV|MAX)\b/i);
-        return m ? m[1] : "LV";
-      }
-
-      function parseEu(text) {
-        const m = String(text || "").replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)\s*EU\/t/i);
-        return m ? Math.round(Number(m[1])) : 0;
-      }
-
-      function parseDur(text) {
-        const s = String(text || "").toLowerCase();
-
-        const sec = s.match(/([0-9]+(?:\.[0-9]+)?)\s*s\b/);
-        if (sec) return Number(sec[1]);
-
-        const tick = s.match(/([0-9]+(?:\.[0-9]+)?)\s*ticks?\b/);
-        if (tick) return Number(tick[1]) / 20;
-
-        return 1;
-      }
-
-      function yamlScalar(v) {
-        if (typeof v === "number") return String(v);
-        const s = String(v ?? "");
-        if (/^[a-zA-Z0-9_ .+\-()[\]\/]+$/.test(s)) return s;
-        return JSON.stringify(s);
-      }
-
-      function yamlMap(name, map) {
-        const entries = Object.entries(map || {});
-        if (!entries.length) return `  ${name}: {}`;
-
-        return [
-          `  ${name}:`,
-          ...entries.map(([k, v]) => `    ${yamlScalar(k)}: ${yamlScalar(v)}`)
-        ].join("\n");
-      }
-
-      function yamlForRecipe(rawName, routeIndex = 0, options = {}) {
-        const obj = findObject(rawName);
-        if (!obj) {
-          return {
-            ok: false,
-            yaml: "",
-            error: `Target not found: ${rawName}`
-          };
-        }
-
-        const recipes = recipesFor(obj, "Production") || [];
-        const recipe = recipes[Number(routeIndex)] || recipes[0];
-
-        if (!recipe) {
-          return {
-            ok: false,
-            yaml:
-`# GTNH Atlas -> gtnh-flow draft
-# No production recipe found for ${objName(obj)}
-# This target may be raw material, loot, ore, or unresolved.
-
-- m: manual
-  tier: LV
-  I: {}
-  O:
-    ${yamlScalar(objName(obj))}: ${yamlScalar(options.targetAmount || 1)}
-  eut: 0
-  dur: 1
-  number: 1
-`,
-            error: "No production recipe found."
-          };
-        }
-
-        const text = machineText(recipe);
-        const m = machineName(recipe).toLowerCase();
-
-        const tier = parseTier(text);
-        const eut = parseEu(text);
-        const dur = parseDur(text);
-
-        const input = readIo(recipe, "in");
-        const output = readIo(recipe, "out");
-
-        const yaml =
-`# GTNH Atlas -> gtnh-flow draft
-# Target: ${objName(obj)}
-# Route: ${Number(routeIndex) + 1}
-# Machine: ${machineName(recipe)}
-# Check this once with local gtnh-flow. Some GTNH recipe types may still need manual edits.
-
-- m: ${yamlScalar(m)}
-  tier: ${yamlScalar(tier)}
-${yamlMap("I", input)}
-${yamlMap("O", output)}
-  eut: ${yamlScalar(eut)}
-  dur: ${yamlScalar(dur)}
-  number: 1
-`;
-
-        return {
-          ok: true,
-          target: objName(obj),
-          routeIndex: Number(routeIndex),
-          machine: machineName(recipe),
-          tier,
-          eut,
-          dur,
-          input,
-          output,
-          yaml
-        };
-      }
-
-      window.GTNHNEI_FLOW_EXPORT_API = {
-        ready: true,
-        yamlForRecipe,
-        yaml(rawName, routeIndex = 0, options = {}) {
-          return yamlForRecipe(rawName, routeIndex, options).yaml;
-        }
-      };
-
-      window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
-      console.log("GTNHNEI_FLOW_EXPORT_API v1 ready");
-      return true;
-    } catch (err) {
-      console.warn("GTNHNEI_FLOW_EXPORT_API v1 failed:", err);
-      return false;
-    }
-  }
-
-  const timer = setInterval(() => {
-    if (installFlowExportApi() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_FLOW_EXPORT_API v1 gave up.");
-    }
-  }, 250);
-})();
-/* === GTNH-FLOW YAML EXPORT API v1 END === */
 
 /* === GTNH-FLOW YAML EXPORT API v2 START === */
 (() => {
   if (window.__GTNHNEI_FLOW_EXPORT_API_V2__) return;
   window.__GTNHNEI_FLOW_EXPORT_API_V2__ = true;
 
-  let tries = 0;
 
   function installFlowExportApiV2() {
-    tries++;
 
     try {
       if (
@@ -3331,11 +2513,6 @@ ${yamlMap("O", parsed.output)}
     }
   }
 
-  const timer = setInterval(() => {
-    if (installFlowExportApiV2() || tries >= 80) {
-      clearInterval(timer);
-      if (tries >= 80) console.warn("GTNHNEI_FLOW_EXPORT_API v2 gave up.");
-    }
-  }, 250);
+  dataReady.then(installFlowExportApiV2);
 })();
 /* === GTNH-FLOW YAML EXPORT API v2 END === */

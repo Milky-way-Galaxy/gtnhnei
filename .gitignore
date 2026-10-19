@@ -11,3 +11,10 @@ backups/
 stable_versions/
 *.backup_*
 *.zip
+
+# Development dependencies and generated test output
+node_modules/
+test-results/
+playwright-report/
+__pycache__/
+.pytest_cache/

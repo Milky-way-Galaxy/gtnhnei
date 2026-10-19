@@ -363,51 +363,7 @@ Output:
   }
 
 
-  function installLoader() {
-    const loader = document.getElementById("bootLoader");
-    if (!loader) return;
-
-    const msg = loader.querySelector(".bootMsg");
-    const messages = [
-      "Fetching data/data.bin...",
-      "Decompressing recipe database...",
-      "Building GTNH item index...",
-      "Preparing atlas icons...",
-      "Almost done..."
-    ];
-
-    let i = 0;
-    const timer = setInterval(() => {
-      if (msg) msg.textContent = messages[i++ % messages.length];
-    }, 900);
-
-    function hide() {
-      clearInterval(timer);
-      loader.classList.add("hide");
-      setTimeout(() => loader.remove(), 350);
-    }
-
-    window.addEventListener("gtnhnei-icons-ready", () => setTimeout(hide, 300), { once: true });
-
-    const status = document.getElementById("status");
-    if (status) {
-      const obs = new MutationObserver(() => {
-        const t = status.textContent || "";
-        if (t.includes("Loaded") || t.includes("Showing")) {
-          obs.disconnect();
-          setTimeout(hide, 300);
-        }
-      });
-      obs.observe(status, { childList: true, subtree: true, characterData: true });
-    }
-
-    setTimeout(() => {
-      if (document.body.contains(loader)) hide();
-    }, 12000);
-  }
-
   function init() {
-    installLoader();
     installSearchTrigger();
     installBackReturn();
 

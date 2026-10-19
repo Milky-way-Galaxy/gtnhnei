@@ -39,7 +39,7 @@ export class RecipeCatalog {
   matches(query) { return this.byName.get(String(query).trim().toLowerCase()) || []; }
   resolve(query) {
     const raw = String(query || "").trim();
-    const byId = this.repository.GetById(raw);
+    const byId = /^(?:[ifo]:)/.test(raw) ? this.repository.GetById(raw) : null;
     if (byId && !(byId instanceof Recipe)) return byId;
     const matches = this.matches(raw);
     return matches.length === 1 ? matches[0] : null;

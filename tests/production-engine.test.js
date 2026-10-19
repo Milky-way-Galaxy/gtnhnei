@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { Repository } from "../dist/repository.js";
 import { RecipeCatalog } from "../recipe-data.js";
+import { exportRecipeYaml, exportPlanYaml } from "../recipe-export.js";
 import { calculateProduction, machinePerformance } from "../production-engine.js";
 
 const good = (id, type = "item") => ({ id, name: id, type, unit: type === "fluid" ? "L" : "items", amount: 1, probability: 1 });
@@ -120,4 +121,57 @@ test("real data bucket conversion, stable recipe IDs and structured metadata rem
   assert.equal(routes[0].durationTicks, 640);
   assert.equal(routes[0].inputs.find(io => io.name === "Programmed Circuit").amount, 0);
   assert.equal(catalog.resolve("i:minecraft:iron_ingot:0").name, "Iron Ingot");
+});
+
+test("parallel circuits are one per machine while returned seed materials are per lane", () => {
+  const record = recipe("a", [io("circuit",0), io("seed",1)], [io("product",1), io("seed",1)]);
+  const result = calculateProduction(fixture([record]), { ...options, machineConfigs: { a: { parallels: 4 } } });
+  assert.equal(result.reusable.find(row=>row.id==="circuit").amount,1);
+  assert.equal(result.reusable.find(row=>row.id==="seed").amount,4);
+});
+test("small positive target quantities still require a whole recipe execution", () => {
+  const catalog = fixture([recipe("a", [io("raw",1)], [io("product",1e9)])]);
+  const result = calculateProduction(catalog, { ...options, amount: .000001 });
+  assert.equal(result.root.batches,1);
+  assert.equal(result.materials[0].amount,1);
+});
+test("very small continuous consumption is retained rather than silently discarded", () => {
+  const catalog = fixture([recipe("a", [io("raw",1)], [io("product",1e9)])]);
+  const result = calculateProduction(catalog, { ...options, amount: .000001, rateMode:"per_second" });
+  assert.ok(result.materials[0].amount > 0);
+});
+
+test("unknown crafting duration/power is never exported as an invented executable recipe", () => {
+  const result=exportRecipeYaml(catalog,"i:minecraft:iron_ingot:0",0);
+  assert.equal(result.ok,false);
+  assert.match(result.error,/not available/);
+  assert.ok(!result.yaml.includes("eut:"));
+  assert.ok(!result.yaml.includes("dur:"));
+});
+test("flow exports preserve distinct IDs even when different fluids share the same name", () => {
+  const a={...io("f:moda:steam",1000),name:"Steam",type:"fluid",unit:"L"};
+  const b={...io("f:modb:steam",2000),name:"Steam",type:"fluid",unit:"L"};
+  const c=fixture([recipe("a",[a,b],[io("product",1)])]);
+  const result=calculateProduction(c,options);
+  assert.equal(result.materials.length,2);
+  const yaml=exportPlanYaml(result);
+  assert.match(yaml,/steam \[f:moda:steam\]/);
+  assert.match(yaml,/steam \[f:modb:steam\]/);
+});
+test("ordinary names and prototype property names never enter the raw ID lookup", () => {
+  assert.equal(catalog.resolve("constructor"),null);
+  assert.equal(catalog.resolve("__proto__"),null);
+  assert.equal(catalog.resolve("toString"),null);
+});
+test("total-craft processing time schedules whole batch waves across machines", () => {
+  const c=fixture([recipe("a",[io("raw",1)],[io("product",1)])]);
+  assert.equal(calculateProduction(c,{...options,amount:2,machineCount:3}).rootTimeSeconds,10);
+  assert.equal(calculateProduction(c,{...options,amount:3,machineCount:2}).rootTimeSeconds,20);
+  assert.equal(calculateProduction(c,{...options,amount:3,machineCount:2,rounding:"fractional"}).rootTimeSeconds,15);
+  assert.throws(()=>calculateProduction(c,{...options,machineCount:Infinity}),/machine count/);
+});
+test("total-craft root stock provisions the requested machine count", () => {
+  const c=fixture([recipe("a",[io("circuit",0)],[io("product",1)])]);
+  const result=calculateProduction(c,{...options,amount:3,machineCount:2});
+  assert.equal(result.reusable[0].amount,2);
 });

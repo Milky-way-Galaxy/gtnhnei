@@ -16,7 +16,11 @@ export function installPlanner() {
     datasetId = dataset().id;
     try {
       const saved = localStorage.getItem(key()) || (datasetId === "gtnh-2.8.0" || datasetId === "legacy" ? localStorage.getItem("gtnhnei_calc_state") : null);
-      state = saved ? normalizePlannerState(JSON.parse(saved)) : structuredClone(defaultPlannerState);
+      const restored = saved ? JSON.parse(saved) : null;
+      // A zero/blank amount was a valid unfinished draft in the old shell. Keep
+      // its route/settings preferences while giving it a calculable amount.
+      if (restored && (!(Number(restored.amount) > 0) || !Number.isFinite(Number(restored.amount)))) restored.amount = 1;
+      state = restored ? normalizePlannerState(restored) : structuredClone(defaultPlannerState);
     } catch { state = structuredClone(defaultPlannerState); }
   }
   function save() {
@@ -82,7 +86,7 @@ export function installPlanner() {
   }
   function table(rows, extra = "") {
     if (!rows.length) return '<p class="plannerEmpty">None.</p>';
-    return `<div class="plannerTable"><table><thead><tr><th>Material</th><th>Quantity${plan.isRate ? "/s" : ""}</th><th>Unit</th>${extra ? "<th>Action</th>" : ""}</tr></thead><tbody>${rows.map(row => `<tr><td>${esc(row.name)}<small>${esc(row.id)}</small></td><td>${fmt(row.amount)}</td><td>${esc(row.unit)}</td>${extra ? `<td><button type="button" data-supply="${esc(row.id)}">Supply externally</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="plannerTable"><table><thead><tr><th>Material</th><th>Quantity${plan.isRate ? "/s" : ""}</th><th>Unit</th>${extra ? "<th>Action</th>" : ""}</tr></thead><tbody>${rows.map(row => `<tr><td>${esc(row.name)}<small title="${esc(row.id)}">${esc((row.reason || row.type || "").replaceAll("-", " "))}${catalog().matches(row.name).length > 1 ? " · " + esc(row.id) : ""}</small></td><td>${fmt(row.amount)}</td><td>${esc(row.unit)}</td>${extra ? `<td><button type="button" data-supply="${esc(row.id)}">Supply externally</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
   }
   function routeControl(node) {
     const good = catalog().resolve(node.id);

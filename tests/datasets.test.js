@@ -50,3 +50,6 @@ test("invalid or oversized imports fail without mutating active settings", () =>
   for (const raw of ["not json", JSON.stringify({ amount: -5 }), JSON.stringify({ routeMode: "invented" }), "x".repeat(2000001)]) assert.throws(() => importPlan(raw, dataset));
   assert.deepEqual(defaultPlannerState, before);
 });
+test("identity-free legacy plans cannot silently move into a different GTNH version", () => {
+  assert.throws(()=>importPlan(JSON.stringify({target:"Iron Ingot",amount:1}),{id:"gtnh-2.8.4"}), /no dataset identity/);
+});

@@ -60,9 +60,9 @@ import { compactName } from "./recipe-data.js";
     if (!Array.isArray(merged.manualIgnored)) merged.manualIgnored = [];
 
     if (localStorage.getItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated") !== "1") {
-      merged.cellsReusable = true;
-      merged.ignoreCircuits = true;
-      merged.ignoreTargetOutputs = true;
+      merged.cellsReusable = newer.cellsReusable ?? old.cellsReusable ?? true;
+      merged.ignoreCircuits = newer.ignoreCircuits ?? old.ignoreCircuits ?? true;
+      merged.ignoreTargetOutputs = newer.ignoreTargetOutputs ?? old.ignoreTargetOutputs ?? true;
       merged.amountMode = merged.amountMode || "runs";
       merged.depth = Math.max(1, Number(merged.depth || 1));
       merged.manualIgnored = Array.isArray(merged.manualIgnored) ? merged.manualIgnored : [];
@@ -558,7 +558,7 @@ import { compactName } from "./recipe-data.js";
       renderResults();
       let extra = document.getElementById("matAdditionalResults");
       if (!extra) { extra = document.createElement("div"); extra.id = "matAdditionalResults"; document.getElementById("matResults").after(extra); }
-      extra.innerHTML = `<details><summary>Reusable startup stock (${result.reusable.length})</summary><ul>${result.reusable.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details><details><summary>Byproducts and surplus (${result.byproducts.length})</summary><ul>${result.byproducts.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details>`;
+      extra.innerHTML = `<details ${state.cellsReusable ? "open" : ""}><summary>Reusable startup stock (${result.reusable.length})</summary><ul>${result.reusable.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details><details><summary>Byproducts and surplus (${result.byproducts.length})</summary><ul>${result.byproducts.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details>`;
       return result;
     } catch (error) { lastErrors = [error.message]; document.getElementById("matAdditionalResults")?.remove(); renderResults(); return null; }
   }
@@ -588,7 +588,7 @@ import { compactName } from "./recipe-data.js";
             <label>
               Target item/fluid
               <div class="matInline">
-                <input id="matTarget" placeholder="epichlorohydrin" autocomplete="off">
+                <input id="matTarget" list="matGoods" placeholder="Exact name or item/fluid ID" autocomplete="off"><datalist id="matGoods"></datalist>
                 <button type="button" id="matUseSearch">Import NEI search</button>
               </div>
             </label>
@@ -620,6 +620,7 @@ import { compactName } from "./recipe-data.js";
               </label>
             </div>
 
+            <label class="matRouteLabel">Production route<select id="matRouteChoice"><option value="">Enter an exact target first</option></select></label>
             <div class="gtnhMatCalcActions">
               <button type="button" id="matCalculate" class="primary">Calculate</button>
               <button type="button" id="matDeepCalculate">Deep calculate</button>
@@ -634,9 +635,7 @@ import { compactName } from "./recipe-data.js";
               <div class="gtnhMatCheckGrid">
                 <label class="matCheck"><input id="matWaterFree" type="checkbox"> Ignore water</label>
                 <label class="matCheck"><input id="matSteamFree" type="checkbox"> Ignore steam</label>
-                <label class="matCheck"><input id="matCellsReusable" type="checkbox"> Track reusable cell stock</label>
-                <label class="matCheck"><input id="matIgnoreCircuits" type="checkbox"> Ignore programmed circuits</label>
-                <label class="matCheck"><input id="matIgnoreTargetOutputs" type="checkbox"> Separate byproducts from requirements</label>
+                <label class="matCheck"><input id="matCellsReusable" type="checkbox"> Expand reusable stock details</label>
               </div>
 
               <label>
@@ -675,6 +674,10 @@ import { compactName } from "./recipe-data.js";
     });
 
     ov.addEventListener("input", event => {
+      if (event.target?.id === "matTarget") {
+        const query = event.target.value.toLowerCase(), list = ov.querySelector("#matGoods");
+        list.innerHTML = (window.GTNH_CATALOG?.goods.filter(good => (good.name || "").toLowerCase().includes(query) || good.id.toLowerCase().includes(query)).slice(0,25) || []).map(good => `<option value="${esc(good.id)}">${esc(good.name)} · ${esc(good.mod)}</option>`).join("");
+      }
       if (event.target?.id?.startsWith("mat")) scheduleSave();
     });
 
@@ -682,9 +685,13 @@ import { compactName } from "./recipe-data.js";
       if (event.target?.id?.startsWith("mat")) {
         readForm();
         saveState();
+        if (event.target.id === "matTarget") syncForm();
       }
     });
 
+    ov.querySelector("#matRouteChoice").addEventListener("change", event => {
+      if (event.target.value !== "") { ov.querySelector("#matRoute").value = Number(event.target.value) + 1; calculate(); }
+    });
     ov.querySelector("#matCalculate")?.addEventListener("click", calculate);
 
     ov.querySelector("#matDeepCalculate")?.addEventListener("click", () => {
@@ -920,6 +927,13 @@ import { compactName } from "./recipe-data.js";
   }
 
   function syncForm() {
+    const catalog = window.GTNH_CATALOG, select = document.getElementById("matRouteChoice");
+    const target = catalog?.resolve(state.target);
+    if (select) {
+      const routes = target ? catalog.recipes(target) : [];
+      select.innerHTML = routes.length ? routes.map((route,index) => `<option value="${index}">${index+1}. ${esc(route.machine)} · ${route.durationTicks === null ? "time unknown" : amountText(route.durationTicks/20)+"s"} · ${esc(route.eut ?? "unknown")} EU/t</option>`).join("") : '<option value="">No exact target/routes</option>';
+      select.value = String(state.routeIndex);
+    }
     const set = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.value = value;
@@ -968,8 +982,8 @@ import { compactName } from "./recipe-data.js";
     state.waterFree = !!document.getElementById("matWaterFree")?.checked;
     state.steamFree = !!document.getElementById("matSteamFree")?.checked;
     state.cellsReusable = !!document.getElementById("matCellsReusable")?.checked;
-    state.ignoreCircuits = !!document.getElementById("matIgnoreCircuits")?.checked;
-    state.ignoreTargetOutputs = !!document.getElementById("matIgnoreTargetOutputs")?.checked;
+    state.ignoreCircuits = document.getElementById("matIgnoreCircuits")?.checked ?? state.ignoreCircuits;
+    state.ignoreTargetOutputs = document.getElementById("matIgnoreTargetOutputs")?.checked ?? state.ignoreTargetOutputs;
 
     state.manualIgnored = normalizeNameList(state.manualIgnored);
   }

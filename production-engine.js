@@ -1,6 +1,6 @@
 const EPS = 1e-10;
 const add = (map, good, amount, extra = {}) => {
-  if (!(amount > EPS)) return;
+  if (!(amount > 0)) return;
   const previous = map.get(good.id);
   if (previous) previous.amount += amount;
   else map.set(good.id, { id: good.id, name: good.name, type: good.type, unit: good.unit, amount, ...extra });
@@ -60,6 +60,8 @@ export function selectRecipe(recipes, good, options = {}) {
 export function calculateProduction(catalog, options) {
   const amount = Number(options.amount ?? 1);
   if (!(amount > 0) || !Number.isFinite(amount)) throw new Error("Enter a finite amount greater than zero.");
+  const fixedMachines = Number(options.machineCount ?? 1);
+  if (!Number.isInteger(fixedMachines) || fixedMachines < 1 || fixedMachines > 1000000) throw new Error("Root machine count must be an integer from 1 to 1,000,000.");
   const target = catalog.resolve(options.target);
   if (!target) {
     const matches = catalog.matches?.(options.target) || [];
@@ -118,7 +120,7 @@ export function calculateProduction(catalog, options) {
     const balance = recipeBalance(recipe);
     const yieldAmount = balance.outputs.find(io => io.id === good.id)?.amount;
     if (!(yieldAmount > EPS)) return leaf(good, quantity, "invalid-route", node);
-    const batches = isRate || options.rounding === "fractional" ? quantity / yieldAmount : Math.ceil(quantity / yieldAmount - EPS);
+    const batches = isRate || options.rounding === "fractional" ? quantity / yieldAmount : Math.max(1, Math.ceil(quantity / yieldAmount - EPS));
     if (!Number.isFinite(batches) || batches > 1e15) throw new Error("Quantity exceeds the safe calculation range; reduce the target or break up this chain.");
     node.recipeId = recipe.id;
     node.machine = recipe.machine;
@@ -160,21 +162,20 @@ export function calculateProduction(catalog, options) {
   const reusableTotals = new Map();
   for (const entry of reusable.values()) {
     const step = machineRows.find(step => step.recipeId === entry.recipeId);
-    add(reusableTotals, entry, entry.amount * Math.max(1, step?.count || 1) * (step?.performance?.parallels || 1));
+    add(reusableTotals, entry, entry.amount * (!isRate && entry.recipeId === root.recipeId ? fixedMachines : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
   }
   const total = key => machineRows.reduce((sum, step) => sum + (step[key] || 0), 0);
   const rootPerformance = root.performance;
-  const fixedMachines = Math.max(1, Math.floor(Number(options.machineCount) || 1));
   const rootYield = rootRecipe ? recipeBalance(rootRecipe).outputs.find(io => io.id === targetGood.id)?.amount : null;
   const capacity = rootPerformance && rootYield ? rootPerformance.batchesPerSecond * rootYield * fixedMachines : null;
   if (isRate && options.machineMode === "fixed" && capacity !== null && requested > capacity + EPS) warnings.add(`Requested output exceeds the ${fixedMachines} root machine(s) capacity of ${capacity.toPrecision(6)} ${targetGood.unit}/s.`);
   if (byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
-  if (reusableTotals.size) warnings.add("Reusable quantities are startup stock, not recurring consumption. Keep them available in the indicated machines.");
+  if (reusableTotals.size) warnings.add("Reusable quantities provision startup stock for the configured root machine count and full parallel capacity, not recurring consumption.");
   return { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
     root, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()], reusable: [...reusableTotals.values()],
     steps: machineRows, warnings: [...warnings], unresolved, truncated: visits > nodeLimit,
     knownEnergy: isRate ? null : total("energy"), knownAverageEut: isRate ? total("averageEut") : null,
     knownInstalledEut: isRate ? total("installedEut") : null,
     hasUnknownPower: machineRows.some(step => !step.performance), capacity,
-    rootTimeSeconds: !isRate && rootPerformance ? root.batches / rootPerformance.batchesPerSecond / fixedMachines : null };
+    rootTimeSeconds: !isRate && rootPerformance ? (options.rounding === "fractional" ? root.batches / (rootPerformance.parallels * fixedMachines) : Math.max(1, Math.ceil(root.batches / (rootPerformance.parallels * fixedMachines) - EPS))) * rootPerformance.durationTicks / 20 : null };
 }

@@ -422,7 +422,10 @@ function renderSearchGrid(push = true) {
   const q = search.value.trim();
 
   const newQuery = q ? new SearchQuery(q) : null;
-  searchResults = filterGoods(!q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery)), searchFilters);
+  const exact = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
+  const matched = exact instanceof Item || exact instanceof Fluid ? [exact] : exact instanceof OreDict ? exact.items.filter(Boolean) :
+    !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
+  searchResults = filterGoods(matched, searchFilters);
 
   grid.innerHTML = "";
   renderedGridCount = 0;
@@ -1335,6 +1338,11 @@ function makeNeiSlot(io) {
     slot.appendChild(amount);
   }
 
+  if ([RecipeIoType.ItemOutput, RecipeIoType.FluidOutput].includes(io.type) && io.probability < 1) {
+    const probability = document.createElement("span"); probability.className = "neiProbability";
+    probability.textContent = `${Number((io.probability * 100).toPrecision(4))}%`;
+    slot.appendChild(probability); slot.title += ` · ${probability.textContent} chance`;
+  }
   attachControls(slot, io.goods);
   return slot;
 }
@@ -1413,8 +1421,8 @@ function addBadges(recipe, badges) {
     const gt = recipe.gtRecipe;
 
     tierText = tierFromEu(gt.voltage);
-    euText = `${gt.voltage ?? "?"} EU/t`;
-    ampText = `${gt.amperage ?? "?"}A`;
+    euText = `${gt.amperage > 0 ? gt.voltage * gt.amperage : "?"} EU/t`;
+    ampText = `${gt.amperage ?? "?"}A @ ${gt.voltage ?? "?"}V`;
     timeText = formatDuration(gt) ?? "";
 
     const tier = document.createElement("span");
@@ -1878,7 +1886,7 @@ machineTabs.addEventListener("pointerdown", () => {
         const qLower = q.toLowerCase();
         const qCompact = compact(q);
 
-        const exactId = repo.GetById(q);
+        const exactId = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
         if (exactId) return exactId;
         if (!qLower) return null;
 
@@ -2024,7 +2032,7 @@ machineTabs.addEventListener("pointerdown", () => {
         const qLower = q.toLowerCase();
         const qCompact = compact(q);
 
-        const exactId = repo.GetById(q);
+        const exactId = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
         if (exactId) return exactId;
         if (!qLower) return null;
 

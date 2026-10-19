@@ -97,3 +97,27 @@ test("a version checksum mismatch is visible and can recover on retry", async ({
   await page.locator("#bootRetry").click();
   await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
 });
+
+test("planner traps keyboard focus and Escape returns to its opener", async ({ page }) => {
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.locator("#toolCalc").click();
+  await expect(page.locator("#calcTarget")).toBeFocused();
+  await page.locator("#gtnhCalcClose").focus();
+  await page.keyboard.press("Shift+Tab");
+  expect(await page.evaluate(() => !!document.activeElement.closest("#gtnhCalcOverlay"))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#gtnhCalcOverlay")).not.toBeVisible();
+  await expect(page.locator("#toolCalc")).toBeFocused();
+});
+test("legacy zero-amount drafts retain route choices and explicit saved settings", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("gtnhnei_calc_state",JSON.stringify({target:"Iron Ingot",amount:0,lockedRoutes:{"iron ingot":4},settings:{waterFree:false}}));
+    localStorage.setItem("gtnh_material_calc_state_v4",JSON.stringify({target:"Iron Ingot",cellsReusable:false,ignoreCircuits:false}));
+  });
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.locator("#toolCalc").click();
+  const state=await page.evaluate(()=>window.GTNH_CALC.getState());
+  expect(state.amount).toBe(1); expect(state.settings.waterFree).toBe(false); expect(state.lockedRoutes["iron ingot"]).toBe(4);
+  const material=await page.evaluate(()=>window.GTNH_MATCALC.getState());
+  expect(material.cellsReusable).toBe(false); expect(material.ignoreCircuits).toBe(false);
+});

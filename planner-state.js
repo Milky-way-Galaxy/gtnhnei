@@ -34,5 +34,6 @@ export function importPlan(text, dataset) {
   }
   // Older Atlas exports contained settings only. Preserve them as legacy imports;
   // their route indexes should be reviewed against the active database.
+  if (dataset.id !== "gtnh-2.8.0") throw new Error("Legacy plans have no dataset identity and can only be imported into the original bundled 2.8.0 dataset.");
   return normalizePlannerState(data);
 }

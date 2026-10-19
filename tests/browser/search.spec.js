@@ -36,3 +36,11 @@ test("grid supports arrow-key navigation and a single roving Tab stop", async ({
   await expect(page.locator('#grid .slot[tabindex="0"]')).toHaveCount(1);
   await page.keyboard.press("Home"); await expect(first).toBeFocused();
 });
+test("exact IDs resolve one good and recipe chance outputs show their probability", async ({ page }) => {
+  await ready(page);
+  await page.locator("#search").fill("i:minecraft:iron_ingot:0");
+  await expect(page.locator("#grid .slot")).toHaveCount(1);
+  await expect(page.locator("#grid .slot")).toHaveAttribute("data-goods-id","i:minecraft:iron_ingot:0");
+  await page.locator("#grid .slot").click();
+  await expect(page.locator("#recipePage .neiProbability").filter({hasText:"25%"}).first()).toBeVisible();
+});

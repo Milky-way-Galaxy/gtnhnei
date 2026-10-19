@@ -32,7 +32,7 @@ Known base GT recipe power is voltage × amperage, and duration is read in ticks
 Rate machine equivalents = executions/s × effective duration ticks / (20 ×
 parallel lanes). Installed count rounds up; average and installed EU/t are shown
 separately. Total-craft energy = executions × effective ticks × per-lane EU/t.
-Root processing time excludes upstream staging and logistics.
+Whole-batch root time schedules complete waves across the requested machines/parallel lanes; fractional totals use continuous estimates. Root time excludes upstream staging and logistics. Startup stock provisions the configured root count/full parallel capacity, with non-consumed circuits counted once per physical machine.
 
 Profiles explicitly select parallel lanes and overclocks. Normal overclocks
 multiply per-lane EU/t by 4 and divide time by 2; perfect OCs divide time by 4.

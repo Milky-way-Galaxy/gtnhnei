@@ -9,6 +9,7 @@ from termcolor import colored, cprint
 
 from src.data.basicTypes import Ingredient, IngredientCollection, Recipe
 from src.graph._utils import _iterateOverMachines
+from src.graph._rounding import ceil_stable
 from src.gtnh.overclocks import OverclockHandler
 
 
@@ -454,7 +455,7 @@ def addSummaryNode(self) -> None:
         total_eut += rec.eut
     if io_label_lines[-1] == '':
         io_label_lines.append('<hr/>')
-    eut_rounded = -int(math.ceil(total_eut))
+    eut_rounded = -int(ceil_stable(total_eut))
     io_label_lines.append(makeLineHtml('Input EU/t:', self.userRound(eut_rounded), 'white', color_negative))
     if 'eu' in total_io:
         produced_eut = int(math.floor(total_io['eu'] / 20))
@@ -495,7 +496,7 @@ def addSummaryNode(self) -> None:
     # Compute maximum draw
     max_draw = 0
     for rec in self.recipes.values():
-        max_draw += rec.base_eut * math.ceil(rec.multiplier)
+        max_draw += rec.base_eut * ceil_stable(rec.multiplier)
 
     io_label_lines.append(
         makeLineHtml(

@@ -32,3 +32,6 @@
  #gtnhCalcOverlay .gtnhCalcTabs { flex-shrink: 0; }
  .plannerTable td:first-child { min-width: 145px; }
 }
+#gtnhCalcOverlay .gtnhCalcPanel { background: #081321; }
+.matRouteLabel { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+#matRouteChoice { width: 100%; min-height: 44px; padding: 8px; color: #eaf2ff; background: #12283b; border: 1px solid #39576b; border-radius: 8px; font-size: 16px; }

@@ -6,10 +6,6 @@
   let lastYaml = "";
   let lastSvg = "";
 
-  function compact(s) {
-    return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  }
-
   function cleanName(raw) {
     let s = String(raw || "").trim();
 
@@ -24,23 +20,6 @@
 
   function flowName(raw) {
     return cleanName(raw).toLowerCase();
-  }
-
-  function yamlScalar(v) {
-    if (typeof v === "number") return String(v);
-    const s = String(v ?? "");
-    if (/^[a-zA-Z0-9_ .+\-()[\]\/]+$/.test(s)) return s;
-    return JSON.stringify(s);
-  }
-
-  function yamlMap(label, map) {
-    const entries = Object.entries(map || {}).filter(([k]) => cleanName(k));
-    if (!entries.length) return `  ${label}: {}`;
-
-    return [
-      `  ${label}:`,
-      ...entries.map(([k, v]) => `    ${yamlScalar(flowName(k))}: ${yamlScalar(v)}`)
-    ].join("\n");
   }
 
   function getState() {
@@ -64,166 +43,31 @@
   function getRouteIndex(target) {
     const st = getState();
     const key = String(target || "").toLowerCase();
-
-    const locked =
+    const catalog = window.GTNH_CATALOG, good = catalog?.resolve(target);
+    const locked = window.GTNH_CALC?.getPlan?.()?.root.recipeId ?? st.routeChoices?.[good?.id] ??
       st.lockedRoutes?.[key] ??
       st.lockedRoutes?.[String(target || "")] ??
       0;
-
+    if (typeof locked === "string" && locked.startsWith("r")) return good ? catalog.recipes(good).findIndex(recipe => recipe.id === locked) : -1;
     const n = Number(locked);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function parseMapFromYaml(yaml, label) {
-    const out = {};
-    const lines = String(yaml || "").split(/\r?\n/);
-    let inside = false;
-
-    for (const line of lines) {
-      if (/^\s+[IO]\s*:\s*/.test(line)) {
-        inside = new RegExp("^\\s+" + label + "\\s*:").test(line);
-        continue;
-      }
-
-      if (inside) {
-        if (/^\s{2}\S/.test(line) && !/^\s{4}/.test(line)) break;
-
-        const m = line.match(/^\s{4}(.+?)\s*:\s*(.+?)\s*$/);
-        if (m) out[m[1].trim()] = parseValue(m[2].trim());
-      }
-    }
-
-    return out;
-  }
-
-  function parseValue(v) {
-    const n = Number(String(v).replace(/,/g, ""));
-    return Number.isFinite(n) ? n : v;
-  }
-
-  function splitMixedIoByTarget(I, O, target) {
-    const keys = Object.keys(I || {});
-    if (!keys.length) return { I, O };
-
-    const outAlready = Object.keys(O || {}).length > 0;
-    if (outAlready) return { I, O };
-
-    const targetCompact = compact(target);
-    const hitIndex = keys.findIndex(k => compact(k).includes(targetCompact) || targetCompact.includes(compact(k)));
-
-    if (hitIndex < 0) return { I, O };
-
-    const newI = {};
-    const newO = {};
-
-    keys.forEach((k, idx) => {
-      if (idx >= hitIndex) newO[k] = I[k];
-      else newI[k] = I[k];
-    });
-
-    return { I: newI, O: newO };
-  }
-
-  function guessDurationSeconds(fallback = 1) {
-    const text = String(document.querySelector("#gtnhCalcOverlay")?.innerText || document.body.innerText || "");
-
-    const matches = [...text.matchAll(/\b(\d+(?:\.\d+)?)\s*s\b/gi)]
-      .map(m => Number(m[1]))
-      .filter(n => Number.isFinite(n) && n > 0);
-
-    if (matches.length) return matches[0];
-
-    return fallback;
+    return Number.isInteger(n) && n >= 0 ? n : -1;
   }
 
   function buildRealYaml() {
     const target = getTarget();
     const api = window.GTNHNEI_FLOW_EXPORT_API;
-
-    if (!target) {
-      return {
-        ok: false,
-        target: "",
-        machine: "machine",
-        tier: "LV",
-        eut: 0,
-        dur: 1,
-        I: {},
-        O: {},
-        yaml: "# No target selected.\n"
-      };
-    }
-
-    if (!api?.ready || typeof api.yamlForRecipe !== "function") {
-      return {
-        ok: false,
-        target,
-        machine: "machine",
-        tier: "LV",
-        eut: 0,
-        dur: 1,
-        I: {},
-        O: {},
-        yaml: "# gtnh-flow export API is not ready yet. Wait for data load, then press YAML again.\n"
-      };
-    }
-
+    const fail = error => ({ ok: false, target, error, I: {}, O: {}, yaml: `# ${String(error).replaceAll("\n", "\n# ")}\n` });
+    if (!target) return fail("No target selected.");
+    if (!api?.ready || typeof api.yamlForRecipe !== "function") return fail("Recipe export API is still loading. Try again when data is ready.");
     let r;
     try {
-      r = api.yamlForRecipe(target, getRouteIndex(target), {});
+      r = api.yamlForRecipe(target, getRouteIndex(target), { forceRoute: true });
     } catch (err) {
-      return {
-        ok: false,
-        target,
-        machine: "machine",
-        tier: "LV",
-        eut: 0,
-        dur: 1,
-        I: {},
-        O: {},
-        yaml: `# YAML export crashed.\n# ${String(err?.message || err)}\n`
-      };
+      return fail(`YAML export failed: ${String(err?.message || err)}`);
     }
-
-    let I = r.input || r.I || parseMapFromYaml(r.yaml, "I") || {};
-    let O = r.output || r.O || parseMapFromYaml(r.yaml, "O") || {};
-
-    ({ I, O } = splitMixedIoByTarget(I, O, target));
-
-    const machine = String(r.machine || "machine");
-    const tier = String(r.tier || "LV");
-    const eut = Number.isFinite(Number(r.eut)) ? Number(r.eut) : 0;
-
-    let dur = Number(r.dur);
-    if (!Number.isFinite(dur) || dur <= 1) dur = guessDurationSeconds(1);
-
-    const yaml =
-`# GTNH Atlas -> gtnh-flow draft
-# Target: ${target}
-# Route: ${getRouteIndex(target) + 1}
-# Machine: ${machine}
-# Check names once before running factory_graph.py.
-
-- m: ${yamlScalar(machine.toLowerCase())}
-  tier: ${yamlScalar(tier)}
-${yamlMap("I", I)}
-${yamlMap("O", O)}
-  eut: ${yamlScalar(eut)}
-  dur: ${yamlScalar(dur)}
-  number: 1
-`;
-
-    return {
-      ok: true,
-      target,
-      machine,
-      tier,
-      eut,
-      dur,
-      I,
-      O,
-      yaml
-    };
+    if (!r?.ok) return { ...fail(r?.error || "No executable recipe is available."), yaml: r?.yaml || fail(r?.error).yaml };
+    if (typeof r.yaml !== "string" || !(Number(r.dur) > 0) || !Number.isFinite(Number(r.dur)) || !Number.isFinite(Number(r.eut)) || r.eut === "" || r.eut === null) return fail("Recipe timing/power is unavailable. No executable solver entry was invented.");
+    return { ...r, target, I: r.input || {}, O: r.output || {} };
   }
 
   function codeBox() {
@@ -267,7 +111,7 @@ ${yamlMap("O", O)}
     const r = buildRealYaml();
     lastYaml = r.yaml;
     setCode(lastYaml);
-    toast("gtnh-flow YAML generated.");
+    toast(r.ok ? "gtnh-flow YAML generated." : r.error || "Recipe unavailable.");
   }
 
   function esc(s) {
@@ -396,12 +240,14 @@ ${yamlMap("O", O)}
 
   function downloadSvg() {
     if (!lastSvg) renderFlow();
+    if (!lastSvg) return;
     downloadText(`gtnh-flow_${fileSafe(getTarget())}.svg`, lastSvg, "image/svg+xml;charset=utf-8");
   }
 
   function renderFlow() {
     const r = buildRealYaml();
     lastYaml = r.yaml;
+    if (!r.ok) { lastSvg = ""; setCode(lastYaml); toast(r.error || "Recipe unavailable."); return; }
     lastSvg = makeSvg(r);
 
     const box = codeBox();

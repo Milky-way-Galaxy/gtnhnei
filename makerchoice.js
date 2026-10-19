@@ -1,3 +1,4 @@
+import { makerChoiceFor, makerRouteIndex } from "./maker-state.js";
 /* === GTNH Maker Choice v1 === */
 /* Choose whether a needed material is an external input or produced by a selected route. */
 (() => {
@@ -13,8 +14,8 @@
     return !id || id === "gtnh-2.8.0" ? STORE_KEY : `${STORE_KEY}_${id}`;
   }
   const DEFAULT_STATE = {
-    makers: {},          // compactName -> { name, routeIndex }
-    externalInputs: {}   // compactName -> { name }
+    makers: {},          // exact good ID -> choice; legacy compact names still read
+    externalInputs: {}
   };
 
   let state = loadState();
@@ -35,7 +36,8 @@
   }
 
   function saveState() {
-    localStorage.setItem(scopedKey(), JSON.stringify(state));
+    try { localStorage.setItem(scopedKey(), JSON.stringify(state)); }
+    catch { toast("Maker choices cannot be saved in this browser. Keep the page open to retain this session."); }
   }
 
   function esc(s) {
@@ -54,17 +56,13 @@
   }
 
   function cleanName(s) {
-    return String(s || "")
-      .trim()
+    const text = String(s || "").trim();
+    if (/^[ifo]:/.test(text)) return text;
+    return text
       .replace(/^x\d+\s+/i, "")
       .replace(/^L\s+/i, "")
       .replace(/\s+/g, " ")
       .toLowerCase();
-  }
-
-  function amountNum(v) {
-    const n = Number(String(v ?? "").replace(/,/g, "").trim());
-    return Number.isFinite(n) ? n : 0;
   }
 
   function amountText(n) {
@@ -97,51 +95,38 @@
   }
 
   function routeFor(name, fallback = 0) {
-    const key = compact(name);
-
-    if (!key) return fallback;
-
-    const maker = state.makers[key];
-    if (!maker) return fallback;
-
-    const n = Number(maker.routeIndex);
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
+    const catalog = window.GTNH_CATALOG, good = catalog?.resolve(cleanName(name));
+    return good ? makerRouteIndex(catalog, good, makerChoiceFor(state, catalog, good), fallback) : fallback;
   }
 
   function makerInfo(name) {
-    return state.makers[compact(name)] || null;
+    const catalog = window.GTNH_CATALOG, good = catalog?.resolve(cleanName(name));
+    return good ? makerChoiceFor(state, catalog, good) : null;
   }
 
   function isExternalInput(name) {
-    return !!state.externalInputs[compact(name)];
+    const catalog = window.GTNH_CATALOG, good = catalog?.resolve(cleanName(name));
+    return !!(good && makerChoiceFor(state, catalog, good, "externalInputs"));
   }
 
   function setExternalInput(name) {
-    const cleaned = cleanName(name);
-    const key = compact(cleaned);
-
-    if (!key) return false;
-
-    delete state.makers[key];
-    state.externalInputs[key] = { name: cleaned };
+    const good = window.GTNH_CATALOG?.resolve(cleanName(name));
+    if (!good) return false;
+    clearChoice(good.id, false);
+    state.externalInputs[good.id] = { name: good.name, goodId: good.id };
 
     saveState();
-    candidateCache.delete(key);
-
     return true;
   }
 
   function setMaker(name, routeIndex) {
-    const cleaned = cleanName(name);
-    const key = compact(cleaned);
-
-    if (!key) return false;
-
-    delete state.externalInputs[key];
-    state.makers[key] = {
-      name: cleaned,
-      routeIndex: Math.max(0, Math.floor(Number(routeIndex) || 0)),
-      recipeId: routeCandidates(name)[Number(routeIndex)]?.recipeId || null
+    const good = window.GTNH_CATALOG?.resolve(cleanName(name)), route = routeCandidates(name)[Number(routeIndex)];
+    if (!good || !route) return false;
+    clearChoice(good.id, false);
+    state.makers[good.id] = {
+      name: good.name, goodId: good.id,
+      routeIndex: route.index,
+      recipeId: route.recipeId
     };
 
     saveState();
@@ -149,26 +134,38 @@
     return true;
   }
 
-  function clearChoice(name) {
-    const key = compact(name);
+  function clearChoice(name, persist = true) {
+    const catalog = window.GTNH_CATALOG, good = catalog?.resolve(cleanName(name));
+    for (const section of ["makers", "externalInputs"]) {
+      if (good) {
+        const legacyKey = compact(good.name);
+        const legacy = state[section][legacyKey];
+        if (legacy && makerChoiceFor({ [section]: { [legacyKey]: legacy } }, catalog, good, section) === legacy) delete state[section][legacyKey];
+        delete state[section][good.id];
+      } else delete state[section][compact(name)];
+    }
 
-    delete state.makers[key];
-    delete state.externalInputs[key];
-
-    saveState();
+    if (persist) saveState();
   }
 
   function routeCandidates(name) {
     const catalog = window.GTNH_CATALOG;
     if (!catalog) return [];
-    const good = catalog.resolve(name) || catalog.findCompatible(name);
+    const good = catalog.resolve(cleanName(name));
     if (!good) return [];
     const key = `${catalog.dataset.id}:${good.id}`;
     if (candidateCache.has(key)) return candidateCache.get(key);
+    const grouped = entries => {
+      const values = new Map();
+      for (const io of entries) {
+        const name = catalog.matches(io.name).length > 1 ? `${io.name} [${io.id}]` : io.name;
+        values.set(name, (values.get(name) || 0) + io.amount * io.probability);
+      }
+      return Object.fromEntries(values);
+    };
     const out = catalog.recipes(good).map((recipe, index) => ({ index, recipeId: recipe.id, name: good.name || good.id,
       machine: recipe.machine, tier: recipe.tier || "", eut: recipe.eut ?? "", dur: recipe.durationTicks === null ? "" : recipe.durationTicks / 20,
-      input: Object.fromEntries(recipe.inputs.map(io => [io.name, io.amount])),
-      output: Object.fromEntries(recipe.outputs.map(io => [io.name, io.amount * io.probability])) }));
+      input: grouped(recipe.inputs), output: grouped(recipe.outputs) }));
     candidateCache.set(key, out);
     return out;
   }
@@ -185,7 +182,7 @@
       };
     }
 
-    if (state.externalInputs[key]) {
+    if (isExternalInput(cleaned)) {
       return {
         kind: "external",
         label: "input",
@@ -193,10 +190,12 @@
       };
     }
 
-    if (state.makers[key]) {
+    const selected = makerInfo(cleaned);
+    if (selected) {
+      const index = routeFor(cleaned);
       return {
-        kind: "selected",
-        label: `maker route ${Number(state.makers[key].routeIndex) + 1}`,
+        kind: index < 0 ? "missing" : "selected",
+        label: index < 0 ? "saved recipe unavailable" : `maker route ${index + 1}`,
         candidates: routeCandidates(cleaned)
       };
     }
@@ -354,6 +353,7 @@
       toast("No material selected.");
       return;
     }
+    if (!window.GTNH_CATALOG?.resolve(name)) { toast("Select an exact material name or item/fluid ID. Duplicate names need an ID."); return; }
 
     ensureOverlay().dataset.name = name;
     render();
@@ -377,8 +377,10 @@
     const routes = routeCandidates(name);
 
     if (target) {
+      const good = window.GTNH_CATALOG?.resolve(name);
       target.innerHTML = `
-        <div class="gtnhMakerTargetName">${esc(name)}</div>
+        <div class="gtnhMakerTargetName">${esc(good?.name || name)}</div>
+        ${good ? `<small>${esc(good.id)}</small>` : ""}
         <div class="gtnhMakerStatus ${esc(status.kind)}">
           <span>${status.kind === "missing" ? "⚠" : "●"}</span>
           ${esc(status.label)}
@@ -388,7 +390,7 @@
             status.kind === "missing"
               ? "This material has multiple possible routes. Choose one maker route or use it as an input."
               : status.kind === "selected"
-                ? `This material uses route ${Number(current?.routeIndex || 0) + 1}.`
+                  ? `This material uses route ${routeFor(name) + 1}.`
                 : status.kind === "external"
                   ? "This material is treated as supplied input."
                   : "No maker choice is required right now."
@@ -409,7 +411,7 @@
     }
 
     routesBox.innerHTML = routes.map(route => {
-      const selected = current && Number(current.routeIndex) === Number(route.index);
+      const selected = current && (current.recipeId ? current.recipeId === route.recipeId : Number(current.routeIndex) === Number(route.index));
 
       return `
         <article class="gtnhMakerRoute ${selected ? "selected" : ""}">
@@ -461,7 +463,7 @@
 
     for (const row of rows) {
       const cells = row.querySelectorAll("td");
-      const name = cleanName(cells[1]?.textContent || "");
+      const name = row.dataset.goodId || row.dataset.goodName || cleanName(cells[1]?.firstChild?.textContent || "");
       if (!name) continue;
 
       const status = statusFor(name);
@@ -492,13 +494,14 @@
         cells[1].appendChild(badge);
       }
 
-      badge.textContent =
+      const text =
         status.kind === "missing" ? "⚠ maker?" :
-        status.kind === "selected" ? `maker ${Number(makerInfo(name)?.routeIndex || 0) + 1}` :
+        status.kind === "selected" ? `maker ${routeFor(name) + 1}` :
         status.kind === "external" ? "input" :
         "";
-
-      badge.className = `makerChoiceRowBadge ${status.kind}`;
+      if (badge.textContent !== text) badge.textContent = text;
+      const className = `makerChoiceRowBadge ${status.kind}`;
+      if (badge.className !== className) badge.className = className;
     }
   }
 

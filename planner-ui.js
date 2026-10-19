@@ -1,5 +1,4 @@
 import { calculateProduction } from "./production-engine.js";
-import { compactName } from "./recipe-data.js";
 import { exportPlanYaml, planCsv } from "./recipe-export.js";
 import { defaultPlannerState, normalizePlannerState, serializePlan, importPlan } from "./planner-state.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
@@ -35,21 +34,16 @@ export function installPlanner() {
   function options() {
     const c = catalog(), target = c.resolve(state.target), targetId = target?.id;
     const routeChoices = { ...state.lockedRoutes, ...state.routeChoices };
-    const makers = window.GTNH_MAKER_API?.getState?.() || {};
-    // Legacy numeric choices remain usable on the bundled dataset only.
-    if (dataset().id === "gtnh-2.8.0" || dataset().id === "legacy") {
-      for (const [key, choice] of Object.entries(makers.makers || {})) {
-        for (const good of c.goods.filter(g => compactName(g.name) === key)) {
-          if (routeChoices[good.id] === undefined) routeChoices[good.id] = choice.recipeId || choice.routeIndex;
-        }
-      }
-    }
+    const makers = window.GTNH_MAKER_API;
     const externalInputs = new Set(state.rawOverrides), freeInputs = new Set(state.ignored);
+    for (const id of Object.keys(makers?.getState().externalInputs || {})) if (/^[ifo]:/.test(id) && id !== targetId && makers.isExternalInput(id)) externalInputs.add(id);
     for (const good of c.goods) {
+      const maker = makers?.makerInfo(good.id);
+      if (maker && routeChoices[good.id] === undefined) routeChoices[good.id] = maker.recipeId || maker.routeIndex;
       if (good.id === targetId) continue;
       const name = (good.name || "").toLowerCase();
       if (state.ignored.includes(good.id) || state.ignored.includes(name) || state.settings.waterFree && name === "water" || state.settings.steamFree && ["steam", "superheated steam", "dense steam"].includes(name)) freeInputs.add(good.id);
-      if (state.rawOverrides.includes(name) || makers.externalInputs?.[compactName(name)] ||
+      if (state.rawOverrides.includes(name) || makers?.isExternalInput(good.id) ||
         !state.settings.expandCircuits && /circuit/.test(name) || !state.settings.expandMachines && good.id.startsWith("i:gregtech:gt.blockmachines:") ||
         !state.settings.expandPlatesWires && /\b(plate|wire|cable)s?\b/.test(name)) externalInputs.add(good.id);
     }

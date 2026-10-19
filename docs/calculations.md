@@ -61,6 +61,11 @@ missing timing/power report unknown values instead of invented machine counts.
 JSON exports preserve settings and stable recipe/ingredient choices against the
 exact dataset checksum. Mismatched datasets are rejected before replacing active
 settings. Legacy settings-only JSON imports are supported and need route review.
+New maker/supplied-input choices and ignored materials use exact IDs. Legacy
+unique-name makers remain valid; duplicate names require an identifying recipe
+ID. Material-calculator root route controls override maker defaults. The ignore
+picker reads the structured catalog, and legacy name-based ignores migrate to all
+previously matching IDs so their coverage is retained without joining variants.
 CSV is a material ledger; SVG is a dependency diagram. gtnh-flow YAML uses base
 recipe values, expected yields and base machine equivalents; custom planner
 profiles are not silently translated into specialized gtnh-flow machine options.

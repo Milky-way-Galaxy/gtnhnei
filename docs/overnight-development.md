@@ -142,7 +142,7 @@ Implementation commits:
 - `bc8529b` — packaged browser solver, worker serialization and retry.
 - `1f3481b` — calculation precision, state migration, accurate recipe information and flow power correction.
 
-Follow-up documentation records final coverage and limitations. PR #4 is stacked
+Follow-up documentation records final coverage and limitations. The first clean CI runner exposed a transitive graphviz dependency in the focused Python test; the CI follow-up installs the vendor's declared requirements rather than relying on packages already present locally. PR #4 is stacked
 on #3; review/merge #3 first, then retarget #4 to main for its own review. GitHub
 Actions is separate from the local results; pending remote checks are not claimed
 as passes. Recovery bundles/patches are prepared in the workspace.

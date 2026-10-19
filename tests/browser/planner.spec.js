@@ -54,6 +54,11 @@ test("machine profiles explicitly change rate, energy and parallel capacity", as
   await start(page);
   const profile = page.locator(".plannerProfile").first();
   await profile.locator("..").locator("summary").click();
+  await profile.locator('[data-profile-field="parallels"]').fill("0");
+  await profile.locator('[data-profile-field="parallels"]').blur();
+  await expect(profile.locator('[data-profile-field="parallels"]')).toHaveValue("1");
+  await expect(page.locator("#plannerStatus")).toContainText("Previous profile retained");
+  expect(await page.evaluate(() => window.GTNH_CALC.getPlan().knownEnergy)).toBe(38400);
   await profile.locator('[data-profile-field="overclocks"]').fill("1");
   await profile.locator('[data-profile-field="overclocks"]').blur();
   const result = await page.evaluate(() => window.GTNH_CALC.getPlan());

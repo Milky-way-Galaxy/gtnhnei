@@ -241,6 +241,11 @@ export function installPlanner() {
       } else if (input.dataset.ore) state.oreChoices[input.dataset.ore] = input.value;
       else if (input.dataset.profileField) {
         const id = input.closest("[data-profile]").dataset.profile;
+        if (input.dataset.profileField !== "overclockMode" && (!input.value || !input.checkValidity())) {
+          input.value = state.machineConfigs[id]?.[input.dataset.profileField] ?? (input.dataset.profileField === "parallels" ? 1 : 0);
+          overlay.querySelector("#plannerStatus").textContent = "Parallel lanes must be whole numbers from 1–4096; overclocks from 0–10. Previous profile retained.";
+          return;
+        }
         state.machineConfigs[id] = { ...(state.machineConfigs[id] || {}), [input.dataset.profileField]: input.dataset.profileField === "overclockMode" ? input.value : Number(input.value) };
       } else if (input.id === "plannerImport") {
         try {

@@ -151,6 +151,8 @@ Targeted unused-variable linting guards the maintained calculator/data modules.
   read back as part of material identity.
 - Legacy flow preview inventing unknown/subsecond durations from page text.
 - Settings-storage errors preventing the material calculator from initializing.
+- Invalid parallel/overclock field edits hiding the controls behind a calculation
+  error; invalid edits now retain the previous valid profile and result.
 
 ## Verification
 

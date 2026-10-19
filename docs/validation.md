@@ -1,5 +1,7 @@
 # Startup and regression validation
 
+This records the historical PR #3 baseline. See [the current development report](overnight-development.md) for subsequent implementation and validation.
+
 The revival changes target three areas:
 
 1. **Rendering and incremental search.** Restore the missing grid/recipe batch

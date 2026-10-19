@@ -78,7 +78,8 @@ known limitations of the bundled legacy test suites.
 
 The Planner now calculates recursive materials, route/OreDict alternatives,
 expected chance yields, startup stock, machine requirements and base energy.
-It supports whole batches and continuous rates, dataset-bound JSON plans,
+It supports whole batches and continuous rates, native item stacks, finite stock
+on hand for total jobs, fixed-machine capacity/power checks, dataset-bound JSON plans,
 material CSVs and dependency SVGs. The separate Material Calculator shares the
 same engine. Search has item/fluid/mod filters and exact-ID permalinks.
 

@@ -53,3 +53,12 @@ test("invalid or oversized imports fail without mutating active settings", () =>
 test("identity-free legacy plans cannot silently move into a different GTNH version", () => {
   assert.throws(()=>importPlan(JSON.stringify({target:"Iron Ingot",amount:1}),{id:"gtnh-2.8.4"}), /no dataset identity/);
 });
+test("finite inventory survives portable plans and rejects malformed quantities without mutation", () => {
+  const raw = { inventory: { "i:minecraft:iron_ingot:0": "64", "f:gregtech:liquid_epichlorhydrin": 1000 } };
+  const state = normalizePlannerState(raw);
+  assert.equal(raw.inventory["i:minecraft:iron_ingot:0"], "64");
+  assert.deepEqual(importPlan(serializePlan(state, dataset), dataset).inventory, state.inventory);
+  for (const inventory of [[], { "Water": 3 }, { "f:water": -1 }, { "f:water": Infinity }, JSON.parse('{"__proto__":1}')]) {
+    assert.throws(() => normalizePlannerState({ inventory }), /[Ii]nventory/);
+  }
+});

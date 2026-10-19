@@ -34,6 +34,7 @@ export class RecipeCatalog {
   describe(good) {
     return { id: good.id, name: good.name || good.id, type: good instanceof Fluid ? "fluid" : good instanceof OreDict ? "ore" : "item",
       unit: good instanceof Fluid ? "L" : "items", iconId: good.iconId ?? null, mod: good.mod ?? "",
+      stackSize: good instanceof Item ? good.stackSize : null,
       alternatives: good instanceof OreDict ? good.items.map(item => ({ id: item.id, name: item.name })) : undefined };
   }
   matches(query) { return this.byName.get(String(query).trim().toLowerCase()) || []; }

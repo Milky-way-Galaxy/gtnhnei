@@ -1,4 +1,11 @@
 const EPS = 1e-10;
+// Arithmetic such as (0.1 + 0.2) / 0.3 can land just above an integer.
+// Correct a few floating-point ULPs, without dropping small positive demands.
+export function ceilPositive(value) {
+  const nearest = Math.round(value);
+  const tolerance = 2 * Number.EPSILON * Math.max(1, Math.abs(value));
+  return Math.max(1, Math.ceil(nearest > 0 && Math.abs(value - nearest) <= tolerance ? nearest : value));
+}
 const add = (map, good, amount, extra = {}) => {
   if (!(amount > 0)) return;
   const previous = map.get(good.id);
@@ -43,6 +50,7 @@ export function selectRecipe(recipes, good, options = {}) {
     const selected = typeof chosen === "number" ? recipes[chosen] : recipes.find(recipe => recipe.id === chosen);
     return selected && viable.includes(selected) ? selected : null;
   }
+  if (options.routeMode === "manual") return null;
   if (viable.length === 1) return viable[0];
   if (["ask", "manual"].includes(options.routeMode || "ask")) return null;
   const score = recipe => {
@@ -74,7 +82,11 @@ export function calculateProduction(catalog, options) {
   const seconds = { total: 1, per_second: 1, per_minute: 60, per_hour: 3600 }[rateMode];
   let requested = amount / seconds;
   const unit = options.unit || targetGood.unit;
-  if (unit === "buckets") {
+  if (!["items", "L", "buckets", "batches", "stacks"].includes(unit)) throw new Error("Unknown quantity unit.");
+  if (unit === "stacks") {
+    if (targetGood.type !== "item" || !Number.isInteger(target.stackSize) || target.stackSize <= 0) throw new Error("Stacks require an item with a known native stack size in this dataset.");
+    requested *= target.stackSize;
+  } else if (unit === "buckets") {
     if (targetGood.type !== "fluid") throw new Error("Buckets can only be used for fluids.");
     requested *= 1000;
   } else if (unit === "L" && targetGood.type !== "fluid") throw new Error("L can only be used for fluids.");
@@ -85,10 +97,22 @@ export function calculateProduction(catalog, options) {
     if (!rootRecipe) throw new Error("Select a production route before specifying batches.");
     requested *= recipeBalance(rootRecipe).outputs.find(io => io.id === targetGood.id).amount;
   }
+  if (!(requested > 0) || !Number.isFinite(requested)) throw new Error("Quantity exceeds the safe calculation range after unit conversion.");
   const maxDepth = options.depth === "full" ? 64 : Math.max(1, Math.min(64, Number(options.depth) || 1));
   const nodeLimit = Math.max(10, Math.min(20000, Number(options.nodeLimit) || 2500));
-  const materials = new Map(), byproducts = new Map(), reusable = new Map(), steps = new Map();
+  const materials = new Map(), byproducts = new Map(), reusable = new Map(), steps = new Map(), inventoryUsed = new Map();
   const warnings = new Set(), unresolved = [], nodes = [];
+  const inventory = new Map();
+  if (options.inventory !== undefined && (!options.inventory || typeof options.inventory !== "object" || Array.isArray(options.inventory))) throw new Error("Inventory must map exact good IDs to quantities.");
+  const stockEntries = Object.entries(options.inventory || {});
+  if (stockEntries.length > 1000) throw new Error("Inventory is limited to 1,000 goods per plan.");
+  for (const [id, value] of stockEntries) {
+    const quantity = Number(value), object = catalog.resolve(id);
+    if (!object || object.id !== id || catalog.describe(object).type === "ore") throw new Error(`Inventory requires an exact item/fluid ID in this dataset: ${id}`);
+    if (!Number.isFinite(quantity) || quantity < 0) throw new Error(`Invalid inventory quantity for ${id}. Use a finite non-negative quantity in native items or L.`);
+    if (quantity) inventory.set(id, { ...catalog.describe(object), amount: quantity });
+  }
+  if (inventory.size) warnings.add(isRate ? "Finite inventory is not deducted from continuous rates. Switch to a total job to use stock on hand." : "Inventory is allocated once in dependency order to total-job demand. Startup tools/returned stock remain listed separately; byproducts are not recycled into this inventory.");
   const external = new Set(options.externalInputs || []), free = new Set(options.freeInputs || []);
   const machineConfigs = options.machineConfigs || {};
   let visits = 0;
@@ -105,8 +129,24 @@ export function calculateProduction(catalog, options) {
     // Stop before allocating any more nodes at the budget boundary. All remaining
     // input quantities still enter the materials ledger; none are discarded.
     const node = { key: nodes.length, id: good.id, name: good.name, type: good.type, unit: good.unit, amount: quantity, parent, depth, children: [] };
-    if (++visits > nodeLimit) return leaf(good, quantity, "node-limit", node);
+    if (!isRate && !free.has(good.id)) {
+      const stock = inventory.get(good.id);
+      const used = Math.min(quantity, stock?.amount || 0);
+      if (used > 0) {
+        stock.amount = Math.max(0, stock.amount - used);
+        node.inventoryUsed = used;
+        add(inventoryUsed, good, used, { reason: "from inventory" });
+        const remaining = quantity - used;
+        quantity = remaining <= 2 * Number.EPSILON * quantity ? 0 : remaining;
+      }
+    }
+    node.productionAmount = quantity;
+    if (++visits > nodeLimit) {
+      if (quantity === 0) { node.status = "from-inventory"; return node; }
+      return leaf(good, quantity, "node-limit", node);
+    }
     nodes.push(node);
+    if (quantity === 0) { node.status = "from-inventory"; return node; }
     if (free.has(good.id)) return leaf(good, quantity, "supplied-free", node);
     if (external.has(good.id)) return leaf(good, quantity, "external", node);
     if (path.has(good.id)) return leaf(good, quantity, "cycle", node);
@@ -120,7 +160,7 @@ export function calculateProduction(catalog, options) {
     const balance = recipeBalance(recipe);
     const yieldAmount = balance.outputs.find(io => io.id === good.id)?.amount;
     if (!(yieldAmount > EPS)) return leaf(good, quantity, "invalid-route", node);
-    const batches = isRate || options.rounding === "fractional" ? quantity / yieldAmount : Math.max(1, Math.ceil(quantity / yieldAmount - EPS));
+    const batches = isRate || options.rounding === "fractional" ? quantity / yieldAmount : ceilPositive(quantity / yieldAmount);
     if (!Number.isFinite(batches) || batches > 1e15) throw new Error("Quantity exceeds the safe calculation range; reduce the target or break up this chain.");
     node.recipeId = recipe.id;
     node.machine = recipe.machine;
@@ -154,15 +194,16 @@ export function calculateProduction(catalog, options) {
   const machineRows = [...steps.values()].map(step => {
     const p = step.performance;
     const equivalents = isRate && p ? step.batches / p.batchesPerSecond : null;
-    const count = equivalents === null ? null : Math.ceil(equivalents - EPS);
-    return { ...step, equivalents, count, averageEut: equivalents === null ? null : equivalents * p.eut,
-      installedEut: count === null ? null : count * p.eut,
+    const count = equivalents === null ? null : ceilPositive(equivalents);
+    const installedCount = count === null ? null : options.machineMode === "fixed" && step.recipeId === root.recipeId ? fixedMachines : count;
+    return { ...step, equivalents, count, installedCount, averageEut: equivalents === null ? null : equivalents * p.eut,
+      installedEut: installedCount === null ? null : installedCount * p.eut,
       energy: p ? step.batches * p.durationTicks * p.laneEut : null };
   });
   const reusableTotals = new Map();
   for (const entry of reusable.values()) {
     const step = machineRows.find(step => step.recipeId === entry.recipeId);
-    add(reusableTotals, entry, entry.amount * (!isRate && entry.recipeId === root.recipeId ? fixedMachines : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
+    add(reusableTotals, entry, entry.amount * (entry.recipeId === root.recipeId && (!isRate || options.machineMode === "fixed") ? fixedMachines : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
   }
   const total = key => machineRows.reduce((sum, step) => sum + (step[key] || 0), 0);
   const rootPerformance = root.performance;
@@ -173,9 +214,10 @@ export function calculateProduction(catalog, options) {
   if (reusableTotals.size) warnings.add("Reusable quantities provision startup stock for the configured root machine count and full parallel capacity, not recurring consumption.");
   return { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
     root, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()], reusable: [...reusableTotals.values()],
+    inventoryUsed: [...inventoryUsed.values()], inventoryRemaining: [...inventory.values()].filter(row => row.amount > 0),
     steps: machineRows, warnings: [...warnings], unresolved, truncated: visits > nodeLimit,
     knownEnergy: isRate ? null : total("energy"), knownAverageEut: isRate ? total("averageEut") : null,
     knownInstalledEut: isRate ? total("installedEut") : null,
     hasUnknownPower: machineRows.some(step => !step.performance), capacity,
-    rootTimeSeconds: !isRate && rootPerformance ? (options.rounding === "fractional" ? root.batches / (rootPerformance.parallels * fixedMachines) : Math.max(1, Math.ceil(root.batches / (rootPerformance.parallels * fixedMachines) - EPS))) * rootPerformance.durationTicks / 20 : null };
+    rootTimeSeconds: !isRate && root.status === "from-inventory" ? 0 : !isRate && rootPerformance ? (options.rounding === "fractional" ? root.batches / (rootPerformance.parallels * fixedMachines) : ceilPositive(root.batches / (rootPerformance.parallels * fixedMachines))) * rootPerformance.durationTicks / 20 : null };
 }

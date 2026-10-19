@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { Repository } from "../dist/repository.js";
 import { RecipeCatalog } from "../recipe-data.js";
 import { exportRecipeYaml, exportPlanYaml } from "../recipe-export.js";
-import { calculateProduction, machinePerformance } from "../production-engine.js";
+import { calculateProduction, machinePerformance, ceilPositive } from "../production-engine.js";
 
 const good = (id, type = "item") => ({ id, name: id, type, unit: type === "fluid" ? "L" : "items", amount: 1, probability: 1 });
 const io = (id, amount, probability = 1) => ({ ...good(id), amount, probability });
@@ -66,6 +66,11 @@ test("ask mode and invalid locked recipe IDs produce unresolved inputs", () => {
   assert.equal(calculateProduction(catalog, { ...options, routeChoices: { product: "missing" } }).unresolved[0].reason, "invalid-route");
   assert.equal(calculateProduction(catalog, { ...options, routeChoices: { product: "b" } }).materials[0].amount, 2);
 });
+test("manual route mode only executes explicitly chosen recipes, including a sole route", () => {
+  const c = fixture([recipe("a", [io("raw", 1)], [io("product", 1)])]);
+  assert.equal(calculateProduction(c, { ...options, routeMode: "manual" }).unresolved[0].reason, "choose-route");
+  assert.equal(calculateProduction(c, { ...options, routeMode: "manual", routeChoices: { product: "a" } }).root.batches, 1);
+});
 test("missing timing does not invent machine count or energy", () => {
   const result = calculateProduction(fixture([recipe("crafting", [io("raw", 1)], [io("product", 1)], { durationTicks: null, eut: null })]), { ...options, rateMode: "per_second" });
   assert.equal(result.steps[0].count, null);
@@ -122,6 +127,14 @@ test("real data bucket conversion, stable recipe IDs and structured metadata rem
   assert.equal(routes[0].inputs.find(io => io.name === "Programmed Circuit").amount, 0);
   assert.equal(catalog.resolve("i:minecraft:iron_ingot:0").name, "Iron Ingot");
 });
+test("native stack conversion follows real GTNH records, including 16-stack buckets and unstackable tools", () => {
+  for (const [id, size] of [["i:minecraft:iron_ingot:0", 64], ["i:minecraft:bucket:0", 16], ["i:minecraft:diamond_pickaxe:0", 1], ["i:minecraft:ender_pearl:0", 64]]) {
+    const result = calculateProduction(catalog, { target: id, amount: 2, unit: "stacks", externalInputs: [id] });
+    assert.equal(result.requested, size * 2);
+    assert.equal(result.target.stackSize, size);
+  }
+  assert.throws(() => calculateProduction(catalog, { ...epiOptions, unit: "stacks" }), /known native stack size/);
+});
 
 test("parallel circuits are one per machine while returned seed materials are per lane", () => {
   const record = recipe("a", [io("circuit",0), io("seed",1)], [io("product",1), io("seed",1)]);
@@ -139,6 +152,8 @@ test("very small continuous consumption is retained rather than silently discard
   const catalog = fixture([recipe("a", [io("raw",1)], [io("product",1e9)])]);
   const result = calculateProduction(catalog, { ...options, amount: .000001, rateMode:"per_second" });
   assert.ok(result.materials[0].amount > 0);
+  assert.equal(result.steps[0].count, 1);
+  assert.equal(result.knownInstalledEut, 30);
 });
 
 test("unknown crafting duration/power is never exported as an invented executable recipe", () => {
@@ -174,4 +189,79 @@ test("total-craft root stock provisions the requested machine count", () => {
   const c=fixture([recipe("a",[io("circuit",0)],[io("product",1)])]);
   const result=calculateProduction(c,{...options,amount:3,machineCount:2});
   assert.equal(result.reusable[0].amount,2);
+});
+test("machine ceilings tolerate arithmetic noise while preserving real fractions and tiny demands", () => {
+  assert.equal(ceilPositive(1 + Number.EPSILON), 1);
+  assert.equal(ceilPositive(1 + 1e-8), 2);
+  assert.equal(ceilPositive(1e-16), 1);
+});
+test("fixed-rate root machines affect installed power and startup stock, retaining required count", () => {
+  const result = calculateProduction(catalog, { ...epiOptions, amount: 3000, rateMode: "per_minute", machineMode: "fixed", machineCount: 3 });
+  assert.equal(result.steps[0].count, 2);
+  assert.equal(result.steps[0].installedCount, 3);
+  assert.equal(result.knownAverageEut, 48);
+  assert.equal(result.knownInstalledEut, 90);
+  assert.equal(result.reusable.find(row => row.name === "Programmed Circuit").amount, 3);
+  const limited = calculateProduction(catalog, { ...epiOptions, amount: 3000, rateMode: "per_minute", machineMode: "fixed", machineCount: 1 });
+  assert.equal(limited.knownInstalledEut, 30);
+  assert.match(limited.warnings.join(" "), /exceeds/);
+});
+test("finite inventory is shared once across branches before expanding remaining dependencies", () => {
+  const c = fixture([
+    recipe("root", [io("a", 1), io("b", 1)], [io("product", 1)]),
+    recipe("a", [io("shared", 3)], [io("a", 1)]),
+    recipe("b", [io("shared", 4)], [io("b", 1)]),
+    recipe("shared", [io("raw", 2)], [io("shared", 5)])
+  ]);
+  const inventory = { shared: 4, raw: 1 };
+  const result = calculateProduction(c, { ...options, inventory });
+  assert.equal(result.materials.find(row => row.id === "raw").amount, 1);
+  assert.equal(result.inventoryUsed.find(row => row.id === "shared").amount, 4);
+  assert.equal(result.inventoryUsed.find(row => row.id === "raw").amount, 1);
+  assert.equal(result.byproducts.find(row => row.id === "shared").amount, 2);
+  assert.equal(result.steps.find(row => row.recipeId === "shared").batches, 1);
+  assert.deepEqual(inventory, { shared: 4, raw: 1 });
+});
+test("stock can satisfy a whole target without selecting a route or creating production", () => {
+  const c = fixture([recipe("a", [], [io("product", 1)]), recipe("b", [], [io("product", 2)])]);
+  const result = calculateProduction(c, { ...options, routeMode: "ask", amount: 3, inventory: { product: 5 } });
+  assert.equal(result.root.status, "from-inventory");
+  assert.equal(result.rootTimeSeconds, 0);
+  assert.equal(result.materials.length, 0);
+  assert.equal(result.steps.length, 0);
+  assert.equal(result.inventoryUsed[0].amount, 3);
+  assert.equal(result.inventoryRemaining[0].amount, 2);
+  assert.equal(result.unresolved.length, 0);
+});
+test("floating-point subtraction does not invent a batch when stock covers a fractional demand", () => {
+  const c = fixture([recipe("a", [io("raw", 0.1 + 0.2)], [io("product", 1)])]);
+  const result = calculateProduction(c, { ...options, inventory: { raw: 0.3 } });
+  assert.equal(result.materials.length, 0);
+  assert.equal(result.inventoryUsed[0].amount, 0.3);
+});
+test("rate jobs never deduct finite stock; freely supplied inputs do not spend it", () => {
+  const c = fixture([recipe("a", [io("raw", 3)], [io("product", 1)])]);
+  const result = calculateProduction(c, { ...options, rateMode: "per_second", inventory: { raw: 100 } });
+  assert.equal(result.materials[0].amount, 3);
+  assert.equal(result.inventoryUsed.length, 0);
+  assert.equal(result.inventoryRemaining[0].amount, 100);
+  assert.match(result.warnings.join(" "), /not deducted/);
+  const free = calculateProduction(c, { ...options, freeInputs: ["raw"], inventory: { raw: 100 } });
+  assert.equal(free.materials.length, 0);
+  assert.equal(free.inventoryUsed.length, 0);
+});
+test("real-fluid inventory reduces consumption while leaving tools and rate requirements explicit", () => {
+  const chlorine = catalog.goods.find(good => good.name === "Chlorine");
+  const result = calculateProduction(catalog, { ...epiOptions, inventory: { [epichlorohydrin.id]: 1000, [chlorine.id]: 1500 } });
+  assert.equal(result.root.batches, 1);
+  assert.equal(result.root.inventoryUsed, 1000);
+  assert.equal(result.materials.find(row => row.name === "Chlorine").amount, 500);
+  assert.equal(result.reusable.find(row => row.name === "Programmed Circuit").amount, 1);
+  assert.equal(result.knownEnergy, 19200);
+});
+test("invalid inventory and converted quantities fail visibly", () => {
+  for (const inventory of [[], { missing: 1 }, { [epichlorohydrin.id]: -1 }, { [epichlorohydrin.id]: Infinity }]) {
+    assert.throws(() => calculateProduction(catalog, { ...epiOptions, inventory }), /[Ii]nventory/);
+  }
+  assert.throws(() => calculateProduction(catalog, { ...epiOptions, amount: 1e308, unit: "buckets" }), /unit conversion/);
 });

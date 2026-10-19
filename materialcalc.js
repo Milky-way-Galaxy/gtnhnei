@@ -16,7 +16,7 @@ import { compactName } from "./recipe-data.js";
   const defaultState = {
     target: "",
     amount: 1,
-    amountMode: "runs", // runs | target
+    amountMode: "runs", // runs | target | stacks
     routeIndex: 0,
     depth: 1,
     nodeLimit: 2500,
@@ -549,7 +549,7 @@ import { compactName } from "./recipe-data.js";
         if (isManualIgnored(name) || state.waterFree && name === "water" || state.steamFree && ["steam", "superheated steam", "dense steam"].includes(name)) freeInputs.push(good.id);
       }
       const result = calculateProduction(catalog, { target: target.id, amount: state.amount,
-        unit: state.amountMode === "runs" ? "batches" : catalog.describe(target).unit, depth: state.depth,
+        unit: state.amountMode === "runs" ? "batches" : state.amountMode === "stacks" ? "stacks" : catalog.describe(target).unit, depth: state.depth,
         rounding: "fractional", nodeLimit: state.nodeLimit, routeChoices, externalInputs, freeInputs, routeMode: "ask" });
       lastRows = result.materials.map(row => ({ ...row, sources: row.reason, depth: 0 })).sort((a,b) => a.name.localeCompare(b.name));
       lastCandidateNames = lastRows.map(row => row.name);
@@ -604,6 +604,7 @@ import { compactName } from "./recipe-data.js";
                 <select id="matAmountMode">
                   <option value="runs">recipe runs</option>
                   <option value="target">target amount</option>
+                  <option value="stacks">target stacks (native item size)</option>
                 </select>
               </label>
             </div>
@@ -974,7 +975,7 @@ import { compactName } from "./recipe-data.js";
 
     state.target = String(val("matTarget")).trim();
     state.amount = Math.max(0, Number(val("matAmount") || 1));
-    state.amountMode = String(val("matAmountMode") || "runs") === "target" ? "target" : "runs";
+    state.amountMode = ["target", "stacks"].includes(val("matAmountMode")) ? val("matAmountMode") : "runs";
     state.depth = clampInt(val("matDepth") || 1, 1, 50);
     state.routeIndex = Math.max(0, Number(val("matRoute") || 1) - 1);
     state.nodeLimit = clampInt(val("matNodeLimit") || 2500, 100, 20000);

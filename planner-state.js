@@ -1,13 +1,13 @@
 export const defaultPlannerState = {
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
-  rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [],
+  rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {},
   settings: { waterFree: true, steamFree: true, cellsReusable: true, expandCircuits: false, expandMachines: false, expandPlatesWires: false }
 };
 export function normalizePlannerState(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid plan settings.");
   const state = { ...structuredClone(defaultPlannerState), ...raw, settings: { ...defaultPlannerState.settings, ...raw.settings } };
   if (!Number.isFinite(Number(state.amount)) || Number(state.amount) <= 0) throw new Error("Amount must be finite and greater than zero.");
-  for (const [key, values] of Object.entries({ rateMode: ["total", "per_second", "per_minute", "per_hour"], unit: ["items", "L", "buckets", "batches"],
+  for (const [key, values] of Object.entries({ rateMode: ["total", "per_second", "per_minute", "per_hour"], unit: ["items", "L", "buckets", "batches", "stacks"],
     routeMode: ["ask", "manual", "lowest_tier", "lowest_eut", "fastest", "fewest_inputs"], rounding: ["whole", "fractional"], machineMode: ["auto", "fixed"] })) {
     if (!values.includes(state[key])) throw new Error(`Invalid ${key}.`);
   }
@@ -17,6 +17,12 @@ export function normalizePlannerState(raw) {
     if (Object.keys(state[key]).length > 10000 || Object.hasOwn(state[key], "__proto__")) throw new Error(`Invalid ${key}.`);
   }
   for (const key of ["rawOverrides", "ignored"]) if (!Array.isArray(state[key]) || state[key].some(value => typeof value !== "string")) throw new Error(`Invalid ${key}.`);
+  if (!state.inventory || typeof state.inventory !== "object" || Array.isArray(state.inventory) || Object.keys(state.inventory).length > 1000 || Object.hasOwn(state.inventory, "__proto__")) throw new Error("Invalid inventory.");
+  state.inventory = { ...state.inventory };
+  for (const [id, quantity] of Object.entries(state.inventory)) {
+    if (!/^[if]:/.test(id) || !Number.isFinite(Number(quantity)) || Number(quantity) < 0) throw new Error("Inventory requires exact item/fluid IDs and finite non-negative quantities.");
+    state.inventory[id] = Number(quantity);
+  }
   state.machineCount = Math.max(1, Math.min(1000000, Math.floor(Number(state.machineCount) || 1)));
   state.depth = state.depth === "full" ? "full" : String(Math.max(1, Math.min(64, Math.floor(Number(state.depth) || 1))));
   return state;

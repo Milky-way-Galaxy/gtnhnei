@@ -8,6 +8,7 @@ import {
 } from "./dist/repository.js";
 import { SearchQuery } from "./dist/searchQuery.js";
 import { loadDatasetSelection, verifyDatasetBuffer } from "./datasets.js";
+import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-controls.js";
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
@@ -31,6 +32,7 @@ const dataReady = new Promise(resolve => { resolveDataReady = resolve; });
 let loading = false;
 let allGoods = [];
 let allItems = [];
+let searchFilters = { ...defaultSearchFilters };
 let timer = null;
 let tipTimer = null;
 let activeTipAnchor = null;
@@ -365,11 +367,19 @@ async function load() {
     }
     setLoadState("catalog", "Preparing item lookup indexes…");
     window.GTNH_CATALOG = await RecipeCatalog.build(repo, dataset, yieldToBrowser);
+    searchFilters = mountSearchFilters(window.GTNH_CATALOG, filters => { searchFilters = filters; renderSearchGrid(currentView.type !== "grid"); });
     resolveDataReady();
     // Install dependent APIs in registration order before enabling the UI.
     await dataReady;
     renderSearchGrid(false);
     setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
+    const params = new URLSearchParams(location.search), linkedId = params.get("item");
+    if (linkedId) {
+      const linked = window.GTNH_CATALOG.resolve(linkedId);
+      if (linked && !(linked instanceof OreDict)) {
+        if (params.get("view") === "usage") openUsage(linked); else openProduction(linked);
+      } else status.textContent = "Linked good was not found in the selected dataset.";
+    }
   } finally {
     loading = false;
   }
@@ -412,7 +422,7 @@ function renderSearchGrid(push = true) {
   const q = search.value.trim();
 
   const newQuery = q ? new SearchQuery(q) : null;
-  searchResults = !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
+  searchResults = filterGoods(!q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery)), searchFilters);
 
   grid.innerHTML = "";
   renderedGridCount = 0;
@@ -435,7 +445,11 @@ function appendGridItems() {
   for (let i = renderedGridCount; i < end; i++) {
     const obj = currentSearchList[i];
 
-    const slot = document.createElement("div");
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.tabIndex = i === 0 ? 0 : -1;
+    slot.dataset.goodsId = obj.id;
+    slot.setAttribute("aria-label", `${nameOf(obj)}. Enter: recipes; U: usages.`);
     slot.className = "slot";
     slot.title = nameOf(obj);
 
@@ -497,6 +511,12 @@ function renderRecipes(obj, mode, push = true) {
   breadcrumb.style.display = "block";
 
   breadcrumb.textContent = `${mode} → ${nameOf(obj)}`;
+  const link = document.createElement("a"); link.id = "itemPermalink"; link.textContent = "Permalink";
+  const url = new URL(location.href); url.searchParams.set("dataset", window.GTNH_CATALOG.dataset.id);
+  url.searchParams.set("item", obj.id); url.searchParams.set("view", mode === "Usage" ? "usage" : "production");
+  link.href = url.href; breadcrumb.appendChild(link);
+  const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
+  plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
 
   renderMachineTabs();
   renderRecipeList();
@@ -2083,4 +2103,25 @@ dataReady.then(() => {
     yaml(name, index = 0) { return this.yamlForRecipe(name, index).yaml; }
   };
   window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
+});
+
+// Roving focus keeps a large item grid usable without hundreds of Tab stops.
+grid.addEventListener("focusin", event => {
+  if (!event.target.matches(".slot")) return;
+  grid.querySelectorAll('.slot[tabindex="0"]').forEach(slot => { slot.tabIndex = -1; });
+  event.target.tabIndex = 0;
+});
+grid.addEventListener("keydown", event => {
+  const slot = event.target.closest(".slot"); if (!slot) return;
+  const good = window.GTNH_CATALOG?.resolve(slot.dataset.goodsId);
+  if (event.key.toLowerCase() === "u" && good) { event.preventDefault(); openUsage(good); return; }
+  const slots = [...grid.querySelectorAll(".slot")], index = slots.indexOf(slot);
+  const columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+  const next = { ArrowRight: index + 1, ArrowLeft: index - 1, ArrowDown: index + columns, ArrowUp: index - columns, Home: 0, End: slots.length - 1 }[event.key];
+  if (next !== undefined) { event.preventDefault(); slots[Math.max(0, Math.min(slots.length - 1, next))]?.focus(); }
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], [role=dialog]")) {
+    event.preventDefault(); search.focus();
+  }
 });

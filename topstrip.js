@@ -30,7 +30,8 @@
   }
 
   function openFavorites() {
-    const KEY = "gtnhnei_favorites_v2";
+    const activeId = window.GTNH_DATASETS?.active?.id;
+    const KEY = !activeId || activeId === "gtnh-2.8.0" ? "gtnhnei_favorites_v2" : `gtnhnei_favorites_v2_${activeId}`;
 
     function cleanName(s) {
       return String(s || "").trim();

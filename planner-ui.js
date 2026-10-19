@@ -6,6 +6,7 @@ const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<"
 const fmt = number => number === null || number === undefined ? "unknown" : new Intl.NumberFormat("en", { maximumSignificantDigits: 7 }).format(number);
 
 export function installPlanner() {
+  let previousFocus = null, displayNodeLimit = 250;
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
@@ -111,6 +112,12 @@ export function installPlanner() {
   function render() {
     const root = document.getElementById("gtnhCalcOverlay"); if (!root) return;
     const box = root.querySelector("#calcTree");
+    const workspace = root.querySelector(".gtnhCalcWorkspace"), scroll = workspace.scrollTop;
+    const expanded = new Set([...box.querySelectorAll("details[open][data-node-id]")].map(node => node.dataset.nodeId));
+    const active = document.activeElement;
+    const restore = active?.dataset.routeGood ? `[data-route-good="${CSS.escape(active.dataset.routeGood)}"]` :
+      active?.dataset.ore ? `[data-ore="${CSS.escape(active.dataset.ore)}"]` :
+      active?.dataset.profileField ? `[data-profile="${CSS.escape(active.closest("[data-profile]").dataset.profile)}"] [data-profile-field="${active.dataset.profileField}"]` : null;
     if (error) box.innerHTML = `<p role="alert" class="plannerError">${esc(error)}</p>`;
     else if (!built || !plan) box.innerHTML = '<p>Choose an exact target and press Build tree. Calculations run only when requested.</p>';
     else {
@@ -122,22 +129,25 @@ export function installPlanner() {
         <details ${state.settings.cellsReusable ? "open" : ""}><summary>Reusable startup stock (${plan.reusable.length})</summary>${table(plan.reusable)}</details>
         <details><summary>Byproducts and surplus (${plan.byproducts.length})</summary>${table(plan.byproducts)}</details>
         <h4>Dependency tree</h4><p>${plan.nodes.length} nodes. ${plan.truncated ? "Node limit reached; boundary materials retained." : ""}</p>
-        <div class="plannerNodes">${plan.nodes.slice(0, 250).map(node => `<details class="plannerNode" ${node.depth < 2 ? "open" : ""}><summary><b>${esc(node.name)}</b> · ${fmt(node.amount)} ${esc(node.unit)}${plan.isRate ? "/s" : ""} · ${esc(node.status.replaceAll("-", " "))}</summary><small>${esc(node.id)} · depth ${node.depth}</small>${node.recipeId ? `<p>${esc(node.machine)} · ${fmt(node.batches)} batches${plan.isRate ? "/s" : ""}</p>` : ""}${routeControl(node)}<button data-supply="${esc(node.id)}" type="button">Supply externally</button></details>`).join("")}</div>
-        ${plan.nodes.length > 250 ? "<p>Tree display limited to 250 nodes; all computed materials are included in totals.</p>" : ""}
+        <div class="plannerNodes">${plan.nodes.slice(0, displayNodeLimit).map(node => `<details class="plannerNode" data-node-key="${node.key}" data-node-id="${esc(node.id)}" ${node.depth < 2 || expanded.has(node.id) ? "open" : ""}><summary><b>${esc(node.name)}</b> · ${fmt(node.amount)} ${esc(node.unit)}${plan.isRate ? "/s" : ""} · ${esc(node.status.replaceAll("-", " "))}</summary><small>${esc(node.id)} · depth ${node.depth}</small>${node.recipeId ? `<p>${esc(node.machine)} · ${fmt(node.batches)} batches${plan.isRate ? "/s" : ""}</p>` : ""}${node.depth === 0 ? routeControl(node) : `<div data-route-slot="${node.key}"></div>`}<button data-supply="${esc(node.id)}" type="button">Supply externally</button></details>`).join("")}</div>
+        ${plan.nodes.length > displayNodeLimit ? `<button type="button" id="plannerShowMore">Show ${Math.min(250, plan.nodes.length-displayNodeLimit)} more dependency nodes</button>` : ""}
         <h4>Machine requirements</h4><p>Parallel lanes and overclock models are explicit assumptions; verify the selected machine supports them.</p>
         ${plan.steps.map(step => { const cfg = state.machineConfigs[step.recipeId] || {}; return `<details class="plannerNode"><summary>${esc(step.machine)} · ${plan.isRate ? fmt(step.count) + " machines (" + fmt(step.equivalents) + " equivalent)" : fmt(step.batches) + " batches"}</summary><p>${step.performance ? fmt(step.performance.durationTicks) + " ticks/batch · " + fmt(step.performance.eut) + " EU/t at full load" : "Timing/power unknown"}</p>
           <div class="plannerProfile" data-profile="${esc(step.recipeId)}"><label>Parallel lanes<input type="number" min="1" max="4096" data-profile-field="parallels" value="${cfg.parallels || 1}"></label><label>Overclocks<input type="number" min="0" max="10" data-profile-field="overclocks" value="${cfg.overclocks || 0}"></label><label>OC model<select data-profile-field="overclockMode"><option value="normal">Normal (4×EU / 2×speed)</option><option value="perfect" ${cfg.overclockMode === "perfect" ? "selected" : ""}>Perfect (4×EU / 4×speed)</option></select></label></div></details>`; }).join("")}
         <h4>Dependency diagram</h4><div class="plannerDiagram" role="img" aria-label="Recipe dependency diagram">${diagram()}</div>`;
     }
+    if (restore) root.querySelector(restore)?.focus({ preventScroll: true });
+    workspace.scrollTop = scroll;
     root.querySelector("#calcCodeOut").value = code();
     root.querySelector("#calcCodeLabel").textContent = codeTab === "json" ? "Versioned plan settings (portable JSON)" : codeTab;
     root.querySelector("#plannerStatus").textContent = error || (plan ? `${plan.materials.length} required materials · ${plan.unresolved.length} unresolved dependencies` : "Ready");
   }
-  function diagram() {
-    const visible = plan.nodes.slice(0, 120), width = 800, height = visible.length * 42 + 24;
+  function diagram(limit = 120) {
+    const visible = plan.nodes.slice(0, limit), width = 800, height = visible.length * 42 + 24;
+    const rowFor = new Map(visible.map((node, index) => [node.key, index]));
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><title>Production dependencies for ${esc(plan.target.name)}</title>${visible.map((n, i) => {
       const x = 14 + Math.min(n.depth, 10) * 24, y = 14 + i * 42;
-      const parentIndex = visible.findIndex(v => v.key === n.parent);
+      const parentIndex = rowFor.get(n.parent) ?? -1;
       return `${parentIndex >= 0 ? `<path d="M${14 + Math.min(visible[parentIndex].depth, 10) * 24 + 8} ${14 + parentIndex * 42 + 24}V${y + 12}H${x}" fill="none" stroke="#6791ac"/>` : ""}<rect x="${x}" y="${y}" width="${width - x - 14}" height="26" rx="5" fill="${n.status === "produced" ? "#142f44" : "#47371d"}"/><text x="${x + 8}" y="${y + 18}" fill="#eaf2ff" font-size="12">${esc(n.name.slice(0, 65))} · ${fmt(n.amount)} ${esc(n.unit)}${plan.isRate ? "/s" : ""}</text>`;
     }).join("")}</svg>`;
   }
@@ -171,12 +181,13 @@ export function installPlanner() {
         case "gtnhCalcClose": close(); break;
         case "calcBuild": build(); tab("tree"); break;
         case "calcUseSearch": state.target = document.getElementById("search").value.trim(); sync(); save(); break;
+        case "plannerShowMore": displayNodeLimit += 250; render(); break;
         case "calcClear": state = structuredClone(defaultPlannerState); plan = null; built = false; error = ""; sync(); save(); render(); break;
         case "plannerResetChoices": state.routeChoices = {}; state.machineConfigs = {}; state.rawOverrides = []; state.oreChoices = {}; state.lockedRoutes = {}; save(); calculate(); render(); break;
         case "calcCopyCode": try { await navigator.clipboard.writeText(code()); } catch { error = "Clipboard unavailable. Select and copy the export text."; render(); } break;
         case "calcDownloadJson": download("gtnh-atlas-plan.json", serializePlan(state,dataset()), "application/json"); break;
         case "plannerDownloadCsv": if (plan) download("gtnh-atlas-materials.csv",planCsv(plan),"text/csv"); break;
-        case "plannerDownloadSvg": if (plan) download("gtnh-atlas-dependencies.svg",diagram(),"image/svg+xml"); break;
+        case "plannerDownloadSvg": if (plan) download("gtnh-atlas-dependencies.svg",diagram(plan.nodes.length),"image/svg+xml"); break;
       }
     });
     overlay.addEventListener("input", event => {
@@ -203,12 +214,35 @@ export function installPlanner() {
       } else return;
       save(); calculate(); render();
     });
-    overlay.addEventListener("keydown", event => { if (event.key === "Escape") close(); });
+    overlay.addEventListener("toggle", event => {
+      const details = event.target;
+      if (!details.open || !details.dataset.nodeKey || !plan) return;
+      const slot = details.querySelector("[data-route-slot]");
+      if (slot && !slot.children.length) {
+        const node = plan.nodes.find(value => value.key === Number(details.dataset.nodeKey));
+        if (node) slot.innerHTML = routeControl(node);
+      }
+    }, true);
+    overlay.addEventListener("keydown", event => {
+      if (event.key === "Escape") { event.preventDefault(); close(); }
+      if (event.key === "Tab") {
+        const elements = [...overlay.querySelectorAll('button, input, select, textarea, a[href], summary')].filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+        const first = elements[0], last = elements.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    });
     sync(); render();
   }
-  function open() { load(); ensure(); sync(); render(); document.getElementById("gtnhCalcOverlay").classList.add("show"); }
-  function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); document.getElementById("toolCalc")?.focus(); }
-  window.GTNH_CALC = { open, close, build, getState: () => { load(); return structuredClone(state); }, getPlan: () => plan,
+  function open() { load(); ensure(); sync(); render(); previousFocus = document.activeElement; document.getElementById("gtnhCalcOverlay").classList.add("show"); document.getElementById("calcTarget").focus({ preventScroll: true }); }
+  function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); (previousFocus?.isConnected ? previousFocus : document.getElementById("toolCalc"))?.focus(); }
+  window.GTNH_CALC = { open, close, build,
+    planItem(id) {
+      load(); const good = catalog()?.resolve(id); if (!good) return false;
+      state.target = id; state.unit = catalog().describe(good).unit; state.amount = 1;
+      built = true; calculate(); save(); open(); tab("tree");
+      document.querySelector(".plannerNodes summary")?.focus(); return true;
+    }, getState: () => { load(); return structuredClone(state); }, getPlan: () => plan,
     exportYaml: () => plan ? exportPlanYaml(plan) : "# Build a production plan first.\n",
     import: text => { load(); state = importPlan(text, dataset()); save(); if (document.getElementById("gtnhCalcOverlay")) { sync(); built=true; calculate(); render(); } return structuredClone(state); } };
   window.GTNH_CALC_YAML_EXPORT = { buildYaml: () => window.GTNH_CALC.exportYaml() };

@@ -114,6 +114,7 @@
   }
 
   function makeYamlForCurrentTarget() {
+    if (window.GTNH_CALC?.getPlan?.()) return window.GTNH_CALC.exportYaml();
     const target = getTarget();
 
     try {
@@ -397,6 +398,7 @@
   }
 
   window.addEventListener("click", event => {
+    if (event.target.closest?.("[data-planner-owned]")) return;
     const btn = event.target?.closest?.("button, a");
     if (!btn) return;
 

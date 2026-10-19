@@ -1,12 +1,12 @@
 // Keep the compressed response streaming: do not retain a second full download buffer.
-export async function fetchDatabase(onProgress = () => {}) {
+export async function fetchDatabase(onProgress = () => {}, url = "data/data.bin") {
   if (typeof DecompressionStream !== "function") {
     throw new Error("This browser cannot decompress the recipe database. Please use a current browser.");
   }
 
   let response;
   try {
-    response = await fetch("data/data.bin");
+    response = await fetch(url);
   } catch (error) {
     throw new Error("Could not download the recipe database. Check your connection and retry.", { cause: error });
   }

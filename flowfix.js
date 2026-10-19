@@ -476,6 +476,7 @@ ${yamlMap("O", O)}
   }
 
   document.addEventListener("click", event => {
+    if (event.target.closest?.("[data-planner-owned]")) return;
     const btn = event.target?.closest?.("button, a");
     if (!btn) return;
 

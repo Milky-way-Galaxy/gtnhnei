@@ -8,6 +8,10 @@
 
   const STORE_KEY = "gtnh_maker_choice_v1";
 
+  function scopedKey() {
+    const id = window.GTNH_DATASETS?.active?.id;
+    return !id || id === "gtnh-2.8.0" ? STORE_KEY : `${STORE_KEY}_${id}`;
+  }
   const DEFAULT_STATE = {
     makers: {},          // compactName -> { name, routeIndex }
     externalInputs: {}   // compactName -> { name }
@@ -18,7 +22,7 @@
 
   function loadState() {
     try {
-      const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+      const raw = JSON.parse(localStorage.getItem(scopedKey()) || "{}");
       return {
         ...DEFAULT_STATE,
         ...raw,
@@ -31,7 +35,7 @@
   }
 
   function saveState() {
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    localStorage.setItem(scopedKey(), JSON.stringify(state));
   }
 
   function esc(s) {
@@ -92,77 +96,6 @@
     el._timer = setTimeout(() => el.classList.remove("show"), 1800);
   }
 
-  function parseYaml(yaml) {
-    const result = {
-      machine: "",
-      tier: "",
-      eut: "",
-      dur: "",
-      input: {},
-      output: {}
-    };
-
-    let section = "";
-
-    for (const raw of String(yaml || "").split(/\r?\n/)) {
-      const line = raw.replace(/#.*$/, "");
-      if (!line.trim()) continue;
-
-      const mMachine = line.match(/^\s*-\s*m:\s*(.+?)\s*$/i);
-      if (mMachine) {
-        result.machine = mMachine[1].trim();
-        continue;
-      }
-
-      const mTier = line.match(/^\s*tier:\s*(.+?)\s*$/i);
-      if (mTier) {
-        result.tier = mTier[1].trim();
-        continue;
-      }
-
-      const mEut = line.match(/^\s*eut:\s*(.+?)\s*$/i);
-      if (mEut) {
-        result.eut = mEut[1].trim();
-        continue;
-      }
-
-      const mDur = line.match(/^\s*dur:\s*(.+?)\s*$/i);
-      if (mDur) {
-        result.dur = mDur[1].trim();
-        continue;
-      }
-
-      if (/^\s*I:\s*(\{\s*\})?\s*$/i.test(line)) {
-        section = "input";
-        continue;
-      }
-
-      if (/^\s*O:\s*(\{\s*\})?\s*$/i.test(line)) {
-        section = "output";
-        continue;
-      }
-
-      const mItem = line.match(/^\s{4,}(.+?):\s*(.+?)\s*$/);
-      if (mItem && section) {
-        const name = cleanName(mItem[1]);
-        const amount = amountNum(mItem[2]);
-
-        if (!name || !amount) continue;
-
-        result[section][name] = (result[section][name] || 0) + amount;
-      }
-    }
-
-    return result;
-  }
-
-  function rawYamlForRecipe() {
-    const api = window.GTNHNEI_FLOW_EXPORT_API;
-    if (!api?.yamlForRecipe) return null;
-
-    return api.__makerChoiceOrigYamlForRecipe || api.yamlForRecipe.bind(api);
-  }
-
   function routeFor(name, fallback = 0) {
     const key = compact(name);
 
@@ -207,7 +140,8 @@
     delete state.externalInputs[key];
     state.makers[key] = {
       name: cleaned,
-      routeIndex: Math.max(0, Math.floor(Number(routeIndex) || 0))
+      routeIndex: Math.max(0, Math.floor(Number(routeIndex) || 0)),
+      recipeId: routeCandidates(name)[Number(routeIndex)]?.recipeId || null
     };
 
     saveState();
@@ -225,79 +159,16 @@
   }
 
   function routeCandidates(name) {
-    const cleaned = cleanName(name);
-    const key = compact(cleaned);
-
-    if (!key) return [];
-
+    const catalog = window.GTNH_CATALOG;
+    if (!catalog) return [];
+    const good = catalog.resolve(name) || catalog.findCompatible(name);
+    if (!good) return [];
+    const key = `${catalog.dataset.id}:${good.id}`;
     if (candidateCache.has(key)) return candidateCache.get(key);
-
-    const api = window.GTNHNEI_FLOW_EXPORT_API;
-    const fn = rawYamlForRecipe();
-
-    if (!api || !fn) {
-      candidateCache.set(key, []);
-      return [];
-    }
-
-    const seen = new Set();
-    const out = [];
-    let misses = 0;
-
-    for (let i = 0; i < 32; i++) {
-      try {
-        const res = fn.call(api, cleaned, i, {
-          targetAmount: 1,
-          forceRoute: true
-        });
-
-        const yaml = String(res?.yaml || "");
-        const parsed = parseYaml(yaml);
-
-        const hasRecipe =
-          !!yaml.trim() ||
-          !!res?.ok ||
-          !!parsed.machine ||
-          Object.keys(parsed.input).length ||
-          Object.keys(parsed.output).length;
-
-        if (!hasRecipe) {
-          misses++;
-          if (i >= 3 && misses >= 4) break;
-          continue;
-        }
-
-        misses = 0;
-
-        const routeKey = [
-          parsed.machine || res?.machine || "",
-          parsed.tier || res?.tier || "",
-          parsed.eut ?? res?.eut ?? "",
-          parsed.dur ?? res?.dur ?? "",
-          Object.keys(parsed.input).join("|"),
-          Object.keys(parsed.output).join("|")
-        ].join("::");
-
-        if (seen.has(routeKey)) continue;
-        seen.add(routeKey);
-
-        out.push({
-          index: i,
-          name: cleaned,
-          machine: parsed.machine || res?.machine || "unknown machine",
-          tier: parsed.tier || res?.tier || "",
-          eut: parsed.eut ?? res?.eut ?? "",
-          dur: parsed.dur ?? res?.dur ?? "",
-          input: parsed.input,
-          output: parsed.output,
-          yaml
-        });
-      } catch {
-        misses++;
-        if (i >= 3 && misses >= 4) break;
-      }
-    }
-
+    const out = catalog.recipes(good).map((recipe, index) => ({ index, recipeId: recipe.id, name: good.name || good.id,
+      machine: recipe.machine, tier: recipe.tier || "", eut: recipe.eut ?? "", dur: recipe.durationTicks === null ? "" : recipe.durationTicks / 20,
+      input: Object.fromEntries(recipe.inputs.map(io => [io.name, io.amount])),
+      output: Object.fromEntries(recipe.outputs.map(io => [io.name, io.amount * io.probability])) }));
     candidateCache.set(key, out);
     return out;
   }
@@ -697,6 +568,7 @@
     });
     wrapFlowApi();
 
+    window.addEventListener("gtnh-dataset-selected", () => { state = loadState(); candidateCache.clear(); });
     startObserver();
     decorate();
   }

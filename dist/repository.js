@@ -1,7 +1,10 @@
 const charCodeItem = "i".charCodeAt(0);
 const charCodeFluid = "f".charCodeAt(0);
 const charCodeRecipe = "r".charCodeAt(0);
-const DATA_VERSION = 5;
+// Maintained parser for the pinned format-5 and format-7 exports. The layouts
+// share recipe/object fields; format 7 stores tooltip lines as string slices.
+// See docs/datasets.md and the independent upstream parser contract test.
+export const SUPPORTED_DATA_VERSIONS = Object.freeze([5, 7]);
 export class Repository {
     constructor(data) {
         this.objects = {};
@@ -10,9 +13,9 @@ export class Repository {
         this.elements = new Int32Array(data);
         this.view = new DataView(data);
         this.textReader = new TextDecoder();
-        let dataVersion = this.elements[0];
-        if (dataVersion != DATA_VERSION)
-            throw new Error(`Unsupported data version: ${dataVersion} (Required: ${DATA_VERSION}). This may be caused by the browser cache. Please try reloading using F5 or Ctrl+F5.`);
+        this.dataVersion = this.elements[0];
+        if (!SUPPORTED_DATA_VERSIONS.includes(this.dataVersion))
+            throw new Error(`Unsupported data version: ${this.dataVersion} (Supported: ${SUPPORTED_DATA_VERSIONS.join(", ")}).`);
         this.items = this.GetSlice(this.elements[1]);
         this.fluids = this.GetSlice(this.elements[2]);
         this.oreDicts = this.GetSlice(this.elements[3]);
@@ -151,7 +154,14 @@ export class Goods extends RecipeObject {
     get mod() { return this.GetString(6); }
     get internalName() { return this.GetString(7); }
     get iconId() { return this.GetInt(9); }
-    get tooltip() { return this.GetString(10); }
+    get tooltip() {
+        if (this.repository.dataVersion === 5) return this.GetString(10);
+        if (this._tooltip === undefined) {
+            const lines = Array.from(this.GetSlice(10), pointer => this.repository.GetString(pointer));
+            this._tooltip = lines.length ? lines.join("\n") : null;
+        }
+        return this._tooltip;
+    }
     get unlocalizedName() { return this.GetString(11); }
     get nbt() { return this.GetString(12); }
     get production() { return this.GetSlice(13); }
@@ -287,4 +297,3 @@ export class Recipe extends SearchableObject {
         return false;
     }
 }
-//# sourceMappingURL=repository.js.map

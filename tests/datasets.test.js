@@ -15,7 +15,7 @@ test("only verified available dataset selections are accepted; 2.8.4 never falls
   assert.throws(() => validateManifest(duplicate), /Duplicate/);
 });
 test("the shipped binary and icon atlas match their version manifest hashes", async () => {
-  for (const [file, expected] of [["data/data.bin", dataset.sha256], ["data/atlas.webp", dataset.atlasSha256]]) {
+  for (const entry of manifest.datasets.filter(value=>value.available)) for (const [file, expected] of [[entry.dataUrl, entry.sha256], [entry.atlasUrl, entry.atlasSha256]]) {
     const bytes = readFileSync(new URL("../" + file, import.meta.url));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), expected);
   }
@@ -26,7 +26,7 @@ test("the shipped binary and icon atlas match their version manifest hashes", as
   await assert.rejects(verifyDatasetBuffer(buffer, wrongHash), /checksum/);
 });
 test("unverified data descriptors and remote/traversal asset paths are rejected", () => {
-  for (const patch of [{ sourceRevision: null }, { sha256: null }, { format: 7 }, { dataUrl: "https://example.com/data.bin" }, { atlasUrl: "../atlas.webp" }]) {
+  for (const patch of [{ sourceRevision: null }, { sha256: null }, { format: 6 }, { dataUrl: "https://example.com/data.bin" }, { atlasUrl: "../atlas.webp" }]) {
     const copy = structuredClone(manifest); Object.assign(copy.datasets[0], patch);
     assert.throws(() => validateManifest(copy));
   }

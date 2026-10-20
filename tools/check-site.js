@@ -22,6 +22,9 @@ async function check(path) {
 for (const file of files) await check(resolve(root, file));
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 assert.equal(new Set(ids).size, ids.length, "Static HTML IDs must be unique");
-await access(resolve(root, "data/data.bin"));
-await access(resolve(root, "data/atlas.webp"));
+const manifest = JSON.parse(await readFile(resolve(root, "data/manifest.json"), "utf8"));
+for (const dataset of manifest.datasets.filter(value=>value.available)) {
+  await access(resolve(root, dataset.dataUrl));
+  await access(resolve(root, dataset.atlasUrl));
+}
 console.log(`Static site valid: ${files.length} local assets, ${checked.size} JavaScript modules/scripts. No bundling needed for GitHub Pages.`);

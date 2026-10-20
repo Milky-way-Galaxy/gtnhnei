@@ -20,7 +20,35 @@ The existing files exactly match the authoritative upstream export:
   from a guessed version. The former ambiguous `2.8.x` badge is now `2.8.0`.
 - Binary format 5; 41,091 items, 1,542 fluids, 190,080 recipes.
 
-## Investigated gaps (2026-10-19)
+## Verified installed dataset: GTNH 2.9.0
+
+The additional export and its own icon atlas are stored under `data/gtnh-2.9.0/`.
+The bundled 2.8.0 files remain unchanged and remain the default.
+
+- Source: https://github.com/ShadowTheAge/gtnh-data/tree/d200440ea31d0357068a294d7312acf1146de909
+- Branch: `2.9.0-v7`.
+- `data.bin` Git blob: `4e15fde369f4d453f8b8448ebe06b74d40509a88`.
+- `atlas.webp` Git blob: `83b36aeb67b9bba01624404cd6bad51b01dbf111`.
+- Both files match the pinned upstream Git blob IDs exactly, verified 2026-10-20.
+- Binary format 7; 50,811 items, 1,476 fluids, 221,760 recipes.
+- Download sizes: 17,699,195 bytes database; 25,178,056 bytes atlas. Only the
+  selected version's assets load during normal browsing.
+
+Format 7 retains the format-5 recipe and machine field layout, but stores tooltip
+lines as a slice of strings. `dist/repository.js` explicitly supports both formats
+and decodes this distinction; it never patches the binary version integer. All
+goods fields, recipe IO, GT metadata, machine lists, and ID remaps are compared
+against the independent upstream format-7 parser in automated tests. That parser
+is pinned to `ShadowTheAge/gtnh` revision
+`af8c79888ec859913b27543c1381c3c11c24658f`, with its MIT notice retained in the test
+fixture. The modified production parser no longer advertises its obsolete source
+map. The repository does not contain the original TypeScript source/build pipeline.
+
+This is the upstream export labeled 2.9.0; it is not a fresh extraction from a
+locally launched pack. Its snapshot provenance and checksums are recorded rather
+than claiming coverage of every later server/config update.
+
+## Investigated gaps (2026-10-20)
 
 - **2.8.4:** official pack release exists at
   https://github.com/GTNewHorizons/GT-New-Horizons-Modpack/releases/tag/2.8.4.
@@ -29,9 +57,6 @@ The existing files exactly match the authoritative upstream export:
 - **2.7.4:** the authentic upstream archive at
   https://shadowtheage.github.io/gtnh-2.7.4/ serves binary format 3. It needs a
   separately validated parser adapter and matched atlas before integration.
-- **2.9.0:** upstream branch `2.9.0-v7`, commit
-  `d200440ea31d0357068a294d7312acf1146de909`, contains format 7 data. Current upstream
-  source also uses format 7. A format-5 parser must not consume it.
 - Upstream `2.8.0-v6` changes the data format and adds localization files; it is
   not a separate pack release and must not be presented as 2.8.4.
 
@@ -51,6 +76,7 @@ entries must have their own local asset paths and checksums. Do not overwrite th
 bundled files to add a second version.
 
 The upstream data repository has no license and explains the Minecraft/mod asset
-copyright provenance. Atlas already includes these exact files. New distributions
-must review the upstream notice and retain attribution; no additional third-party
-dataset is redistributed by this change.
+copyright provenance and its non-commercial educational/interoperability purpose.
+The original notice is retained in `data/gtnh-2.9.0/UPSTREAM-NOTICE.md`. Minecraft,
+GTNH and mod content remain owned by their respective authors; this project does
+not grant a new license to those assets.

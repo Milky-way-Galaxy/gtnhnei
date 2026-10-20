@@ -23,3 +23,11 @@ test("cancelled indexing does not publish an incomplete repository", async () =>
   await assert.rejects(loadRepository(buffer, { signal: controller.signal }), /abort/i);
   assert.equal(Repository.current, before);
 });
+test("comparison repositories never replace the active one; cancellation during the final yield cannot publish", async () => {
+  const before=Repository.current;
+  const comparison=await loadRepository(buffer,{publish:false,yieldControl:async()=>{}});
+  assert.notEqual(comparison,before);assert.equal(Repository.current,before);
+  const controller=new AbortController();let finished=false;
+  await assert.rejects(loadRepository(buffer,{signal:controller.signal,onProgress:({completed,total})=>{finished=completed===total;},yieldControl:async()=>{if(finished)controller.abort();}}),/abort/i);
+  assert.equal(Repository.current,before);
+});

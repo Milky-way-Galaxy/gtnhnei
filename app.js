@@ -12,6 +12,7 @@ import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
+import { openVersionComparison } from "./version-compare-ui.js";
 import { fetchDatabase } from "./data-loader.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
@@ -520,6 +521,8 @@ function renderRecipes(obj, mode, push = true) {
   link.href = url.href; breadcrumb.appendChild(link);
   const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
   plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
+  const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
+  compare.addEventListener("click", () => openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production")); breadcrumb.appendChild(compare);
 
   renderMachineTabs();
   renderRecipeList();

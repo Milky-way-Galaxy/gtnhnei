@@ -60,11 +60,11 @@ export class RecipeCatalog {
       ([RecipeIoType.ItemOutput, RecipeIoType.FluidOutput].includes(io.type) ? outputs : inputs).push(entry);
     }
     const gt = raw.gtRecipe;
-    const recipe = { id: raw.id, datasetId: this.dataset.id, machine: raw.recipeType.name,
+    const recipe = { id: raw.id, datasetId: this.dataset.id, machine: raw.recipeType.name, shapeless: raw.recipeType.shapeless,
       durationTicks: gt?.durationTicks > 0 ? gt.durationTicks : null,
       voltage: gt ? gt.voltage : null, amperage: gt ? gt.amperage : null,
       eut: gt && gt.voltage >= 0 && gt.amperage > 0 ? gt.voltage * gt.amperage : null,
-      tier: gt ? tierName(gt.voltage) : null, inputs, outputs,
+      tier: gt ? tierName(gt.voltage) : null, circuitConflicts: gt?.circuitConflicts ?? null, specialValue: gt?.specialValue ?? null, inputs, outputs,
       crafters: [...raw.recipeType.singleblocks, ...raw.recipeType.multiblocks].filter(Boolean).map(good => ({ id: good.id, name: good.name })),
       metadata: gt ? gt.metadata.map(value => ({ key: value.key, value: value.value })) : [] };
     this.recipeCache.set(raw.id, recipe);

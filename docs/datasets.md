@@ -80,3 +80,27 @@ copyright provenance and its non-commercial educational/interoperability purpose
 The original notice is retained in `data/gtnh-2.9.0/UPSTREAM-NOTICE.md`. Minecraft,
 GTNH and mod content remain owned by their respective authors; this project does
 not grant a new license to those assets.
+
+## Comparing selected recipes
+
+Open an item's production or usage page and choose **Compare versions**. The
+other verified database loads only after **Load dataset and compare**. This
+isolated repository never replaces `Repository.current`, the active atlas or
+saved settings. Closing the dialog aborts its download/indexing and releases its
+results. Failed requests can retry without reloading the application.
+
+Recipe IDs can change with exporter revisions, so comparison matches canonical
+base recipe content first. It includes exact ingredient/output IDs, quantities,
+chance probabilities, timing, voltage/amperage and GT metadata/special values.
+Shapeless slots are ignored; shaped crafting positions remain significant.
+Remaining recipes with a unique common machine/ingredient/output topology are
+marked modified; ambiguous alternatives remain added/removed instead of guessing.
+Machine availability lists and machine-specific operating bonuses are not diffed.
+All comparisons describe the installed export snapshots, not every server config.
+
+Results show before/after recipe records, paginate each category in batches of 50,
+and export the full comparison as JSON with both dataset identities/checksums.
+Names never substitute for different good IDs: in these exports the mercury
+Epichlorohydrin route outputs `f:GalacticraftMars:hydrogen` in 2.8.0 and
+`f:gregtech:hydrogen` in 2.9.0. The tool reports the corresponding route as removed
+and added, despite both fluids being named Hydrogen. It does not mix them.

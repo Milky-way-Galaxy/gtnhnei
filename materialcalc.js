@@ -1,3 +1,5 @@
+import { calculateProduction } from "./production-engine.js";
+import { compactName } from "./recipe-data.js";
 /* === GTNH Atlas Material Calculator v4: manual ignore filters === */
 (() => {
   "use strict";
@@ -7,6 +9,10 @@
 
   const STORE_KEY = "gtnh_material_calc_state_v4";
 
+  function scopedKey() {
+    const id = window.GTNH_DATASETS?.active?.id;
+    return !id || id === "gtnh-2.8.0" ? STORE_KEY : `${STORE_KEY}_${id}`;
+  }
   const defaultState = {
     target: "",
     amount: 1,
@@ -35,34 +41,34 @@
     let old = {};
     let newer = {};
 
-    for (const key of [
+    for (const key of (scopedKey() === STORE_KEY ? [
       "gtnh_material_calc_state_v1",
       "gtnh_material_calc_state_v2",
       "gtnh_material_calc_state_v3"
-    ]) {
+    ] : [])) {
       try {
         old = { ...old, ...JSON.parse(localStorage.getItem(key) || "{}") };
       } catch {}
     }
 
     try {
-      newer = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+      newer = JSON.parse(localStorage.getItem(scopedKey()) || "{}");
     } catch {}
 
     const merged = { ...defaultState, ...old, ...newer };
 
     if (!Array.isArray(merged.manualIgnored)) merged.manualIgnored = [];
 
-    if (localStorage.getItem("gtnh_material_calc_v4_migrated") !== "1") {
-      merged.cellsReusable = true;
-      merged.ignoreCircuits = true;
-      merged.ignoreTargetOutputs = true;
+    if (localStorage.getItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated") !== "1") {
+      merged.cellsReusable = newer.cellsReusable ?? old.cellsReusable ?? true;
+      merged.ignoreCircuits = newer.ignoreCircuits ?? old.ignoreCircuits ?? true;
+      merged.ignoreTargetOutputs = newer.ignoreTargetOutputs ?? old.ignoreTargetOutputs ?? true;
       merged.amountMode = merged.amountMode || "runs";
       merged.depth = Math.max(1, Number(merged.depth || 1));
       merged.manualIgnored = Array.isArray(merged.manualIgnored) ? merged.manualIgnored : [];
 
-      localStorage.setItem("gtnh_material_calc_v4_migrated", "1");
-      localStorage.setItem(STORE_KEY, JSON.stringify(merged));
+      localStorage.setItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated", "1");
+      localStorage.setItem(scopedKey(), JSON.stringify(merged));
     }
 
     return merged;
@@ -70,7 +76,7 @@
 
   function saveState() {
     state.manualIgnored = normalizeNameList(state.manualIgnored);
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    localStorage.setItem(scopedKey(), JSON.stringify(state));
   }
 
   function scheduleSave() {
@@ -352,8 +358,8 @@
 
       const parsed = parseYaml(res?.yaml || "");
 
-      let input = normalizeMap(parsed.input);
-      let output = normalizeMap(parsed.output);
+      let input = normalizeMap(res?.input || parsed.input);
+      let output = normalizeMap(res?.output || parsed.output);
 
       if (!Object.keys(input).length && res?.input) input = normalizeMap(res.input);
       if (!Object.keys(output).length && res?.output) output = normalizeMap(res.output);
@@ -525,143 +531,36 @@
     row.minDepth = Math.min(row.minDepth, depth);
   }
 
-  function expand(name, amountNeeded, depthLeft, routeIndex, outMap, seen, source) {
-    name = cleanName(name);
-    amountNeeded = amountNum(amountNeeded);
-
-    if (!name || amountNeeded <= 0 || isIgnoredName(name)) return;
-
-    if (window.GTNH_MAKER_API?.isExternalInput?.(name)) {
-      addRow(outMap, name, amountNeeded, source + " external-input", depthLeft);
-      return;
-    }
-
-    visitedNodes++;
-
-    if (visitedNodes > state.nodeLimit) {
-      addRow(outMap, name, amountNeeded, source + " node-limit", depthLeft);
-      return;
-    }
-
-    const loopKey = `${compact(name)}:${depthLeft}:${Math.round(amountNeeded * 1000000)}`;
-    if (seen.has(loopKey)) {
-      addRow(outMap, name, amountNeeded, source + " loop-stop", depthLeft);
-      return;
-    }
-
-    seen.add(loopKey);
-
-    if (depthLeft <= 0) {
-      addRow(outMap, name, amountNeeded, source, depthLeft);
-      return;
-    }
-
-    const base = getRecipeBase(name, routeIndex);
-
-    if (!base.ok) {
-      addRow(outMap, name, amountNeeded, source, depthLeft);
-
-      if (base.error) lastErrors.push(`${name}: ${base.error}`);
-
-      return;
-    }
-
-    const scaled = scaleRecipe(base, name, amountNeeded);
-    const inputs = cleanedInputs(scaled, name);
-
-    if (!inputs.length) {
-      addRow(outMap, name, amountNeeded, source, depthLeft);
-      return;
-    }
-
-    for (const [inName, inAmount] of inputs) {
-      expand(inName, inAmount, depthLeft - 1, 0, outMap, new Set(seen), name);
-    }
-  }
-
   function calculate() {
-    readForm();
-    saveState();
-
-    lastErrors = [];
-    visitedNodes = 0;
-
-    const outMap = new Map();
-
-    if (!state.target) {
-      lastRows = [];
-      lastCandidateNames = [];
-      lastErrors.push("No target selected.");
+    readForm(); saveState();
+    lastErrors = []; lastRows = []; lastCandidateNames = [];
+    const catalog = window.GTNH_CATALOG;
+    try {
+      if (!catalog) throw new Error("Recipe data is still loading.");
+      const target = catalog.resolve(state.target);
+      if (!target) throw new Error("Select an exact item/fluid name or ID. Duplicate names need an exact ID.");
+      const routeChoices = { [target.id]: state.routeIndex }, externalInputs = [], freeInputs = [];
+      const makers = window.GTNH_MAKER_API?.getState?.() || {};
+      for (const good of catalog.goods) {
+        const name = (good.name || "").toLowerCase(), key = compactName(name);
+        const maker = makers.makers?.[key];
+        if (maker) routeChoices[good.id] = maker.recipeId || maker.routeIndex;
+        if (makers.externalInputs?.[key]) externalInputs.push(good.id);
+        if (isManualIgnored(name) || state.waterFree && name === "water" || state.steamFree && ["steam", "superheated steam", "dense steam"].includes(name)) freeInputs.push(good.id);
+      }
+      const result = calculateProduction(catalog, { target: target.id, amount: state.amount,
+        unit: state.amountMode === "runs" ? "batches" : catalog.describe(target).unit, depth: state.depth,
+        rounding: "fractional", nodeLimit: state.nodeLimit, routeChoices, externalInputs, freeInputs, routeMode: "ask" });
+      lastRows = result.materials.map(row => ({ ...row, sources: row.reason, depth: 0 })).sort((a,b) => a.name.localeCompare(b.name));
+      lastCandidateNames = lastRows.map(row => row.name);
+      lastErrors = result.warnings;
+      window.GTNH_MATCALC.lastPlan = result;
       renderResults();
-      return;
-    }
-
-    const base = getRecipeBase(state.target, state.routeIndex);
-
-    if (!base.ok) {
-      lastRows = [];
-      lastCandidateNames = [];
-      lastErrors.push(base.error || "No production recipe found.");
-      renderResults();
-      return;
-    }
-
-    const baseProduced = producedAmount(base, state.target);
-
-    let desiredAmount;
-
-    if (state.amountMode === "runs") {
-      desiredAmount = baseProduced * Math.max(0, amountNum(state.amount));
-    } else {
-      desiredAmount = Math.max(0, amountNum(state.amount));
-    }
-
-    const scaled = scaleRecipe(base, state.target, desiredAmount);
-    const unfilteredDirectInputs = cleanedInputs(scaled, state.target, false);
-    const directInputs = cleanedInputs(scaled, state.target, true);
-
-    lastCandidateNames = unfilteredDirectInputs.map(([name]) => cleanName(name));
-
-    if (!directInputs.length) {
-      lastRows = [];
-      lastErrors.push("No required materials found after filters. Open ignored-material picker and unignore something if needed.");
-      renderResults();
-      return;
-    }
-
-    const depth = clampInt(state.depth, 1, 50);
-
-    for (const [name, amount] of directInputs) {
-      expand(
-        name,
-        amount,
-        depth - 1,
-        0,
-        outMap,
-        new Set(),
-        state.target
-      );
-    }
-
-    lastRows = [...outMap.values()]
-      .map(x => ({
-        name: x.name,
-        amount: x.amount,
-        sources: [...x.sources].join(", "),
-        depth: x.minDepth
-      }))
-      .filter(x => !isIgnoredName(x.name))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    if (visitedNodes >= state.nodeLimit) {
-      lastErrors.push(`Stopped at node limit ${state.nodeLimit}. Reduce depth or raise limit.`);
-    }
-
-    if (!lastRows.length && !lastErrors.length) {
-      lastErrors.push("No materials found after filters.");
-    }
-
-    renderResults();
+      let extra = document.getElementById("matAdditionalResults");
+      if (!extra) { extra = document.createElement("div"); extra.id = "matAdditionalResults"; document.getElementById("matResults").after(extra); }
+      extra.innerHTML = `<details ${state.cellsReusable ? "open" : ""}><summary>Reusable startup stock (${result.reusable.length})</summary><ul>${result.reusable.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details><details><summary>Byproducts and surplus (${result.byproducts.length})</summary><ul>${result.byproducts.map(row => `<li>${esc(amountText(row.amount))} ${esc(row.unit)} ${esc(row.name)}</li>`).join("")}</ul></details>`;
+      return result;
+    } catch (error) { lastErrors = [error.message]; document.getElementById("matAdditionalResults")?.remove(); renderResults(); return null; }
   }
 
   function ensureOverlay() {
@@ -689,7 +588,7 @@
             <label>
               Target item/fluid
               <div class="matInline">
-                <input id="matTarget" placeholder="epichlorohydrin" autocomplete="off">
+                <input id="matTarget" list="matGoods" placeholder="Exact name or item/fluid ID" autocomplete="off"><datalist id="matGoods"></datalist>
                 <button type="button" id="matUseSearch">Import NEI search</button>
               </div>
             </label>
@@ -721,6 +620,7 @@
               </label>
             </div>
 
+            <label class="matRouteLabel">Production route<select id="matRouteChoice"><option value="">Enter an exact target first</option></select></label>
             <div class="gtnhMatCalcActions">
               <button type="button" id="matCalculate" class="primary">Calculate</button>
               <button type="button" id="matDeepCalculate">Deep calculate</button>
@@ -735,9 +635,7 @@
               <div class="gtnhMatCheckGrid">
                 <label class="matCheck"><input id="matWaterFree" type="checkbox"> Ignore water</label>
                 <label class="matCheck"><input id="matSteamFree" type="checkbox"> Ignore steam</label>
-                <label class="matCheck"><input id="matCellsReusable" type="checkbox"> Ignore reusable cells</label>
-                <label class="matCheck"><input id="matIgnoreCircuits" type="checkbox"> Ignore programmed circuits</label>
-                <label class="matCheck"><input id="matIgnoreTargetOutputs" type="checkbox"> Ignore target/byproducts</label>
+                <label class="matCheck"><input id="matCellsReusable" type="checkbox"> Expand reusable stock details</label>
               </div>
 
               <label>
@@ -776,6 +674,10 @@
     });
 
     ov.addEventListener("input", event => {
+      if (event.target?.id === "matTarget") {
+        const query = event.target.value.toLowerCase(), list = ov.querySelector("#matGoods");
+        list.innerHTML = (window.GTNH_CATALOG?.goods.filter(good => (good.name || "").toLowerCase().includes(query) || good.id.toLowerCase().includes(query)).slice(0,25) || []).map(good => `<option value="${esc(good.id)}">${esc(good.name)} · ${esc(good.mod)}</option>`).join("");
+      }
       if (event.target?.id?.startsWith("mat")) scheduleSave();
     });
 
@@ -783,9 +685,13 @@
       if (event.target?.id?.startsWith("mat")) {
         readForm();
         saveState();
+        if (event.target.id === "matTarget") syncForm();
       }
     });
 
+    ov.querySelector("#matRouteChoice").addEventListener("change", event => {
+      if (event.target.value !== "") { ov.querySelector("#matRoute").value = Number(event.target.value) + 1; calculate(); }
+    });
     ov.querySelector("#matCalculate")?.addEventListener("click", calculate);
 
     ov.querySelector("#matDeepCalculate")?.addEventListener("click", () => {
@@ -1021,6 +927,13 @@
   }
 
   function syncForm() {
+    const catalog = window.GTNH_CATALOG, select = document.getElementById("matRouteChoice");
+    const target = catalog?.resolve(state.target);
+    if (select) {
+      const routes = target ? catalog.recipes(target) : [];
+      select.innerHTML = routes.length ? routes.map((route,index) => `<option value="${index}">${index+1}. ${esc(route.machine)} · ${route.durationTicks === null ? "time unknown" : amountText(route.durationTicks/20)+"s"} · ${esc(route.eut ?? "unknown")} EU/t</option>`).join("") : '<option value="">No exact target/routes</option>';
+      select.value = String(state.routeIndex);
+    }
     const set = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.value = value;
@@ -1069,8 +982,8 @@
     state.waterFree = !!document.getElementById("matWaterFree")?.checked;
     state.steamFree = !!document.getElementById("matSteamFree")?.checked;
     state.cellsReusable = !!document.getElementById("matCellsReusable")?.checked;
-    state.ignoreCircuits = !!document.getElementById("matIgnoreCircuits")?.checked;
-    state.ignoreTargetOutputs = !!document.getElementById("matIgnoreTargetOutputs")?.checked;
+    state.ignoreCircuits = document.getElementById("matIgnoreCircuits")?.checked ?? state.ignoreCircuits;
+    state.ignoreTargetOutputs = document.getElementById("matIgnoreTargetOutputs")?.checked ?? state.ignoreTargetOutputs;
 
     state.manualIgnored = normalizeNameList(state.manualIgnored);
   }
@@ -1109,7 +1022,7 @@
         <tbody>
           ${lastRows.map(r => `
             <tr>
-              <td>${esc(amountText(r.amount))}</td>
+              <td>${esc(amountText(r.amount))} ${esc(r.unit || "items")}</td>
               <td>${esc(r.name)}</td>
               <td>
                 <button type="button" class="matIgnoreInlineBtn" data-name="${esc(r.name)}">
@@ -1160,6 +1073,7 @@
     document.getElementById("gtnhMatCalcOverlay")?.classList.remove("show");
   }
 
+  window.addEventListener("gtnh-dataset-selected", () => { state = loadState(); lastRows = []; });
   window.GTNH_MATCALC = {
     open,
     close,

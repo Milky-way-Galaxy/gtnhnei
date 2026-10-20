@@ -1,12 +1,15 @@
 /* === gtnh-flow in browser worker v1 === */
 
 let pyodideReady = null;
+let activeRequestId = null;
+let renderQueue = Promise.resolve();
+const post = message => self.postMessage({ ...message, id: activeRequestId });
 
 async function initPythonRuntime() {
   if (pyodideReady) return pyodideReady;
 
   pyodideReady = (async () => {
-    self.postMessage({ type: "status", text: "Loading Python runtime..." });
+    post({ type: "status", text: "Loading Python runtime..." });
 
     importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js");
 
@@ -15,7 +18,7 @@ async function initPythonRuntime() {
       indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/"
     });
 
-    self.postMessage({ type: "status", text: "Loading Python packages..." });
+    post({ type: "status", text: "Loading Python packages..." });
 
     await pyodide.loadPackage(["micropip", "pyyaml", "sympy"]);
 
@@ -24,9 +27,9 @@ import micropip
 await micropip.install(["termcolor", "graphviz"])
 `);
 
-    self.postMessage({ type: "status", text: "Loading gtnh-flow source..." });
+    post({ type: "status", text: "Loading gtnh-flow source..." });
 
-    const zipRes = await fetch("vendor/gtnh-flow-browser.zip?v=" + Date.now());
+    const zipRes = await fetch("vendor/gtnh-flow-browser.zip?v=20261020");
 
     if (!zipRes.ok) {
       throw new Error("Cannot fetch vendor/gtnh-flow-browser.zip: HTTP " + zipRes.status);
@@ -114,22 +117,23 @@ def run_gtnh_flow_yaml(yaml_text: str) -> str:
     return dot
 `);
 
-    self.postMessage({ type: "status", text: "gtnh-flow ready." });
+    post({ type: "status", text: "gtnh-flow ready." });
 
     return pyodide;
   })();
 
-  return pyodideReady;
+  try { return await pyodideReady; }
+  catch (error) { pyodideReady = null; throw error; }
 }
 
-self.onmessage = async (event) => {
-  const msg = event.data || {};
+async function renderRequest(msg) {
+  activeRequestId = msg.id ?? null;
 
   try {
     if (msg.type === "render") {
       const pyodide = await initPythonRuntime();
 
-      self.postMessage({ type: "status", text: "Running gtnh-flow solver..." });
+      post({ type: "status", text: "Running gtnh-flow solver..." });
 
       pyodide.globals.set("BROWSER_YAML_TEXT", msg.yaml || "");
 
@@ -137,15 +141,20 @@ self.onmessage = async (event) => {
 run_gtnh_flow_yaml(BROWSER_YAML_TEXT)
 `);
 
-      self.postMessage({
+      post({
         type: "dot",
         dot
       });
     }
   } catch (err) {
-    self.postMessage({
+    post({
       type: "error",
       text: String(err && err.stack ? err.stack : err)
     });
   }
+ }
+self.onmessage = event => {
+  const msg = event.data || {};
+  if (msg.type !== "render") return;
+  renderQueue = renderQueue.catch(() => {}).then(() => renderRequest(msg));
 };

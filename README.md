@@ -72,3 +72,30 @@ with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium`.
 
 See [validation notes](docs/validation.md) for startup behavior, test coverage and
 known limitations of the bundled legacy test suites.
+
+
+## Production planning
+
+The Planner now calculates recursive materials, route/OreDict alternatives,
+expected chance yields, startup stock, machine requirements and base energy.
+It supports whole batches and continuous rates, dataset-bound JSON plans,
+material CSVs and dependency SVGs. The separate Material Calculator shares the
+same engine. Search has item/fluid/mod filters and exact-ID permalinks.
+
+The installed dataset is verified **GTNH 2.8.0**. 2.8.4 is not relabeled from
+2.8.0; unavailable versions remain disabled until authentic compatible exports
+are validated. See [calculation assumptions](docs/calculations.md),
+[dataset provenance](docs/datasets.md) and the
+[development report](docs/overnight-development.md).
+
+Additional checks:
+
+```sh
+npm run audit:data
+python3 tools/package-flow.py --check
+```
+
+The checked-in browser Python source package is reproducible with
+`python3 tools/package-flow.py`. Its source/config/license hashes are validated
+by the normal build check. Full Pyodide rendering downloads external runtime
+packages on demand; local dependency SVGs work without that runtime.

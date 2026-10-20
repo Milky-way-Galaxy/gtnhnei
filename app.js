@@ -7,6 +7,11 @@ import {
   RecipeIoType
 } from "./dist/repository.js";
 import { SearchQuery } from "./dist/searchQuery.js";
+import { loadDatasetSelection, verifyDatasetBuffer } from "./datasets.js";
+import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-controls.js";
+import { loadRepository, yieldToBrowser } from "./repository-loader.js";
+import { RecipeCatalog } from "./recipe-data.js";
+import { exportRecipeYaml } from "./recipe-export.js";
 import { fetchDatabase } from "./data-loader.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
@@ -27,6 +32,7 @@ const dataReady = new Promise(resolve => { resolveDataReady = resolve; });
 let loading = false;
 let allGoods = [];
 let allItems = [];
+let searchFilters = { ...defaultSearchFilters };
 let timer = null;
 let tipTimer = null;
 let activeTipAnchor = null;
@@ -333,15 +339,19 @@ async function load() {
   loading = true;
   setLoadState("fetch", "Fetching and decompressing recipe database…");
   try {
+    const dataset = await loadDatasetSelection();
     const buffer = await fetchDatabase(({ received, total }) => {
       const mb = (received / 1000000).toFixed(1);
       const size = total ? ` of ${(total / 1000000).toFixed(1)} MB` : " MB";
       setLoadState("fetch", `Downloading and decompressing: ${mb}${size}…`);
-    });
+    }, dataset.dataUrl);
+    setLoadState("verify", `Verifying ${dataset.label} data…`);
+    await verifyDatasetBuffer(buffer, dataset);
     setLoadState("index", "Building the item and recipe index…");
     // Give the browser a paint opportunity before synchronous index construction.
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-    repo = Repository.load(buffer);
+    repo = await loadRepository(buffer, { onProgress: ({completed, total}) => setLoadState("index", `Indexing ${dataset.label}: ${Math.round(completed / total * 100)}%…`) });
+    if (repo.items.length !== dataset.items || repo.fluids.length !== dataset.fluids || repo.recipes.length !== dataset.recipes) throw new Error("Dataset record counts differ from its verified manifest.");
     allGoods = [];
     allItems = [];
     for (const ptr of repo.items) {
@@ -355,11 +365,21 @@ async function load() {
       const fluid = repo.GetObject(ptr, Fluid);
       if (fluid) allGoods.push(fluid);
     }
+    setLoadState("catalog", "Preparing item lookup indexes…");
+    window.GTNH_CATALOG = await RecipeCatalog.build(repo, dataset, yieldToBrowser);
+    searchFilters = mountSearchFilters(window.GTNH_CATALOG, filters => { searchFilters = filters; renderSearchGrid(currentView.type !== "grid"); });
     resolveDataReady();
     // Install dependent APIs in registration order before enabling the UI.
     await dataReady;
     renderSearchGrid(false);
     setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
+    const params = new URLSearchParams(location.search), linkedId = params.get("item");
+    if (linkedId) {
+      const linked = window.GTNH_CATALOG.resolve(linkedId);
+      if (linked && !(linked instanceof OreDict)) {
+        if (params.get("view") === "usage") openUsage(linked); else openProduction(linked);
+      } else status.textContent = "Linked good was not found in the selected dataset.";
+    }
   } finally {
     loading = false;
   }
@@ -402,7 +422,10 @@ function renderSearchGrid(push = true) {
   const q = search.value.trim();
 
   const newQuery = q ? new SearchQuery(q) : null;
-  searchResults = !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
+  const exact = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
+  const matched = exact instanceof Item || exact instanceof Fluid ? [exact] : exact instanceof OreDict ? exact.items.filter(Boolean) :
+    !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
+  searchResults = filterGoods(matched, searchFilters);
 
   grid.innerHTML = "";
   renderedGridCount = 0;
@@ -425,7 +448,11 @@ function appendGridItems() {
   for (let i = renderedGridCount; i < end; i++) {
     const obj = currentSearchList[i];
 
-    const slot = document.createElement("div");
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.tabIndex = i === 0 ? 0 : -1;
+    slot.dataset.goodsId = obj.id;
+    slot.setAttribute("aria-label", `${nameOf(obj)}. Enter: recipes; U: usages.`);
     slot.className = "slot";
     slot.title = nameOf(obj);
 
@@ -487,6 +514,12 @@ function renderRecipes(obj, mode, push = true) {
   breadcrumb.style.display = "block";
 
   breadcrumb.textContent = `${mode} → ${nameOf(obj)}`;
+  const link = document.createElement("a"); link.id = "itemPermalink"; link.textContent = "Permalink";
+  const url = new URL(location.href); url.searchParams.set("dataset", window.GTNH_CATALOG.dataset.id);
+  url.searchParams.set("item", obj.id); url.searchParams.set("view", mode === "Usage" ? "usage" : "production");
+  link.href = url.href; breadcrumb.appendChild(link);
+  const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
+  plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
 
   renderMachineTabs();
   renderRecipeList();
@@ -1305,6 +1338,11 @@ function makeNeiSlot(io) {
     slot.appendChild(amount);
   }
 
+  if ([RecipeIoType.ItemOutput, RecipeIoType.FluidOutput].includes(io.type) && io.probability < 1) {
+    const probability = document.createElement("span"); probability.className = "neiProbability";
+    probability.textContent = `${Number((io.probability * 100).toPrecision(4))}%`;
+    slot.appendChild(probability); slot.title += ` · ${probability.textContent} chance`;
+  }
   attachControls(slot, io.goods);
   return slot;
 }
@@ -1383,8 +1421,8 @@ function addBadges(recipe, badges) {
     const gt = recipe.gtRecipe;
 
     tierText = tierFromEu(gt.voltage);
-    euText = `${gt.voltage ?? "?"} EU/t`;
-    ampText = `${gt.amperage ?? "?"}A`;
+    euText = `${gt.amperage > 0 ? gt.voltage * gt.amperage : "?"} EU/t`;
+    ampText = `${gt.amperage ?? "?"}A @ ${gt.voltage ?? "?"}V`;
     timeText = formatDuration(gt) ?? "";
 
     const tier = document.createElement("span");
@@ -1640,6 +1678,8 @@ machineTabs.addEventListener("pointerdown", () => {
           const qCompact = compact(q);
 
           if (!qLower) return null;
+          const indexed = window.GTNH_CATALOG?.findCompatible(q);
+          if (indexed) return indexed;
 
           let obj =
             allGoods.find(o => safeName(o).toLowerCase() === qLower) ||
@@ -1846,6 +1886,8 @@ machineTabs.addEventListener("pointerdown", () => {
         const qLower = q.toLowerCase();
         const qCompact = compact(q);
 
+        const exactId = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
+        if (exactId) return exactId;
         if (!qLower) return null;
 
         try {
@@ -1868,122 +1910,11 @@ machineTabs.addEventListener("pointerdown", () => {
         }
       }
 
-      function getMachine(recipe) {
-        try {
-          if (typeof recipeMachineName === "function") {
-            const m = recipeMachineName(recipe);
-            if (m) return String(m);
-          }
-        } catch {}
-
-        return String(
-          recipe?.machine ||
-          recipe?.m ||
-          recipe?.machineName ||
-          recipe?.map ||
-          "Unknown machine"
-        );
-      }
-
-      function getMachineText(recipe) {
-        try {
-          if (typeof machineRecipeText === "function") {
-            const t = machineRecipeText(recipe);
-            if (t) return String(t);
-          }
-        } catch {}
-
-        return getMachine(recipe);
-      }
-
-      function pick(recipe, names) {
-        for (const n of names) {
-          if (recipe && recipe[n] !== undefined && recipe[n] !== null) return recipe[n];
-        }
-        return "";
-      }
-
-      function smallValue(v, depth = 0) {
-        if (depth > 2) return "...";
-
-        if (v === null || v === undefined) return "";
-        if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-          return String(v);
-        }
-
-        if (Array.isArray(v)) {
-          return v.slice(0, 6).map(x => smallValue(x, depth + 1)).filter(Boolean).join(", ");
-        }
-
-        if (typeof v === "object") {
-          const name = objName(v);
-          const amount = pick(v, ["amount", "count", "qty", "n", "size"]);
-          if (name) return amount ? `${amount} ${name}` : name;
-
-          return Object.entries(v)
-            .slice(0, 6)
-            .map(([k, val]) => `${k}: ${smallValue(val, depth + 1)}`)
-            .join(", ");
-        }
-
-        return String(v);
-      }
-
-      function ioGuess(recipe, mode) {
-        const inputKeys = [
-          "I", "in", "input", "inputs", "itemInputs", "fluidInputs",
-          "inputItems", "inputFluids", "ingredients", "consumes"
-        ];
-
-        const outputKeys = [
-          "O", "out", "output", "outputs", "itemOutputs", "fluidOutputs",
-          "outputItems", "outputFluids", "products", "produces"
-        ];
-
-        const keys = mode === "input" ? inputKeys : outputKeys;
-        const found = [];
-
-        for (const k of keys) {
-          if (recipe && recipe[k] !== undefined && recipe[k] !== null) {
-            const text = smallValue(recipe[k]);
-            if (text) found.push(text);
-          }
-        }
-
-        return found.join(" | ");
-      }
-
       function recipeSummary(recipe, index = 0) {
-        const machine = getMachine(recipe);
-
-        let cardHtml = "";
-        try {
-          if (typeof recipeCardNei === "function") {
-            const node = recipeCardNei(recipe);
-            if (node) {
-              // Remove buttons from embedded calculator preview.
-              // The calculator has its own buttons.
-              node.querySelectorAll("button").forEach(b => b.remove());
-              cardHtml = node.outerHTML;
-            }
-          }
-        } catch (err) {
-          cardHtml = "";
-        }
-
-        return {
-          index,
-          id: String(recipe?.id || recipe?.recipeId || `${machine}:${index}`),
-          machine,
-          machineText: getMachineText(recipe),
-          eut: pick(recipe, ["eut", "EUt", "eu", "EU", "power", "euPerTick"]),
-          duration: pick(recipe, ["dur", "duration", "time", "ticks"]),
-          tier: pick(recipe, ["tier", "voltage", "voltageTier"]),
-          inputText: ioGuess(recipe, "input"),
-          outputText: ioGuess(recipe, "output"),
-          cardHtml,
-          keys: Object.keys(recipe || {}).slice(0, 24)
-        };
+        const record = window.GTNH_CATALOG.recipe(recipe);
+        return { ...record, index, duration: record.durationTicks ?? "", eut: record.eut ?? "", tier: record.tier ?? "",
+          machineText: record.machine, inputText: record.inputs.map(io => `${io.amount} ${io.name}`).join(", "),
+          outputText: record.outputs.map(io => `${io.amount} ${io.name}`).join(", "), cardHtml: "" };
       }
 
       function recipeListForName(rawName, mode) {
@@ -2101,6 +2032,8 @@ machineTabs.addEventListener("pointerdown", () => {
         const qLower = q.toLowerCase();
         const qCompact = compact(q);
 
+        const exactId = /^(?:[ifo]:)/.test(q) ? repo.GetById(q) : null;
+        if (exactId) return exactId;
         if (!qLower) return null;
 
         try {
@@ -2170,349 +2103,33 @@ machineTabs.addEventListener("pointerdown", () => {
 
 
 
-/* === GTNH-FLOW YAML EXPORT API v2 START === */
-(() => {
-  if (window.__GTNHNEI_FLOW_EXPORT_API_V2__) return;
-  window.__GTNHNEI_FLOW_EXPORT_API_V2__ = true;
+// Backward-compatible export surface; calculations use the structured catalog.
+dataReady.then(() => {
+  window.GTNHNEI_FLOW_EXPORT_API = {
+    ready: true, version: 2,
+    yamlForRecipe: (name, index = 0) => exportRecipeYaml(window.GTNH_CATALOG, name, index),
+    yaml(name, index = 0) { return this.yamlForRecipe(name, index).yaml; }
+  };
+  window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
+});
 
-
-  function installFlowExportApiV2() {
-
-    try {
-      if (
-        typeof allGoods === "undefined" ||
-        !Array.isArray(allGoods) ||
-        allGoods.length === 0 ||
-        typeof recipesFor !== "function" ||
-        typeof recipeCardNei !== "function"
-      ) {
-        return false;
-      }
-
-      function compact(s) {
-        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      }
-
-      function objName(o) {
-        try {
-          if (typeof nameOf === "function") {
-            const n = String(nameOf(o) || "");
-            if (n && n !== "[object Object]") return n;
-          }
-        } catch {}
-
-        return String(o?.name || o?.id || "");
-      }
-
-      function findObject(rawName) {
-        const q = String(rawName || "").trim();
-        const qLower = q.toLowerCase();
-        const qCompact = compact(q);
-
-        if (!qLower) return null;
-
-        try {
-          if (window.GTNHNEI_ICON_API?.findObjectByName) {
-            const viaIcon = window.GTNHNEI_ICON_API.findObjectByName(q);
-            if (viaIcon) return viaIcon;
-          }
-        } catch {}
-
-        return (
-          allGoods.find(o => objName(o).toLowerCase() === qLower) ||
-          allGoods.find(o => compact(objName(o)) === qCompact) ||
-          allGoods.find(o => objName(o).toLowerCase().includes(qLower)) ||
-          allGoods.find(o => compact(objName(o)).includes(qCompact)) ||
-          null
-        );
-      }
-
-      function machineName(recipe) {
-        try {
-          if (typeof recipeMachineName === "function") {
-            const m = recipeMachineName(recipe);
-            if (m) return String(m);
-          }
-        } catch {}
-
-        return String(recipe?.machine || recipe?.m || recipe?.machineName || "machine");
-      }
-
-      function machineText(recipe) {
-        try {
-          const card = recipeCardNei(recipe);
-          return String(card?.textContent || "");
-        } catch {
-          return "";
-        }
-      }
-
-      function parseAmount(raw) {
-        let s = String(raw ?? "1").trim().toLowerCase().replace(/,/g, "");
-        const m = s.match(/([0-9]+(?:\.[0-9]+)?)([kmb])?/i);
-        if (!m) return 1;
-
-        let n = Number(m[1]);
-        const suffix = String(m[2] || "").toLowerCase();
-
-        if (suffix === "k") n *= 1000;
-        if (suffix === "m") n *= 1000000;
-        if (suffix === "b") n *= 1000000000;
-
-        return Number.isFinite(n) ? Math.round(n) : 1;
-      }
-
-      function parseTier(text) {
-        const m = String(text || "").match(/\b(ULV|LV|MV|HV|EV|IV|LuV|ZPM|UV|UHV|UEV|UIV|UMV|UXV|MAX)\b/i);
-        return m ? m[1] : "LV";
-      }
-
-      function parseEu(text) {
-        const m = String(text || "").replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)\s*EU\/t/i);
-        return m ? Math.round(Number(m[1])) : 0;
-      }
-
-      function parseDur(text) {
-        const s = String(text || "").toLowerCase();
-
-        const h = s.match(/([0-9]+(?:\.[0-9]+)?)\s*h\b/);
-        const min = s.match(/([0-9]+(?:\.[0-9]+)?)\s*m\b/);
-        const sec = s.match(/([0-9]+(?:\.[0-9]+)?)\s*s\b/);
-        const tick = s.match(/([0-9]+(?:\.[0-9]+)?)\s*ticks?\b/);
-
-        let total = 0;
-        if (h) total += Number(h[1]) * 3600;
-        if (min) total += Number(min[1]) * 60;
-        if (sec) total += Number(sec[1]);
-        if (total > 0) return total;
-
-        if (tick) return Number(tick[1]) / 20;
-
-        return 1;
-      }
-
-      function cleanName(s) {
-        s = String(s || "").trim();
-
-        s = s.replace(/\s+/g, " ");
-        s = s.replace(/^No recipe:\s*/i, "");
-        s = s.replace(/\b\d+(\.\d+)?[kmb]?\b/ig, "").trim();
-
-        if (!s) return "";
-        if (/^(input|output|recipe|usage|copy|selected|open nei recipe|open nei usage)$/i.test(s)) return "";
-        if (/^\d+$/.test(s)) return "";
-
-        return s;
-      }
-
-      function getSlotName(el) {
-        const attrs = [
-          "data-gtnh-icon-name",
-          "data-gtnh-name",
-          "data-name",
-          "data-item-name",
-          "data-fluid-name",
-          "title",
-          "aria-label",
-          "alt"
-        ];
-
-        for (const a of attrs) {
-          const v = el.getAttribute?.(a);
-          const c = cleanName(v);
-          if (c) return c;
-        }
-
-        const ds = el.dataset || {};
-        for (const k of Object.keys(ds)) {
-          if (/name/i.test(k)) {
-            const c = cleanName(ds[k]);
-            if (c) return c;
-          }
-        }
-
-        const img = el.querySelector?.("img[alt], img[title]");
-        if (img) {
-          const c = cleanName(img.getAttribute("alt") || img.getAttribute("title"));
-          if (c) return c;
-        }
-
-        return "";
-      }
-
-      function getSlotAmount(el) {
-        const text = String(el.textContent || "");
-        return parseAmount(text);
-      }
-
-      function add(map, name, amount) {
-        name = cleanName(name);
-        if (!name) return;
-        map[name] = (map[name] || 0) + (amount || 1);
-      }
-
-      function parseIoFromRenderedCard(recipe) {
-        const input = {};
-        const output = {};
-
-        const host = document.createElement("div");
-        host.style.position = "fixed";
-        host.style.left = "-99999px";
-        host.style.top = "0";
-        host.style.width = "900px";
-        host.style.visibility = "hidden";
-        host.style.pointerEvents = "none";
-        document.body.appendChild(host);
-
-        try {
-          const card = recipeCardNei(recipe);
-          host.appendChild(card);
-
-          const cardRect = card.getBoundingClientRect();
-          const midX = cardRect.left + cardRect.width * 0.56;
-
-          const candidates = [
-            ...card.querySelectorAll(
-              "[data-gtnh-icon-name], [data-gtnh-name], [data-name], [data-item-name], [data-fluid-name], [title], [aria-label], .neiSlot, .slot, .itemSlot, .recipeSlot, .ioSlot"
-            )
-          ];
-
-          const seen = new Set();
-
-          for (const el of candidates) {
-            if (!(el instanceof HTMLElement)) continue;
-            if (seen.has(el)) continue;
-            seen.add(el);
-
-            const rect = el.getBoundingClientRect();
-            if (rect.width < 10 || rect.height < 10) continue;
-
-            const name = getSlotName(el);
-            if (!name) continue;
-
-            if (name.toLowerCase() === machineName(recipe).toLowerCase()) continue;
-
-            const amount = getSlotAmount(el);
-            const cx = rect.left + rect.width / 2;
-
-            if (cx < midX) add(input, name, amount);
-            else add(output, name, amount);
-          }
-        } catch (err) {
-          console.warn("Rendered-card IO parse failed:", err);
-        } finally {
-          host.remove();
-        }
-
-        return { input, output };
-      }
-
-      function yamlScalar(v) {
-        if (typeof v === "number") return String(v);
-        const s = String(v ?? "");
-        if (/^[a-zA-Z0-9_ .+\-()[\]\/]+$/.test(s)) return s;
-        return JSON.stringify(s);
-      }
-
-      function yamlMap(name, map) {
-        const entries = Object.entries(map || {});
-        if (!entries.length) return `  ${name}: {}`;
-
-        return [
-          `  ${name}:`,
-          ...entries.map(([k, v]) => `    ${yamlScalar(k)}: ${yamlScalar(v)}`)
-        ].join("\n");
-      }
-
-      function yamlForRecipe(rawName, routeIndex = 0, options = {}) {
-        const obj = findObject(rawName);
-        if (!obj) {
-          return {
-            ok: false,
-            yaml: `# Target not found: ${rawName}\n`,
-            error: `Target not found: ${rawName}`
-          };
-        }
-
-        const recipes = recipesFor(obj, "Production") || [];
-        const recipe = recipes[Number(routeIndex)] || recipes[0];
-
-        if (!recipe) {
-          return {
-            ok: false,
-            target: objName(obj),
-            yaml:
-`# GTNH Atlas -> gtnh-flow draft
-# No production recipe found for ${objName(obj)}
-
-- m: manual
-  tier: LV
-  I: {}
-  O:
-    ${yamlScalar(objName(obj))}: ${yamlScalar(options.targetAmount || 1)}
-  eut: 0
-  dur: 1
-  number: 1
-`,
-            error: "No production recipe found."
-          };
-        }
-
-        const text = machineText(recipe);
-        const machine = machineName(recipe);
-        const tier = parseTier(text);
-        const eut = parseEu(text);
-        const dur = parseDur(text);
-        const parsed = parseIoFromRenderedCard(recipe);
-
-        const yaml =
-`# GTNH Atlas -> gtnh-flow draft
-# Target: ${objName(obj)}
-# Route: ${Number(routeIndex) + 1}
-# Machine: ${machine}
-# Draft. Test once with local gtnh-flow.
-
-- m: ${yamlScalar(machine.toLowerCase())}
-  tier: ${yamlScalar(tier)}
-${yamlMap("I", parsed.input)}
-${yamlMap("O", parsed.output)}
-  eut: ${yamlScalar(eut)}
-  dur: ${yamlScalar(dur)}
-  number: 1
-`;
-
-        return {
-          ok: true,
-          target: objName(obj),
-          routeIndex: Number(routeIndex),
-          machine,
-          tier,
-          eut,
-          dur,
-          input: parsed.input,
-          output: parsed.output,
-          yaml
-        };
-      }
-
-      window.GTNHNEI_FLOW_EXPORT_API = {
-        ready: true,
-        version: 2,
-        yamlForRecipe,
-        yaml(rawName, routeIndex = 0, options = {}) {
-          return yamlForRecipe(rawName, routeIndex, options).yaml;
-        }
-      };
-
-      window.dispatchEvent(new Event("gtnhnei-flow-export-ready"));
-      console.log("GTNHNEI_FLOW_EXPORT_API v2 ready");
-      return true;
-    } catch (err) {
-      console.warn("GTNHNEI_FLOW_EXPORT_API v2 failed:", err);
-      return false;
-    }
+// Roving focus keeps a large item grid usable without hundreds of Tab stops.
+grid.addEventListener("focusin", event => {
+  if (!event.target.matches(".slot")) return;
+  grid.querySelectorAll('.slot[tabindex="0"]').forEach(slot => { slot.tabIndex = -1; });
+  event.target.tabIndex = 0;
+});
+grid.addEventListener("keydown", event => {
+  const slot = event.target.closest(".slot"); if (!slot) return;
+  const good = window.GTNH_CATALOG?.resolve(slot.dataset.goodsId);
+  if (event.key.toLowerCase() === "u" && good) { event.preventDefault(); openUsage(good); return; }
+  const slots = [...grid.querySelectorAll(".slot")], index = slots.indexOf(slot);
+  const columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+  const next = { ArrowRight: index + 1, ArrowLeft: index - 1, ArrowDown: index + columns, ArrowUp: index - columns, Home: 0, End: slots.length - 1 }[event.key];
+  if (next !== undefined) { event.preventDefault(); slots[Math.max(0, Math.min(slots.length - 1, next))]?.focus(); }
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], [role=dialog]")) {
+    event.preventDefault(); search.focus();
   }
-
-  dataReady.then(installFlowExportApiV2);
-})();
-/* === GTNH-FLOW YAML EXPORT API v2 END === */
+});

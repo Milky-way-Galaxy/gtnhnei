@@ -1,0 +1,37 @@
+#gtnhCalcOverlay { z-index: 99980; }
+#gtnhCalcOverlay label { display: flex; flex-direction: column; gap: 6px; }
+#gtnhCalcOverlay input, #gtnhCalcOverlay select { width: 100%; min-width: 0; padding: 9px; color: #eaf2ff; background: #111f30; border: 1px solid #3a536b; border-radius: 8px; font-size: 16px; }
+#gtnhCalcOverlay .gtnhCalcChecks label { flex-direction: row; align-items: center; }
+#gtnhCalcOverlay input[type=checkbox] { width: auto; }
+#plannerStatus { margin: 6px 14px; color: #9cd8ee; }
+.plannerDataset, .plannerError { padding: 12px; border-radius: 9px; background: #15334a; }
+.plannerError { background: #512630; color: #ffd0d0; }
+.plannerMetrics { display: flex; gap: 12px; flex-wrap: wrap; }
+.plannerMetrics > div { flex: 1; padding: 12px; background: #14273a; border-radius: 9px; }
+.plannerMetrics b { display: block; margin-top: 5px; color: #8fe6d1; font-size: 20px; }
+.plannerTable { overflow-x: auto; max-width: 100%; }
+.plannerTable table { width: 100%; border-collapse: collapse; }
+.plannerTable td, .plannerTable th { padding: 9px; border-bottom: 1px solid #2d4359; text-align: left; vertical-align: top; }
+.plannerTable small, .plannerNode small { display: block; overflow-wrap: anywhere; color: #a3b9ce; }
+.plannerNode { padding: 10px; border: 1px solid #2b465d; border-radius: 9px; margin: 7px 0; }
+.plannerNode summary { cursor: pointer; overflow-wrap: anywhere; }
+.plannerNode button { margin-top: 7px; }
+.plannerProfile { display: flex; gap: 9px; flex-wrap: wrap; }
+.plannerProfile label { flex: 1 1 120px; }
+.plannerDiagram { overflow: auto; max-width: 100%; max-height: 65vh; border: 1px solid #34506a; background: #071220; }
+.plannerImport { padding: 8px; border: 1px solid #3a536b; border-radius: 8px; }
+#gtnhCalcOverlay #calcCodeOut { min-height: 280px; width: 100%; background: #091523; color: #eaf2ff; padding: 12px; }
+#gtnhCalcOverlay :focus-visible { outline: 2px solid #74d7ff; outline-offset: 2px; }
+@media (max-width: 780px) {
+ #gtnhCalcOverlay .gtnhCalcWorkspace { display: block; }
+ #gtnhCalcOverlay [data-calc-panel] { display: none !important; }
+ #gtnhCalcOverlay[data-mobile-tab=planner] [data-calc-panel=planner], #gtnhCalcOverlay[data-mobile-tab=tree] [data-calc-panel=tree], #gtnhCalcOverlay[data-mobile-tab=code] [data-calc-panel=code] { display: block !important; }
+ #gtnhCalcOverlay .gtnhCalcPanel { display: flex; flex-direction: column; }
+ #gtnhCalcOverlay .gtnhCalcWorkspace { overflow-y: auto; min-height: 0; }
+ #gtnhCalcOverlay .gtnhCalcCol { overflow: visible; max-height: none; }
+ #gtnhCalcOverlay .gtnhCalcTabs { flex-shrink: 0; }
+ .plannerTable td:first-child { min-width: 145px; }
+}
+#gtnhCalcOverlay .gtnhCalcPanel { background: #081321; }
+.matRouteLabel { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+#matRouteChoice { width: 100%; min-height: 44px; padding: 8px; color: #eaf2ff; background: #12283b; border: 1px solid #39576b; border-radius: 8px; font-size: 16px; }

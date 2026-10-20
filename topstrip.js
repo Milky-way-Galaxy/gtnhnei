@@ -30,7 +30,8 @@
   }
 
   function openFavorites() {
-    const KEY = "gtnhnei_favorites_v2";
+    const activeId = window.GTNH_DATASETS?.active?.id;
+    const KEY = !activeId || activeId === "gtnh-2.8.0" ? "gtnhnei_favorites_v2" : `gtnhnei_favorites_v2_${activeId}`;
 
     function cleanName(s) {
       return String(s || "").trim();
@@ -322,7 +323,7 @@
 
           <section class="gtnhHelpCard">
             <h3>Database</h3>
-            <p><b>GTNH 2.8.x</b> is active.</p>
+            <p>The database badge shows the active verified GTNH version. Unavailable versions are listed in NEI.</p>
             <p>Older databases need separate data files before they can work.</p>
           </section>
         </div>
@@ -363,47 +364,32 @@
   }
 
   function showHelp() {
+    const updateDataset = () => {
+      const badge = document.getElementById("toolDb"), dataset = window.GTNH_DATASETS?.active;
+      if (badge && dataset) { badge.textContent = "DB: " + dataset.label; badge.title = dataset.verification; }
+    };
+    window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
     createHelpModal();
     document.getElementById("gtnhHelpOverlay")?.classList.add("show");
   }
 
   function showNeiDropdown(anchor) {
     let drop = document.getElementById("gtnhNeiDrop");
-
-    if (!drop) {
-      drop = document.createElement("div");
-      drop.id = "gtnhNeiDrop";
-      drop.className = "gtnhDrop";
-      drop.innerHTML = `
-        <button type="button" data-ver="2.8.x">✓ GTNH 2.8.x</button>
-        <button type="button" data-ver="2.7.x">GTNH 2.7.x — not installed</button>
-        <button type="button" data-ver="close">Close</button>
-      `;
-
-      document.body.appendChild(drop);
-
-      drop.addEventListener("click", event => {
-        const btn = event.target.closest("button");
-        if (!btn) return;
-
-        const ver = btn.dataset.ver;
-
-        if (ver === "2.8.x") {
-          localStorage.setItem("gtnhnei_database_version", "2.8.x");
-          smallHint("Using GTNH 2.8.x database.");
-        } else if (ver === "2.7.x") {
-          smallHint("2.7.x data is not installed yet.");
-        }
-
-        drop.classList.remove("show");
-      });
+    if (!drop) { drop = document.createElement("div"); drop.id = "gtnhNeiDrop"; drop.className = "gtnhDrop"; document.body.appendChild(drop); }
+    drop.replaceChildren();
+    const info = window.GTNH_DATASETS;
+    if (!info) { drop.textContent = "Recipe datasets are still loading."; }
+    else {
+      for (const dataset of info.manifest.datasets) {
+        const button = document.createElement("button"); button.type = "button";
+        button.textContent = `${dataset.id === info.active.id ? "✓ " : ""}${dataset.label}${dataset.available ? "" : " — unavailable"}`;
+        button.disabled = !dataset.available; button.title = dataset.reason || dataset.verification;
+        button.addEventListener("click", () => { if (dataset.id !== info.active.id) info.select(dataset.id); drop.classList.remove("show"); });
+        drop.appendChild(button);
+      }
+      const note = document.createElement("p"); note.textContent = "Each version needs its own verified export. Unavailable versions never use another version's recipes."; drop.appendChild(note);
     }
-
-    const r = anchor.getBoundingClientRect();
-
-    drop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 235)) + "px";
-    drop.style.top = Math.min(r.bottom + 6, window.innerHeight - 160) + "px";
-    drop.classList.toggle("show");
+    const rect = anchor.getBoundingClientRect(); drop.style.left = Math.max(8, Math.min(rect.left, innerWidth - 300)) + "px"; drop.style.top = rect.bottom + 6 + "px"; drop.classList.toggle("show");
   }
 
   function install() {
@@ -418,7 +404,7 @@
         <button id="toolCalc" class="gtnhToolBtn" type="button">Calculator</button>
         <button id="toolFav" class="gtnhToolBtn" type="button">Favorites</button>
         <button id="toolHelp" class="gtnhToolBtn" type="button">Help</button>
-        <span id="toolDb" class="gtnhDbBadge" title="Current database: GTNH 2.8.x">DB: GTNH 2.8.x</span>
+        <span id="toolDb" class="gtnhDbBadge" title="Verified recipe database">DB: loading</span>
       `;
 
       const header = document.querySelector("header") || document.body.firstElementChild;
@@ -449,6 +435,11 @@
       drop.classList.remove("show");
     }, true);
 
+    const updateDataset = () => {
+      const badge = document.getElementById("toolDb"), dataset = window.GTNH_DATASETS?.active;
+      if (badge && dataset) { badge.textContent = "DB: " + dataset.label; badge.title = dataset.verification; }
+    };
+    window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
     createHelpModal();
 
     const seen = localStorage.getItem("gtnhnei_help_seen");

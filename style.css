@@ -169,7 +169,7 @@ button:disabled {
 .tabIcon {
   width: 32px;
   height: 32px;
-  background-image: url("data/atlas.webp");
+  background-image: var(--atlas-image, url("data/atlas.webp"));
   background-repeat: no-repeat;
   image-rendering: pixelated;
   flex: 0 0 32px;
@@ -219,7 +219,7 @@ button:disabled {
 .icon {
   width: 32px;
   height: 32px;
-  background-image: url("data/atlas.webp");
+  background-image: var(--atlas-image, url("data/atlas.webp"));
   background-repeat: no-repeat;
   image-rendering: pixelated;
   flex: 0 0 32px;

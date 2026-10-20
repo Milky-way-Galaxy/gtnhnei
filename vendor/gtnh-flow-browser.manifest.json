@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sha256": "b4c2ef473d7dd32875ccd719cd6da5d3eebccd670d73485936b0abc81ec328ed",
+  "files": {
+    "gtnh-flow-browser/LICENSE.txt": "11a17fdffdf9054d6182b43ab71c4aa36038ced4c2b4ce824478571a7eb8684b",
+    "gtnh-flow-browser/README.md": "bc2d0f4034e6de29efb90069c6faecf05c3712fd40019bb0827fc7e93909a827",
+    "gtnh-flow-browser/config_factory_graph.yaml": "c97d9f2ec3a82cb4177c759768ba1385fc296eaa606b77dde024dc9e35fa63b5",
+    "gtnh-flow-browser/data/misc.yaml": "9626f1d4dc6169e756d2760271b0a20cf5704af39266d4b41e460833c3b36b54",
+    "gtnh-flow-browser/data/overclock_data.yaml": "d690e42b45c134f9f0a06354fe588185e91be752762a8c4c4bf67008f9a49627",
+    "gtnh-flow-browser/data/power_data.yaml": "42a92a63a1e3641048e7daa10b7dbd38c6b8c3d15e417b4d869aa84e3998a1f6",
+    "gtnh-flow-browser/data/turbine_data.yaml": "5f321a1cfc13491d3982c19eb9da20f435361c5cba9540ecda7344ba4a7b4525",
+    "gtnh-flow-browser/factory_graph.py": "0de170dbd344eda996b2d20d4f9b83e35de1413b1f2f8b4307a2453a9e0a1de3",
+    "gtnh-flow-browser/src/data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gtnh-flow-browser/src/data/basicTypes.py": "3d8a395718ffd8052f24af78b178d08ac4f5066f45017e807cc6d64092e2ff40",
+    "gtnh-flow-browser/src/data/loadMachines.py": "91f5acb4c4673bbfb999c3caab551ae9c7f39dd7df5a4ac3610139ab834eca4f",
+    "gtnh-flow-browser/src/devScripts/convert_to_sec.py": "cddef9d68f5ecc35b920eaa7126b9dcee75648d92e8950c0c0f4bac147ebfdc0",
+    "gtnh-flow-browser/src/devScripts/convert_to_yaml.py": "2827215d778833ceb5af6d1bf53c5ceb2731d02193955418844b57e2caab8f8d",
+    "gtnh-flow-browser/src/graph/__init__.py": "b0f845c137ba60de7e852b279328ec0c380945230883888ba49a06bdb4ba4c73",
+    "gtnh-flow-browser/src/graph/_backEdges.py": "505c4825b359785d57eae13828a1fc0bab3fe9aa5cacc684005aba6cedea6e66",
+    "gtnh-flow-browser/src/graph/_output.py": "5f5694633594c8489b2ef32ac9ca69f701443554eef2c3191b2456e6a9b27118",
+    "gtnh-flow-browser/src/graph/_portNodes.py": "791e4e6970aab9d0eddda8ce583cfbf5ac385d7d18d84de320e8d71f6d15f0dc",
+    "gtnh-flow-browser/src/graph/_postProcessing.py": "13e582ce242939541aa33e41d295a1dcdd78cfcf0ee4160e46c57abde1096213",
+    "gtnh-flow-browser/src/graph/_preProcessing.py": "48cd8eca32d7ed7d0c58e5f0c1f5cdfd4cdf06cbf111b72d1184f54984309459",
+    "gtnh-flow-browser/src/graph/_rounding.py": "c65b91cb0640ec6d0b17998bdc5f43c70ccc3baa831476a5ceea98d596994c8e",
+    "gtnh-flow-browser/src/graph/_solver.py": "b4f59653a62a5bfbc2e954a6feac5abc1b265671111e7019d08d3fb8e9c3943f",
+    "gtnh-flow-browser/src/graph/_utils.py": "77b79c0d000b153c06c747d52b66faea0db10ee9a135452705d973f950752275",
+    "gtnh-flow-browser/src/gtnh/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gtnh-flow-browser/src/gtnh/overclocks.py": "5081065d83d58e87b708385014f7c125966f1013aa07cf6253acb1fa6e6df217"
+  }
+}

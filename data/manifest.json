@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "default": "gtnh-2.8.0",
+  "datasets": [
+    {
+      "id": "gtnh-2.8.0",
+      "label": "GTNH 2.8.0",
+      "packVersion": "2.8.0",
+      "available": true,
+      "format": 5,
+      "dataUrl": "data/data.bin",
+      "atlasUrl": "data/atlas.webp",
+      "sha256": "b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc",
+      "uncompressedSha256": "f3b57c9fbc1d613ff585fe505a990af349161f23aad45b5bcd1519a1af42e626",
+      "atlasSha256": "fa05550ce9657ce49d4512b4aab7fe76d684b70745b0bc7b744c9ae0d6eb6ef5",
+      "items": 41091,
+      "fluids": 1542,
+      "recipes": 190080,
+      "source": "https://github.com/ShadowTheAge/gtnh-data/tree/6d35153688de5ae8e02807b942099618de1d9276",
+      "sourceRevision": "6d35153688de5ae8e02807b942099618de1d9276",
+      "verification": "Both Git blob IDs match upstream 2.8.0-v5 exactly; verified 2026-10-19."
+    },
+    {
+      "id": "gtnh-2.8.4",
+      "label": "GTNH 2.8.4",
+      "packVersion": "2.8.4",
+      "available": false,
+      "reason": "Official pack release verified; a matching recipe export has not been verified."
+    },
+    {
+      "id": "gtnh-2.7.4",
+      "label": "GTNH 2.7.4 archive",
+      "packVersion": "2.7.4",
+      "available": false,
+      "source": "https://shadowtheage.github.io/gtnh-2.7.4/",
+      "reason": "Authentic upstream archive uses binary format 3; the current parser supports format 5."
+    },
+    {
+      "id": "gtnh-2.9.0",
+      "label": "GTNH 2.9.0 upstream",
+      "packVersion": "2.9.0",
+      "available": false,
+      "source": "https://github.com/ShadowTheAge/gtnh-data/tree/d200440ea31d0357068a294d7312acf1146de909",
+      "reason": "Upstream export uses format 7; a validated parser adapter and matching atlas are required."
+    }
+  ]
+}

@@ -7,14 +7,14 @@ import {
   RecipeIoType
 } from "./dist/repository.js";
 import { SearchQuery } from "./dist/searchQuery.js";
-import { loadDatasetSelection, verifyDatasetBuffer } from "./datasets.js";
+import { loadDatasetSelection } from "./datasets.js";
 import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-controls.js";
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
 import { openVersionComparison } from "./version-compare-ui.js";
 import { appendRecipeDetails } from "./recipe-details.js";
-import { fetchDatabase } from "./data-loader.js";
+import { loadVerifiedDatabase } from "./database-cache.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
 const search = document.getElementById("search");
@@ -342,13 +342,12 @@ async function load() {
   setLoadState("fetch", "Fetching and decompressing recipe database…");
   try {
     const dataset = await loadDatasetSelection();
-    const buffer = await fetchDatabase(({ received, total }) => {
+    const { buffer, source, saved } = await loadVerifiedDatabase(dataset, ({ received, total }) => {
       const mb = (received / 1000000).toFixed(1);
       const size = total ? ` of ${(total / 1000000).toFixed(1)} MB` : " MB";
       setLoadState("fetch", `Downloading and decompressing: ${mb}${size}…`);
-    }, dataset.dataUrl);
-    setLoadState("verify", `Verifying ${dataset.label} data…`);
-    await verifyDatasetBuffer(buffer, dataset);
+    }, { onStatus: setLoadState });
+    window.GTNH_DATABASE_LOAD = { source, saved };
     setLoadState("index", "Building the item and recipe index…");
     // Give the browser a paint opportunity before synchronous index construction.
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));

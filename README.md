@@ -2,6 +2,8 @@
 
 **GTNH Atlas** is a mobile-friendly **GregTech: New Horizons recipe searcher, usage lookup, calculator, and planning tool**.
 
+Maintained by [Milky-way-Galaxy](https://github.com/Milky-way-Galaxy).
+
 Live site:
 
 https://milky-way-galaxy.github.io/gtnhnei/

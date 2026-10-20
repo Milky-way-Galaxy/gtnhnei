@@ -3,6 +3,13 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("gtnhnei_help_seen","1"));
 });
 async function ready(page) { await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); }
+test("reported pine plank search renders all four matching items without a grid error", async ({ page }) => {
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await ready(page); await page.locator("#search").fill("pine plank");
+  await expect(page.locator("#status")).toContainText("4 result(s)");
+  await expect(page.locator("#grid .slot")).toHaveCount(4);
+  expect(errors).toEqual([]);
+});
 test("type/mod/production filters and name sorting remain valid while loading more", async ({ page }) => {
   await ready(page);
   await page.locator("#searchFilters summary").click();

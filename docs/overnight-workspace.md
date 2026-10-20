@@ -38,6 +38,9 @@ the compact phone toolbar wraps visibly rather than hiding tools offscreen.
 Native dialogs provide focus containment, Escape closing and focus return.
 Keyboard shortcuts cover search, planner, library, help, recipes, usages and stars.
 Layout preferences fall back to the tab when localStorage is inaccessible.
+Browser Ctrl/Cmd/Alt combinations are retained. Mobile planner actions wrap into
+two visible rows, including Build and Supplies. The old automatic-help preference
+is retained and editable; clearing favorites now has undo without clearing history.
 
 Favorites now retain exact case-sensitive item/fluid IDs, with up to 500 favorites
 and 100 deduplicated recent goods per version. Recipe pages have a star. Library
@@ -102,10 +105,10 @@ verify and construct indexes. Values are milliseconds, rounded.
 
 | Context | Pack | First startup | Two returns | Database first | Database returns |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Desktop Chromium | 2.8.0 | 1,465 | 748 / 746 | 698 | 185 / 204 |
-| Desktop Chromium | 2.9.0 | 1,874 | 878 / 791 | 706 | 196 / 195 |
-| Pixel 7 emulation | 2.8.0 | 1,319 | 722 / 711 | 546 | 184 / 156 |
-| Pixel 7 emulation | 2.9.0 | 1,885 | 881 / 846 | 672 | 222 / 199 |
+| Desktop Chromium | 2.8.0 | 1,469 | 663 / 1,220 | 641 | 174 / 244 |
+| Desktop Chromium | 2.9.0 | 1,672 | 775 / 705 | 656 | 176 / 198 |
+| Pixel 7 emulation | 2.8.0 | 1,265 | 709 / 602 | 570 | 181 / 150 |
+| Pixel 7 emulation | 2.9.0 | 1,582 | 769 / 692 | 675 | 203 / 172 |
 
 Only one binary was fetched across each three-visit sequence: 15,379,169 bytes
 for 2.8.0 and 17,699,195 for 2.9.0. These results establish the skipped download
@@ -124,7 +127,49 @@ Focused checks passed before the full release regression:
 - Both complete offline datasets, unsaved-version recovery, accepted updates,
   old-shell cleanup and invalid atlas hashes: eight browser cases.
 
-The release report records final full-suite/CI/deployment results after completion.
+Release verification:
+
+- Full local `npm run verify`: lint/static/packaging checks, 131 Node and 130
+  desktop/mobile cases passed before the final compatibility additions.
+- Full [CI on e191eeb](https://github.com/Milky-way-Galaxy/gtnhnei/actions/runs/39462616996):
+  132 Node and 132 browser cases passed, 640 original-Java reference cases passed,
+  411,840 recipe audit passed, and focused upstream Python rounding passed.
+- Final compatibility checks: 18 library/search, 14 library/supplies/mobile action
+  and four print-media cases passed locally. The exact reported `pine plank`
+  search also passed on desktop/mobile, showing all four matching items without
+  an exception. The final browser collection contains 134 cases.
+- Real external Pyodide/Viz smoke: both versions passed from the staged artifact.
+  The two-output factory produced expected 48 average / 60 installed EU/t,
+  62.5 L/s installed recipe capacity, SVG/text and repeated flow/JSON recovery.
+- Full inherited vendor Python suite: **333 passed, 10 failed**. Nine failures
+  match the previously recorded baseline. The additional
+  `projects/gog/zhuhai_cetane.yaml` example is hash-order-sensitive: it fails on
+  both this branch and a clean `98a6371` copy at `PYTHONHASHSEED=1`, and passes on
+  both at seed 0. No vendored Python source or fixture changed.
+- Browser print-media rules and unclipped root overflow are checked. Physical
+  printing and physical-phone/Safari behavior remain unverified.
+
+The final PR check and Publish Atlas workflow are the release gates; current
+results and deployment links are recorded in [PR #12](https://github.com/Milky-way-Galaxy/gtnhnei/pull/12).
+
+The initial staged test exposed an offline cache-key/versioning mismatch. The
+generated file list now remains canonical while executable imports are versioned;
+both datasets' actual disconnected reloads passed after that correction.
+
+## Existing issue coverage
+
+[Issue #2](https://github.com/Milky-way-Galaxy/gtnhnei/issues/2) reported an
+undefined `GRID_PAGE_SIZE` after searching `pine plank`. The published startup
+fix retains a defined batch constant, and this milestone adds the exact query
+as a desktop/mobile regression. Firefox itself was not exercised.
+
+[Issue #1](https://github.com/Milky-way-Galaxy/gtnhnei/issues/1), missing NASA
+Workbench rocket construction, remains a verified data-coverage gap. Neither
+snapshot has a NASA Workbench recipe type. For example, the Tier 1 base rocket
+`i:GalacticraftCore:item.spaceship:0` has only a shapeless variant-conversion entry;
+the chest variants have no production entries. Matching item names and conversion
+recipes cannot reconstruct an authentic workbench construction recipe. This needs
+version-pinned upstream extraction or a separately verified supplemental dataset.
 
 ## Scope and remaining work
 
@@ -137,9 +182,68 @@ The release report records final full-suite/CI/deployment results after completi
   and libraries. Corrupt saved libraries are preserved for manual recovery.
 - Tests cover Chromium desktop/touch emulation. Physical phones, Safari and
   Firefox are not verified here.
-- The inherited full Python vendor suite has known pre-existing fixture failures;
+- The inherited full Python vendor suite has known fixture failures and ordering sensitivity;
   no solver source was changed. Focused upstream rounding checks remain in CI.
 
 Recommended next work: broaden source-verified machine capability models, add
 explicit recycling/seed-stock optimization, and validate physical-phone/Safari
 behavior and authentic 2.8.4 extraction.
+
+## Changed files
+
+`D` marks removed obsolete toolbar files; other entries are added or modified.
+
+```text
+M	.github/workflows/checks.yml
+A	.github/workflows/pages.yml
+M	.gitignore
+A	AGENTS.md
+M	README.md
+M	app.js
+M	data-loader.js
+A	database-cache.js
+M	datasets.js
+A	docs/overnight-workspace.md
+M	eslint.config.js
+M	index.html
+A	item-library.js
+A	library-ui.js
+D	navsplit.js
+A	offline-manifest.js
+A	offline-paths.js
+A	offline-ui.js
+A	offline.js
+M	package.json
+M	planner-state.js
+M	planner-ui.js
+M	playwright.config.js
+A	preferences.js
+A	route-choice-ui.js
+A	route-choices.js
+M	seo-intro-close.js
+A	service-worker.js
+A	supply-plan.js
+A	supply-ui.js
+M	tests/browser/atlas.spec.js
+M	tests/browser/comparison.spec.js
+A	tests/browser/database-cache.spec.js
+A	tests/browser/library.spec.js
+A	tests/browser/offline.spec.js
+A	tests/browser/route-choices.spec.js
+M	tests/browser/search.spec.js
+A	tests/browser/supplies.spec.js
+A	tests/database-cache.test.js
+A	tests/item-library.test.js
+A	tests/route-choices.test.js
+A	tests/supply-plan.test.js
+A	tools/benchmark-startup.js
+A	tools/offline-manifest.js
+M	tools/serve.js
+M	tools/smoke-flow.js
+A	tools/stage-site.js
+D	topstrip.css
+M	topstrip.js
+A	ui-dialog.js
+M	version-compare-ui.js
+A	workspace.css
+```

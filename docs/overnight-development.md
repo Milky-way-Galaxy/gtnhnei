@@ -1,5 +1,7 @@
 # Autonomous development report — 2026-10-19
 
+Historical #4–#5 milestone report. See the [current continuation report](development-2026-10-20.md) for factory plans, the additional 2.9.0 dataset, comparisons, shared plans and flow recovery.
+
 Review PRs: https://github.com/Milky-way-Galaxy/gtnhnei/pull/4 and
 https://github.com/Milky-way-Galaxy/gtnhnei/pull/5
 

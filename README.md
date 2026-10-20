@@ -76,18 +76,24 @@ known limitations of the bundled legacy test suites.
 
 ## Production planning
 
-The Planner now calculates recursive materials, route/OreDict alternatives,
-expected chance yields, startup stock, machine requirements and base energy.
-It supports whole batches and continuous rates, native item stacks, finite stock
-on hand for total jobs, fixed-machine capacity/power checks, dataset-bound JSON plans,
-material CSVs and dependency SVGs. The separate Material Calculator shares the
-same engine. Search has item/fluid/mod filters and exact-ID permalinks.
+The Planner calculates recursive materials, route/OreDict alternatives, expected
+chance yields, startup stock, machine requirements and base energy. Factory plans
+combine up to 20 outputs with shared inventory and optional ordered co-product
+reuse. Whole batches and continuous rates, native item stacks, fixed-machine
+capacity/power checks and explicit overclock/parallel profiles are supported.
+Route choices show net yields and energy per output; recipe details expose
+exported machine metadata. The separate Material Calculator shares the engine.
 
-The installed dataset is verified **GTNH 2.8.0**. 2.8.4 is not relabeled from
-2.8.0; unavailable versions remain disabled until authentic compatible exports
-are validated. See [calculation assumptions](docs/calculations.md),
-[dataset provenance](docs/datasets.md) and the
-[development report](docs/overnight-development.md).
+Named plans are saved per dataset/export on this browser. Versioned JSON, shared
+plan links, material CSVs, dependency SVGs and gtnh-flow YAML/DOT/SVG support
+backup and exchange. Search has item/fluid/mod filters and exact-ID permalinks.
+
+The installed datasets are verified upstream **GTNH 2.8.0** and **GTNH 2.9.0**
+exports with matching atlases and independent checksums. The default 2.8.0 assets
+remain unchanged. On-demand recipe comparisons keep exact good IDs across the
+two snapshots. **2.8.4 remains unavailable** until a matching export is verified.
+See [calculation assumptions](docs/calculations.md), [dataset provenance](docs/datasets.md)
+and the [current development report](docs/development-2026-10-20.md).
 
 Additional checks:
 
@@ -100,3 +106,18 @@ The checked-in browser Python source package is reproducible with
 `python3 tools/package-flow.py`. Its source/config/license hashes are validated
 by the normal build check. Full Pyodide rendering downloads external runtime
 packages on demand; local dependency SVGs work without that runtime.
+
+
+The opt-in integration smoke test downloads the real Python runtime/packages and
+Viz.js, runs a two-output factory, checks its power/material rates and verifies
+flow/JSON tab recovery in a touch-emulated browser:
+
+```sh
+npm run smoke:flow
+ATLAS_SMOKE_DATASET=gtnh-2.8.0 npm run smoke:flow
+```
+
+It starts or reuses the local preview server and saves YAML, SVG, flow text and
+mobile screenshots under `test-results/real-flow-smoke/<dataset>/`. The default
+is 2.9.0. This external-runtime check is separate from the deterministic normal
+suite; it requires access to the pinned runtime CDNs.

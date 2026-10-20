@@ -33,7 +33,7 @@
       "packVersion": "2.7.4",
       "available": false,
       "source": "https://shadowtheage.github.io/gtnh-2.7.4/",
-      "reason": "Authentic upstream archive uses binary format 3; the current parser supports format 5."
+      "reason": "Authentic upstream archive uses binary format 3; its parser adapter has not been validated."
     },
     {
       "id": "gtnh-2.9.0",

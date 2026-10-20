@@ -52,7 +52,15 @@ export function installPlanner() {
     }
     return { ...state, reuseByproducts:state.settings.reuseByproducts, routeChoices, externalInputs: [...externalInputs], freeInputs: [...freeInputs], targets: [{target:state.target, amount:state.amount, unit:state.unit, machineCount:state.machineCount}, ...state.additionalTargets] };
   }
+  function restoreCodeOutput() {
+    const root = document.getElementById("gtnhCalcOverlay");
+    if (!root) return;
+    const graph = root.querySelector("#gtnhFlowBrowserPanel");
+    if (graph) graph.style.display = "none";
+    for (const id of ["calcCodeOut", "calcCodeLabel"]) root.querySelector(`#${id}`).style.display = "";
+  }
   function calculate() {
+    restoreCodeOutput();
     error = ""; plan = null;
     try {
       if (!catalog()) throw new Error("The recipe database is still loading. Try Build again when loading completes.");
@@ -131,6 +139,7 @@ export function installPlanner() {
   }
   function render() {
     const root = document.getElementById("gtnhCalcOverlay"); if (!root) return;
+    if (!plan) restoreCodeOutput();
     const focusedTarget = document.activeElement?.dataset.targetIndex, focusedTargetField = document.activeElement?.dataset.targetField;
     const focusedStock = document.activeElement?.dataset.stockQuantity;
     renderInventory(root);
@@ -205,7 +214,7 @@ export function installPlanner() {
     overlay.addEventListener("click", async event => {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.calcTab) { tab(button.dataset.calcTab); return; }
-      if (button.dataset.plannerCode) { codeTab = button.dataset.plannerCode; render(); return; }
+      if (button.dataset.plannerCode) { restoreCodeOutput(); codeTab = button.dataset.plannerCode; render(); return; }
       if (button.dataset.supply) { state.rawOverrides.push(button.dataset.supply); built = true; save(); calculate(); render(); return; }
       if (button.dataset.stock) {
         tab("planner"); overlay.querySelector("#plannerInventory").open = true;

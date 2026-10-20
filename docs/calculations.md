@@ -158,3 +158,17 @@ the Hydrogen target supplied by that route is labeled From co-products. Each
 machine step shows its own average/installed EU/t or total job energy. In the JS
 result API, the existing `capacity` field keeps its configured-root meaning;
 `targets[].installedCount` and `installedCapacity` expose the installed pool.
+
+## Flow-view recovery
+
+The in-browser solver renders the current computed plan; edited/unbuilt drafts
+cannot silently fall back to an arbitrary one-machine recipe. Plans with no
+executable timed machine steps get an explanation instead of fabricated values.
+Changing calculations discards the displayed old flow, and request IDs invalidate
+results from earlier runs, including runs superseded by an invalid draft.
+
+Flow placement and visibility use explicit output containers. Reopening a graph
+or switching between YAML, JSON and flow cannot hide the calculator workspace.
+Failed Viz module/instance initialization can retry with a fresh module URL.
+Blocked clipboard access keeps the graph usable and points to downloads; DOT
+source now has its own download alongside YAML and SVG.

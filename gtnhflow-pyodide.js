@@ -9,6 +9,7 @@
 
   let worker = null;
   let vizPromise = null;
+  let vizAttempts = 0;
   let lastYaml = "";
   let lastDot = "";
   let lastSvg = "";
@@ -116,6 +117,7 @@
 
   function makeYamlForCurrentTarget() {
     if (window.GTNH_CALC?.getPlan?.()) return window.GTNH_CALC.exportYaml();
+    if (document.getElementById("plannerStatus")) return "# Build the current production plan before exporting gtnh-flow.\n";
     const target = getTarget();
 
     try {
@@ -185,7 +187,8 @@
           setStatus("Rendered gtnh-flow DOT -> SVG.");
           toast("gtnh-flow rendered.");
         } catch (err) {
-          setStatus("Viz.js render failed.", true);
+          if (msg.id !== undefined && msg.id !== requestId) return;
+          setStatus("Viz.js render failed. Press Run to retry.", true);
           setViewer(`<pre class="gtnhFlowBrowserError">${esc(String(err?.stack || err))}</pre>`);
         }
       }
@@ -201,7 +204,14 @@
 
   async function getViz() {
     if (!vizPromise) {
-      vizPromise = import(VIZ_URL).then(mod => mod.instance());
+      // A failed dynamic import is cached by its URL in the module map. Retry
+      // with a new URL as well as discarding the rejected initialization promise.
+      const url = VIZ_URL + (vizAttempts ? `?gtnh-atlas-retry=${vizAttempts}` : "");
+      vizAttempts++;
+      vizPromise = import(url).then(mod => mod.instance()).catch(error => {
+        vizPromise = null;
+        throw error;
+      });
     }
 
     return vizPromise;
@@ -238,44 +248,23 @@
 
   function findPanelParent() {
     const r = root();
-
-    const candidates = [...r.querySelectorAll("div, section, article")]
-      .filter(el => {
-        const t = el.innerText || "";
-        return (
-          /gtnh-flow preview\. Export YAML\/SVG from here/i.test(t) ||
-          /gtnh-flow:\s*/i.test(t) ||
-          /Copy YAML[\s\S]*Download SVG/i.test(t) ||
-          /Live Graphviz SVG generated/i.test(t)
-        );
-      })
-      .sort((a, b) => (a.innerText || "").length - (b.innerText || "").length);
-
-    if (candidates[0]?.parentElement) return candidates[0].parentElement;
-
-    const area = r.querySelector("textarea") || r.querySelector("pre");
-    if (area?.parentElement) return area.parentElement;
-
-    return r;
+    return r.querySelector("[data-calc-panel=code]") ||
+      r.querySelector("#calcCodeOut")?.parentElement || r;
   }
 
   function hideOldFlowStuff() {
+    // Hide known outputs only. Scanning ancestor innerText for YAML can hide
+    // the whole calculator after the first graph's YAML preview is populated.
     const r = root();
+    for (const id of ["gtnhFlowCalcPanel", "calcCodeOut", "calcCodeLabel"]) {
+      const output = r.querySelector(`#${id}`);
+      if (output) output.style.display = "none";
+    }
+  }
 
-    [...r.querySelectorAll("div, section, article, textarea, pre")].forEach(el => {
-      const t = "value" in el ? el.value : el.innerText || el.textContent || "";
-
-      if (
-        /gtnh-flow preview\. Export YAML\/SVG from here/i.test(t) ||
-        /Live Graphviz SVG generated/i.test(t) ||
-        /gtnh-flow:\s*/i.test(t) ||
-        /-\s*m:\s*/i.test(t)
-      ) {
-        if (el.id !== "gtnhFlowBrowserPanel" && !el.closest("#gtnhFlowBrowserPanel")) {
-          el.style.display = "none";
-        }
-      }
-    });
+  async function copyFlowText(text, success) {
+    try { await navigator.clipboard.writeText(text); toast(success); }
+    catch { setStatus("Clipboard unavailable. Use the download buttons to save YAML, DOT or SVG.", true); }
   }
 
   function ensurePanel() {
@@ -314,6 +303,7 @@
           <button type="button" id="gtnhFlowBrowserCopyYaml">Copy YAML</button>
           <button type="button" id="gtnhFlowBrowserCopyDot">Copy DOT</button>
           <button type="button" id="gtnhFlowBrowserDownloadSvg">Download SVG</button>
+          <button type="button" id="gtnhFlowBrowserDownloadDot">Download DOT</button>
           <button type="button" id="gtnhFlowBrowserDownloadYaml">Download YAML</button>
         </div>
 
@@ -338,13 +328,17 @@
 
     panel.querySelector("#gtnhFlowBrowserCopyYaml").addEventListener("click", async () => {
       if (!lastYaml) lastYaml = makeYamlForCurrentTarget();
-      await navigator.clipboard.writeText(lastYaml);
-      toast("Copied YAML.");
+      await copyFlowText(lastYaml, "Copied YAML.");
     });
 
     panel.querySelector("#gtnhFlowBrowserCopyDot").addEventListener("click", async () => {
-      await navigator.clipboard.writeText(lastDot || "");
-      toast(lastDot ? "Copied DOT." : "No DOT yet.");
+      if (!lastDot) { toast("No DOT yet."); return; }
+      await copyFlowText(lastDot, "Copied DOT.");
+    });
+
+    panel.querySelector("#gtnhFlowBrowserDownloadDot").addEventListener("click", () => {
+      if (!lastDot) { toast("No DOT yet."); return; }
+      downloadText(`gtnh-flow_${fileSafe(getTarget())}.dot`, lastDot, "text/vnd.graphviz;charset=utf-8");
     });
 
     panel.querySelector("#gtnhFlowBrowserDownloadSvg").addEventListener("click", () => {
@@ -374,11 +368,21 @@
   }
 
   function runGtnhFlow() {
-    lastYaml = makeYamlForCurrentTarget();
-    lastDot = "";
-    lastSvg = "";
-
+    const id = ++requestId;
+    lastYaml = ""; lastDot = ""; lastSvg = "";
     const pre = document.getElementById("gtnhFlowBrowserYamlPre");
+    if (pre) pre.textContent = "";
+    if (document.getElementById("plannerStatus") && !window.GTNH_CALC?.getPlan?.()) {
+      setStatus("Build a production plan before rendering gtnh-flow.", true);
+      setViewer('<p>Build the current outputs and resolve their recipe routes first.</p>');
+      return;
+    }
+    lastYaml = makeYamlForCurrentTarget();
+    if (!/-\s*m:\s*/i.test(lastYaml)) {
+      setStatus("This plan has no executable recipe steps. Review its materials or choose production routes.", true);
+      setViewer('<p>No timed machine recipes are available to render.</p>');
+      return;
+    }
     if (pre) pre.textContent = lastYaml;
 
     setViewer(`<div class="gtnhFlowBrowserPlaceholder">Running gtnh-flow...</div>`);
@@ -386,7 +390,7 @@
 
     ensureWorker().postMessage({
       type: "render",
-      id: ++requestId,
+      id,
       yaml: lastYaml
     });
   }

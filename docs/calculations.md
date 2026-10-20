@@ -25,8 +25,13 @@ Chance outputs are expected yields; there is no guaranteed stochastic minimum.
 Depth limits, supplied inputs, missing recipes and unresolved choices enter the
 material ledger. Cycles are detected by good ID along the dependency path, even
 when quantities change. The node budget retains quantities at its boundary.
-Byproducts are reported but are not automatically credited across separate
-recipe branches. This is conservative expansion, not a global recycling/LP solver.
+Byproducts are reported separately by default. Optional co-product reuse credits
+only outputs from previously expanded recipes, once, against later branches or
+factory targets. Outputs enter the pool after their inputs have been expanded,
+so a future output cannot erase a cycle's required seed. Result tables distinguish
+reused quantities from unspent surplus. This ordered model can reduce duplicate
+production, but is not a global recycling/LP solver; target and dependency order
+can affect its result. Chance co-products retain the expected-yield warning.
 
 For total jobs, stock on hand is allocated by exact item/fluid ID in dependency
 order. Each unit can be spent only once across the whole tree. Partial stock
@@ -38,6 +43,28 @@ not buckets. Finite stock is not deducted from continuous input rates. Freely
 supplied inputs do not spend stock. Reusable tools/returned seed stock remain a
 separate startup requirement, rather than silently spending the same inventory
 on both consumption and startup. Byproducts do not replenish this ledger.
+
+## Factory plans
+
+A factory accepts up to 20 outputs, using the same total-job or continuous-rate
+mode. Item/fluid units are converted before duplicate output IDs are combined,
+so requesting the same output twice does not round each root separately. All
+roots share the inventory, material, co-product and recipe-step ledgers. Recipe
+machine equivalents are added across branches before installed counts round up.
+Dependency branches still round individual executions in whole-job mode; enable
+co-product reuse to use their earlier surplus where available.
+
+The planner shows per-output root processing time or configured root capacity.
+It does not invent an overall factory completion time from concurrent chains.
+Fixed counts for distinct roots using the same recipe are separate configured
+machine pools and are summed; repeated identical output IDs must use the same
+configured count. Continuous combined demand is checked against installed
+capacity. The diagram renders a forest with an independent root for each output.
+
+Factory JSON uses plan schema 2, preventing older clients from silently dropping
+additional outputs. Single-output exports remain schema 1. Both formats preserve
+the dataset checksum, route choices, profiles, finite inventory and co-product
+setting. Import accepts existing single-output plans and legacy drafts.
 
 ## Machines and power
 

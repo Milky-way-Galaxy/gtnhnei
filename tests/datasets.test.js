@@ -62,3 +62,10 @@ test("finite inventory survives portable plans and rejects malformed quantities 
     assert.throws(() => normalizePlannerState({ inventory }), /[Ii]nventory/);
   }
 });
+test("factory plan format 2 preserves output units and counts while legacy format 1 stays supported", () => {
+  const state=normalizePlannerState({target:"Water",unit:"L",additionalTargets:[{target:"i:minecraft:bucket:0",amount:2,unit:"stacks",machineCount:3}]});
+  const text=serializePlan(state,dataset); assert.equal(JSON.parse(text).schemaVersion,2);
+  assert.deepEqual(importPlan(text,dataset),state);
+  assert.equal(JSON.parse(serializePlan(defaultPlannerState,dataset)).schemaVersion,1);
+  for(const additionalTargets of [[null],[{target:"Water",amount:0,unit:"L"}],Array(20).fill({target:"Water",amount:1,unit:"L"})]) assert.throws(()=>normalizePlannerState({additionalTargets}));
+});

@@ -1,7 +1,7 @@
 export const defaultPlannerState = {
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
-  rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {},
-  settings: { waterFree: true, steamFree: true, cellsReusable: true, expandCircuits: false, expandMachines: false, expandPlatesWires: false }
+  rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
+  settings: { waterFree: true, steamFree: true, cellsReusable: true, expandCircuits: false, expandMachines: false, expandPlatesWires: false, reuseByproducts: false }
 };
 export function normalizePlannerState(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid plan settings.");
@@ -23,18 +23,25 @@ export function normalizePlannerState(raw) {
     if (!/^[if]:/.test(id) || !Number.isFinite(Number(quantity)) || Number(quantity) < 0) throw new Error("Inventory requires exact item/fluid IDs and finite non-negative quantities.");
     state.inventory[id] = Number(quantity);
   }
+  if (!Array.isArray(state.additionalTargets) || state.additionalTargets.length > 19) throw new Error("A factory supports up to 20 output targets.");
+  state.additionalTargets = state.additionalTargets.map(entry => {
+    if (!entry || typeof entry !== "object" || typeof entry.target !== "string" || entry.target.length > 512 || !Number.isFinite(Number(entry.amount)) || Number(entry.amount) <= 0 ||
+      !["items", "L", "buckets", "batches", "stacks"].includes(entry.unit) || entry.machineCount !== undefined && (!Number.isInteger(Number(entry.machineCount)) || Number(entry.machineCount) < 1 || Number(entry.machineCount) > 1000000)) throw new Error("Invalid factory output target.");
+    return { target: entry.target, amount: Number(entry.amount), unit: entry.unit, machineCount: Number(entry.machineCount ?? 1) };
+  });
   state.machineCount = Math.max(1, Math.min(1000000, Math.floor(Number(state.machineCount) || 1)));
   state.depth = state.depth === "full" ? "full" : String(Math.max(1, Math.min(64, Math.floor(Number(state.depth) || 1))));
   return state;
 }
 export function serializePlan(state, dataset) {
-  return JSON.stringify({ format: "gtnh-atlas-plan", schemaVersion: 1, dataset: { id: dataset.id, sha256: dataset.sha256 || null }, settings: normalizePlannerState(state) }, null, 2);
+  const settings = normalizePlannerState(state);
+  return JSON.stringify({ format: "gtnh-atlas-plan", schemaVersion: settings.additionalTargets.length ? 2 : 1, dataset: { id: dataset.id, sha256: dataset.sha256 || null }, settings }, null, 2);
 }
 export function importPlan(text, dataset) {
   if (text.length > 2000000) throw new Error("Plan exceeds the 2 MB import limit.");
   const data = JSON.parse(text);
   if (data.format) {
-    if (data.format !== "gtnh-atlas-plan" || data.schemaVersion !== 1) throw new Error("Unsupported plan format/version.");
+    if (data.format !== "gtnh-atlas-plan" || ![1, 2].includes(data.schemaVersion) || data.schemaVersion === 1 && data.settings?.additionalTargets?.length) throw new Error("Unsupported plan format/version.");
     if (data.dataset?.id !== dataset.id || (data.dataset.sha256 && data.dataset.sha256 !== dataset.sha256)) throw new Error("This plan belongs to a different recipe dataset. Switch to that dataset before importing.");
     return normalizePlannerState(data.settings);
   }

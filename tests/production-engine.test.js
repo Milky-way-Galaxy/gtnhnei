@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { Repository } from "../dist/repository.js";
 import { RecipeCatalog } from "../recipe-data.js";
 import { exportRecipeYaml, exportPlanYaml } from "../recipe-export.js";
-import { calculateProduction, machinePerformance, ceilPositive } from "../production-engine.js";
+import { calculateProduction, calculateFactory, machinePerformance, ceilPositive } from "../production-engine.js";
 
 const good = (id, type = "item") => ({ id, name: id, type, unit: type === "fluid" ? "L" : "items", amount: 1, probability: 1 });
 const io = (id, amount, probability = 1) => ({ ...good(id), amount, probability });
@@ -280,4 +280,49 @@ test("invalid inventory and converted quantities fail visibly", () => {
     assert.throws(() => calculateProduction(catalog, { ...epiOptions, inventory }), /[Ii]nventory/);
   }
   assert.throws(() => calculateProduction(catalog, { ...epiOptions, amount: 1e308, unit: "buckets" }), /unit conversion/);
+});
+test("factory outputs share finite inventory once and combine material/energy ledgers", () => {
+  const c = fixture([recipe("a",[io("raw",3)],[io("product",1)]),recipe("b",[io("raw",4)],[io("other",1)])]);
+  const result = calculateFactory(c,{...options,targets:[{target:"product",amount:2},{target:"other",amount:3}],inventory:{raw:5}});
+  assert.equal(result.targets.length,2);
+  assert.equal(result.inventoryUsed[0].amount,5);
+  assert.equal(result.materials[0].amount,13);
+  assert.equal(result.knownEnergy,30000);
+  assert.equal(result.rootTimeSeconds,null);
+  assert.deepEqual(result.targets.map(target=>target.timeSeconds),[20,30]);
+  assert.equal(result.roots.length,2);
+  assert.equal(new Set(result.nodes.map(node=>node.key)).size,result.nodes.length);
+});
+test("repeated factory outputs combine native demand before whole-batch rounding", () => {
+  const c=fixture([recipe("a",[io("raw",3)],[io("product",2)])]);
+  const result=calculateFactory(c,{...options,targets:[{target:"product",amount:1},{target:"product",amount:1}]});
+  assert.equal(result.targets.length,1); assert.equal(result.root.batches,1); assert.equal(result.materials[0].amount,3);
+});
+test("factory rates aggregate shared intermediate machines before applying installed-count ceilings", () => {
+  const c=fixture([recipe("a",[io("shared",1)],[io("product",1)]),recipe("b",[io("shared",1)],[io("other",1)]),recipe("s",[io("raw",1),io("circuit",0)],[io("shared",1)])]);
+  const result=calculateFactory(c,{...options,rateMode:"per_second",targets:[{target:"product",amount:.05},{target:"other",amount:.05}]});
+  const shared=result.steps.find(step=>step.recipeId==="s");
+  assert.equal(shared.equivalents,1); assert.equal(shared.count,1); assert.equal(shared.installedEut,30);
+  assert.equal(result.reusable.find(row=>row.id==="circuit").amount,1);
+});
+test("earlier co-products satisfy later branches once; future output cannot erase a cycle seed", () => {
+  const c=fixture([recipe("root",[io("a",1),io("b",1)],[io("product",1)]),recipe("a",[io("raw",1)],[io("a",1),io("b",1)]),recipe("b",[io("raw",1)],[io("b",1)])]);
+  const result=calculateProduction(c,{...options,reuseByproducts:true});
+  assert.equal(result.materials[0].amount,1); assert.equal(result.byproductsUsed[0].id,"b");
+  assert.equal(result.byproductsUsed[0].amount,1); assert.equal(result.byproducts.some(row=>row.id==="b"),false);
+  const loop=fixture([recipe("a",[io("b",1)],[io("product",1),io("co",1)]),recipe("b",[io("product",1)],[io("b",1)])]);
+  const cyclic=calculateFactory(loop,{...options,reuseByproducts:true,targets:[{target:"product",amount:1},{target:"co",amount:1}]});
+  assert.equal(cyclic.unresolved[0].reason,"cycle");
+  assert.equal(cyclic.materials[0].id,"product"); assert.equal(cyclic.materials[0].amount,1);
+});
+test("real factory co-product demand reuses hydrogen without duplicating the epichlorohydrin reactor", () => {
+  const hydrogen=routes[0].outputs.find(io=>io.name==="Hydrogen");
+  const result=calculateFactory(catalog,{...epiOptions,rateMode:"per_minute",reuseByproducts:true,targets:[{target:epichlorohydrin.id,amount:3000,unit:"L"},{target:hydrogen.id,amount:6000,unit:"L"}]});
+  assert.equal(result.targets[1].root.status,"from-byproduct");
+  assert.equal(result.steps.length,1); assert.equal(result.knownAverageEut,48); assert.equal(result.knownInstalledEut,60);
+  assert.equal(result.byproductsUsed.find(row=>row.id===hydrogen.id).amount,100);
+});
+test("factory validation rejects mixed totals/rates, unsafe quantities, conflicting counts and excess targets", () => {
+  const c=fixture([recipe("a",[],[io("product",1)]),recipe("b",[],[io("other",1)])]);
+  for(const targets of [[],Array(21).fill({target:"product",amount:1}),[{target:"product",amount:1,rateMode:"total"},{target:"other",amount:1,rateMode:"per_second"}],[{target:"product",amount:1,machineCount:1},{target:"product",amount:1,machineCount:2}],[{target:"product",amount:Infinity}]]) assert.throws(()=>calculateFactory(c,{...options,targets}));
 });

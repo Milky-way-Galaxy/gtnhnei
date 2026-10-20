@@ -65,7 +65,7 @@ export function selectRecipe(recipes, good, options = {}) {
   return viable.slice().sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))[0] || null;
 }
 
-export function calculateProduction(catalog, options) {
+function prepareDemand(catalog, options) {
   const amount = Number(options.amount ?? 1);
   if (!(amount > 0) || !Number.isFinite(amount)) throw new Error("Enter a finite amount greater than zero.");
   const fixedMachines = Number(options.machineCount ?? 1);
@@ -98,9 +98,33 @@ export function calculateProduction(catalog, options) {
     requested *= recipeBalance(rootRecipe).outputs.find(io => io.id === targetGood.id).amount;
   }
   if (!(requested > 0) || !Number.isFinite(requested)) throw new Error("Quantity exceeds the safe calculation range after unit conversion.");
+  return { targetGood, requested, isRate, rateMode, rootRecipe, fixedMachines };
+}
+
+export function calculateProduction(catalog, options) {
+  return calculateFactory(catalog, { ...options, targets: [{ target: options.target, amount: options.amount, unit: options.unit, rateMode: options.rateMode, machineCount: options.machineCount }] });
+}
+
+export function calculateFactory(catalog, options) {
+  if (!Array.isArray(options.targets) || !options.targets.length || options.targets.length > 20) throw new Error("A factory needs 1–20 output targets.");
+  const demandsById = new Map();
+  for (const entry of options.targets) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error("Invalid factory target.");
+    const demand = prepareDemand(catalog, { ...options, ...entry });
+    const previous = demandsById.get(demand.targetGood.id);
+    if (previous) {
+      if (previous.isRate !== demand.isRate) throw new Error("Total jobs and continuous rates cannot be mixed in one factory.");
+      if (previous.fixedMachines !== demand.fixedMachines) throw new Error("Repeated outputs must use the same configured machine count.");
+      previous.requested += demand.requested;
+      if (!Number.isFinite(previous.requested)) throw new Error("Combined target quantity exceeds the safe calculation range.");
+    } else demandsById.set(demand.targetGood.id, demand);
+  }
+  const demands = [...demandsById.values()];
+  const { targetGood, requested, isRate, rateMode } = demands[0];
+  if (demands.some(demand => demand.isRate !== isRate)) throw new Error("Total jobs and continuous rates cannot be mixed in one factory.");
   const maxDepth = options.depth === "full" ? 64 : Math.max(1, Math.min(64, Number(options.depth) || 1));
   const nodeLimit = Math.max(10, Math.min(20000, Number(options.nodeLimit) || 2500));
-  const materials = new Map(), byproducts = new Map(), reusable = new Map(), steps = new Map(), inventoryUsed = new Map();
+  const materials = new Map(), byproducts = new Map(), reusable = new Map(), steps = new Map(), inventoryUsed = new Map(), byproductsUsed = new Map();
   const warnings = new Set(), unresolved = [], nodes = [];
   const inventory = new Map();
   if (options.inventory !== undefined && (!options.inventory || typeof options.inventory !== "object" || Array.isArray(options.inventory))) throw new Error("Inventory must map exact good IDs to quantities.");
@@ -140,13 +164,23 @@ export function calculateProduction(catalog, options) {
         quantity = remaining <= 2 * Number.EPSILON * quantity ? 0 : remaining;
       }
     }
+    if (options.reuseByproducts && !free.has(good.id)) {
+      const stock = byproducts.get(good.id), used = Math.min(quantity, stock?.amount || 0);
+      if (used > 0) {
+        stock.amount = Math.max(0, stock.amount - used);
+        node.byproductUsed = used;
+        add(byproductsUsed, good, used, { reason: "earlier co-product" });
+        const remaining = quantity - used;
+        quantity = remaining <= 2 * Number.EPSILON * quantity ? 0 : remaining;
+      }
+    }
     node.productionAmount = quantity;
     if (++visits > nodeLimit) {
-      if (quantity === 0) { node.status = "from-inventory"; return node; }
+      if (quantity === 0) { node.status = node.byproductUsed ? "from-byproduct" : "from-inventory"; return node; }
       return leaf(good, quantity, "node-limit", node);
     }
     nodes.push(node);
-    if (quantity === 0) { node.status = "from-inventory"; return node; }
+    if (quantity === 0) { node.status = node.byproductUsed ? "from-byproduct" : "from-inventory"; return node; }
     if (free.has(good.id)) return leaf(good, quantity, "supplied-free", node);
     if (external.has(good.id)) return leaf(good, quantity, "external", node);
     if (path.has(good.id)) return leaf(good, quantity, "cycle", node);
@@ -175,7 +209,6 @@ export function calculateProduction(catalog, options) {
     const previous = steps.get(recipe.id);
     if (previous) previous.batches += batches;
     else steps.set(recipe.id, { recipeId: recipe.id, machine: recipe.machine, recipe, batches, performance: node.performance });
-    for (const io of balance.outputs) add(byproducts, io, io.id === good.id ? Math.max(0, io.amount * batches - quantity) : io.amount * batches);
     for (const io of balance.reusable) {
       const key = `${recipe.id}|${io.id}`;
       if (!reusable.has(key)) reusable.set(key, { ...io, recipeId: recipe.id });
@@ -188,14 +221,20 @@ export function calculateProduction(catalog, options) {
       }
       node.children.push(expand(input, input.amount * batches, depth + 1, nextPath, node.key));
     }
+    // Outputs become available only after their inputs have been expanded.
+    // Crediting them earlier can falsely eliminate a cycle's required seed.
+    for (const io of balance.outputs) add(byproducts, io, io.id === good.id ? Math.max(0, io.amount * batches - quantity) : io.amount * batches);
     return node;
   }
-  const root = expand(targetGood, requested, 0, new Set());
+  const roots = demands.map(demand => expand(demand.targetGood, demand.requested, 0, new Set()));
+  const root = roots[0], rootMachines = new Map();
+  for (const [index, node] of roots.entries()) if (node.recipeId) rootMachines.set(node.recipeId, (rootMachines.get(node.recipeId) || 0) + demands[index].fixedMachines);
+  if (demands.length > 1) warnings.add("Factory outputs share inventory and recipe machine requirements. Total-job times cover each output's root processing, not a factory schedule.");
   const machineRows = [...steps.values()].map(step => {
     const p = step.performance;
     const equivalents = isRate && p ? step.batches / p.batchesPerSecond : null;
     const count = equivalents === null ? null : ceilPositive(equivalents);
-    const installedCount = count === null ? null : options.machineMode === "fixed" && step.recipeId === root.recipeId ? fixedMachines : count;
+    const installedCount = count === null ? null : options.machineMode === "fixed" && rootMachines.has(step.recipeId) ? rootMachines.get(step.recipeId) : count;
     return { ...step, equivalents, count, installedCount, averageEut: equivalents === null ? null : equivalents * p.eut,
       installedEut: installedCount === null ? null : installedCount * p.eut,
       energy: p ? step.batches * p.durationTicks * p.laneEut : null };
@@ -203,21 +242,31 @@ export function calculateProduction(catalog, options) {
   const reusableTotals = new Map();
   for (const entry of reusable.values()) {
     const step = machineRows.find(step => step.recipeId === entry.recipeId);
-    add(reusableTotals, entry, entry.amount * (entry.recipeId === root.recipeId && (!isRate || options.machineMode === "fixed") ? fixedMachines : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
+    add(reusableTotals, entry, entry.amount * (rootMachines.has(entry.recipeId) && (!isRate || options.machineMode === "fixed") ? rootMachines.get(entry.recipeId) : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
   }
   const total = key => machineRows.reduce((sum, step) => sum + (step[key] || 0), 0);
-  const rootPerformance = root.performance;
-  const rootYield = rootRecipe ? recipeBalance(rootRecipe).outputs.find(io => io.id === targetGood.id)?.amount : null;
-  const capacity = rootPerformance && rootYield ? rootPerformance.batchesPerSecond * rootYield * fixedMachines : null;
-  if (isRate && options.machineMode === "fixed" && capacity !== null && requested > capacity + EPS) warnings.add(`Requested output exceeds the ${fixedMachines} root machine(s) capacity of ${capacity.toPrecision(6)} ${targetGood.unit}/s.`);
-  if (byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
+  const targets = demands.map((demand, index) => {
+    const node = roots[index], performance = node.performance;
+    const yieldAmount = demand.rootRecipe ? recipeBalance(demand.rootRecipe).outputs.find(io => io.id === demand.targetGood.id)?.amount : null;
+    const capacity = performance && yieldAmount ? performance.batchesPerSecond * yieldAmount * demand.fixedMachines : null;
+    const timeSeconds = !isRate && ["from-inventory", "from-byproduct"].includes(node.status) ? 0 : !isRate && performance ?
+      (options.rounding === "fractional" ? node.batches / (performance.parallels * demand.fixedMachines) : ceilPositive(node.batches / (performance.parallels * demand.fixedMachines))) * performance.durationTicks / 20 : null;
+    if (isRate && options.machineMode === "fixed" && capacity !== null && demand.requested > capacity + EPS) warnings.add(`${demand.targetGood.name}: requested output exceeds the ${demand.fixedMachines} root machine(s) capacity of ${capacity.toPrecision(6)} ${demand.targetGood.unit}/s.`);
+    return { ...demand.targetGood, requested: demand.requested, rateMode: demand.rateMode, machineCount: demand.fixedMachines, root: node, capacity, timeSeconds };
+  });
+  if (isRate && options.machineMode === "fixed") for (const step of machineRows) {
+    if (step.equivalents !== null && step.equivalents > step.installedCount + EPS) warnings.add(`${step.machine}: combined demand needs ${step.equivalents.toPrecision(6)} machine equivalents; only ${step.installedCount} are configured.`);
+  }
+  const capacity = targets[0].capacity;
+  if (options.reuseByproducts) warnings.add("Earlier co-products are reused once after their input expansion. Output/branch order can affect totals; future production and closed recycling loops are not credited.");
+  else if (byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
   if (reusableTotals.size) warnings.add("Reusable quantities provision startup stock for the configured root machine count and full parallel capacity, not recurring consumption.");
   return { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
-    root, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()], reusable: [...reusableTotals.values()],
+    root, roots, targets, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()].filter(row => row.amount > 0), byproductsUsed: [...byproductsUsed.values()], reusable: [...reusableTotals.values()],
     inventoryUsed: [...inventoryUsed.values()], inventoryRemaining: [...inventory.values()].filter(row => row.amount > 0),
     steps: machineRows, warnings: [...warnings], unresolved, truncated: visits > nodeLimit,
     knownEnergy: isRate ? null : total("energy"), knownAverageEut: isRate ? total("averageEut") : null,
     knownInstalledEut: isRate ? total("installedEut") : null,
     hasUnknownPower: machineRows.some(step => !step.performance), capacity,
-    rootTimeSeconds: !isRate && root.status === "from-inventory" ? 0 : !isRate && rootPerformance ? (options.rounding === "fractional" ? root.batches / (rootPerformance.parallels * fixedMachines) : ceilPositive(root.batches / (rootPerformance.parallels * fixedMachines))) * rootPerformance.durationTicks / 20 : null };
+    rootTimeSeconds: targets.length === 1 ? targets[0].timeSeconds : null };
 }

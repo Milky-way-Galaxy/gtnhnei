@@ -1,4 +1,4 @@
-import { validateMachineConfig } from "./machine-model.js";
+import { validateMachineConfig, defaultRuleset } from "./machine-model.js";
 export const defaultPlannerState = {
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
   rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
@@ -44,13 +44,22 @@ export function normalizePlannerState(raw) {
 }
 export function serializePlan(state, dataset) {
   const settings = normalizePlannerState(state);
-  return JSON.stringify({ format: "gtnh-atlas-plan", schemaVersion: settings.additionalTargets.length ? 2 : 1, dataset: { id: dataset.id, sha256: dataset.sha256 || null }, settings }, null, 2);
+  const checked = config => ["gt5", "ebf"].includes(config.model);
+  // Stamp a reference even for callers which used the API's default. Future
+  // default changes must not change the meaning of an exported machine plan.
+  settings.machineConfigs = Object.fromEntries(Object.entries(settings.machineConfigs).map(([id, config]) =>
+    [id, checked(config) ? { ...config, ruleset: config.ruleset ?? defaultRuleset(dataset.id) } : config]));
+  const requiresMachineModels = Object.values(settings.machineConfigs).some(config => checked(config) || config.installedMachines !== undefined);
+  // Old clients must reject, rather than silently ignore, numeric semantics
+  // which they cannot evaluate. Existing single/factory plans keep v1/v2.
+  const schemaVersion = requiresMachineModels ? 3 : settings.additionalTargets.length ? 2 : 1;
+  return JSON.stringify({ format: "gtnh-atlas-plan", schemaVersion, dataset: { id: dataset.id, sha256: dataset.sha256 || null }, settings }, null, 2);
 }
 export function importPlan(text, dataset) {
   if (text.length > 2000000) throw new Error("Plan exceeds the 2 MB import limit.");
   const data = JSON.parse(text);
   if (data.format) {
-    if (data.format !== "gtnh-atlas-plan" || ![1, 2].includes(data.schemaVersion) || data.schemaVersion === 1 && data.settings?.additionalTargets?.length) throw new Error("Unsupported plan format/version.");
+    if (data.format !== "gtnh-atlas-plan" || ![1, 2, 3].includes(data.schemaVersion) || data.schemaVersion === 1 && data.settings?.additionalTargets?.length) throw new Error("Unsupported plan format/version.");
     if (data.dataset?.id !== dataset.id || (data.dataset.sha256 && data.dataset.sha256 !== dataset.sha256)) throw new Error("This plan belongs to a different recipe dataset. Switch to that dataset before importing.");
     return normalizePlannerState(data.settings);
   }

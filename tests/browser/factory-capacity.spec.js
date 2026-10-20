@@ -36,7 +36,7 @@ test("recipe machine counts survive reload, portable plans and a useful machines
   const input=page.locator(`[data-installed-machines="${recipe}"]`);
   await input.fill("3"); await input.blur(); await expect(page.locator(".plannerCapacity")).toContainText("187.5% of requested output");
   await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
-  const json=await page.locator("#calcCodeOut").inputValue(); expect(JSON.parse(json).settings.machineConfigs[recipe].installedMachines).toBe(3);
+  const json=await page.locator("#calcCodeOut").inputValue(); expect(JSON.parse(json).schemaVersion).toBe(3); expect(JSON.parse(json).settings.machineConfigs[recipe].installedMachines).toBe(3);
   const pending=page.waitForEvent("download"); await page.locator("#plannerDownloadMachines").click();
   const download=await pending; expect(download.suggestedFilename()).toBe("gtnh-atlas-machines.csv");
   const csv=await readFile(await download.path(),"utf8"); expect(csv).toContain('"Required machines","Installed machines"'); expect(csv).toContain(`"${recipe}"`); expect(csv).toContain('"2","3","recipe"');

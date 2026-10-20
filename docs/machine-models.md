@@ -48,6 +48,11 @@ therefore explicitly labeled a **calculation reference**, not claimed to be the
 export's exact implementation. The reference can be selected independently in
 each recipe profile and is preserved in JSON, saved plans and share links.
 Recipe datasets and IDs remain unchanged.
+Plans using checked profiles or installed-pool overrides export as plan format 3.
+Older clients must reject that version instead of ignoring settings and producing
+different numbers. New clients still read existing format-1/2 plans. Export stamps
+an explicit calculation reference even for API callers which used a default,
+without changing the caller's draft.
 
 At each pin, the numerical implementation is `gregtech/api/util/OverclockCalculator.java`;
 the EBF heat checks are in

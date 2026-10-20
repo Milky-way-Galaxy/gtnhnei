@@ -41,6 +41,7 @@ test("checked EBF model validates real heat/power, retains bad edits and round t
   await page.screenshot({path:testInfo.outputPath("ebf-coil-profile.png")});
   await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
   const json = await page.locator("#calcCodeOut").inputValue();
+  expect(JSON.parse(json).schemaVersion).toBe(3);
   expect(JSON.parse(json).settings.machineConfigs[route].ruleset).toBe("gt5-5.09.51.470");
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
   await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();

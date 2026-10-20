@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gzipSync } from "node:zlib";
+import { gzipSync, gunzipSync } from "node:zlib";
 import { createPlanLink, readPlanLink } from "../plan-share.js";
 import { normalizePlannerState } from "../planner-state.js";
 const dataset = { id: "gtnh-2.8.0", sha256: "a".repeat(64) };
@@ -25,6 +25,13 @@ test("shared factory links round trip exact IDs, routes and settings at a GitHub
   assert.equal(link.search, "?dataset=gtnh-2.8.0");
   assert.ok(link.hash.startsWith("#plan=v1."));
   assert.deepEqual(await readPlanLink(link.hash, dataset), state);
+});
+test("checked profiles and installed pools retain their reference through a format-3 share link",async()=>{
+  const checked=normalizePlannerState({...state,machineConfigs:{r:{model:"gt5",voltageTier:2,installedMachines:3,ruleset:"gt5-5.09.51.470"}}});
+  const link=new URL(await createPlanLink(checked,dataset,"https://example.com/gtnhnei/"));
+  const payload=JSON.parse(gunzipSync(Buffer.from(link.hash.slice("#plan=v1.".length),"base64url")).toString());
+  assert.equal(payload.schemaVersion,3);
+  assert.deepEqual(await readPlanLink(link.hash,dataset),checked);
 });
 test("shared links reject incompatible datasets/checksums and unsupported codecs", async () => {
   const link = new URL(

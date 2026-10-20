@@ -62,7 +62,9 @@ configured count. Continuous combined demand is checked against installed
 capacity. The diagram renders a forest with an independent root for each output.
 
 Factory JSON uses plan schema 2, preventing older clients from silently dropping
-additional outputs. Single-output exports remain schema 1. Both formats preserve
+additional outputs. Single-output exports remain schema 1. Plans containing checked
+machine models or installed-pool overrides use schema 3 so old clients reject
+unsupported calculations instead of silently ignoring the new settings. All formats preserve
 the dataset checksum, route choices, profiles, finite inventory and co-product
 setting. Import accepts existing single-output plans and legacy drafts.
 

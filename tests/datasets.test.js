@@ -69,3 +69,14 @@ test("factory plan format 2 preserves output units and counts while legacy forma
   assert.equal(JSON.parse(serializePlan(defaultPlannerState,dataset)).schemaVersion,1);
   for(const additionalTargets of [[null],[{target:"Water",amount:0,unit:"L"}],Array(20).fill({target:"Water",amount:1,unit:"L"})]) assert.throws(()=>normalizePlannerState({additionalTargets}));
 });
+test("checked machines and installed-pool overrides use format 3 and pin defaults without mutating a draft",()=>{
+  const raw=normalizePlannerState({machineConfigs:{r:{model:"gt5",voltageTier:2}}});
+  const json=JSON.parse(serializePlan(raw,dataset));
+  assert.equal(json.schemaVersion,3); assert.equal(json.settings.machineConfigs.r.ruleset,"gt5-5.09.51.470");
+  assert.equal(raw.machineConfigs.r.ruleset,undefined);
+  assert.equal(importPlan(JSON.stringify(json),dataset).machineConfigs.r.ruleset,"gt5-5.09.51.470");
+  const modern={id:"gtnh-2.9.0",sha256:"modern"};
+  assert.equal(JSON.parse(serializePlan(raw,modern)).settings.machineConfigs.r.ruleset,"gt5-5.09.54.205");
+  assert.equal(JSON.parse(serializePlan(normalizePlannerState({machineConfigs:{r:{installedMachines:0}}}),dataset)).schemaVersion,3);
+  assert.equal(JSON.parse(serializePlan(normalizePlannerState({machineConfigs:{r:{model:"generic",overclocks:2}}}),dataset)).schemaVersion,1);
+});

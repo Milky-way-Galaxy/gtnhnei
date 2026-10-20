@@ -1,11 +1,12 @@
 import { calculateFactory } from "./production-engine.js";
 import { exportPlanYaml, planCsv } from "./recipe-export.js";
 import { defaultPlannerState, normalizePlannerState, serializePlan, importPlan } from "./planner-state.js";
+import { mountPlanTools, installSharedPlanNotice } from "./plan-tools-ui.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const fmt = number => number === null || number === undefined ? "unknown" : new Intl.NumberFormat("en", { maximumSignificantDigits: 7 }).format(number);
 
 export function installPlanner() {
-  let previousFocus = null, displayNodeLimit = 250;
+  let previousFocus = null, displayNodeLimit = 250, planTools;
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
@@ -192,7 +193,7 @@ export function installPlanner() {
       ${select("routeMode", "calcRouteMode", "Automatic route policy", [["ask","Choose when multiple routes exist"],["lowest_tier","Lowest recipe voltage"],["fastest","Fastest per target output"],["lowest_eut","Lowest EU/t"],["fewest_inputs","Fewest consumed inputs"],["manual","Only locked routes"]])}
       ${select("machineMode", "calcMachineMode", "Machine mode", [["auto","Compute machines for target rate"],["fixed","Check fixed root machine capacity"]])}
       <label class="gtnhCalcField" for="calcMachineCount">Root machine count<input id="calcMachineCount" type="number" min="1" step="1" data-state="machineCount"></label>
-      <details id="plannerFactory"><summary>Additional factory outputs</summary><p>All outputs use the amount mode above. Materials, finite inventory and recipe machine requirements are shared. Co-products are listed separately; times are per output.</p><label class="gtnhCalcField" for="plannerFactoryGood">Output name or exact ID<input id="plannerFactoryGood" list="plannerFactoryGoods" autocomplete="off"><datalist id="plannerFactoryGoods"></datalist></label><button id="plannerAddTarget" type="button">Add factory output</button><div id="plannerFactoryTargets"></div></details>
+      <div id="plannerPlanTools"></div><details id="plannerFactory"><summary>Additional factory outputs</summary><p>All outputs use the amount mode above. Materials, finite inventory and recipe machine requirements are shared. Co-products are listed separately; times are per output.</p><label class="gtnhCalcField" for="plannerFactoryGood">Output name or exact ID<input id="plannerFactoryGood" list="plannerFactoryGoods" autocomplete="off"><datalist id="plannerFactoryGoods"></datalist></label><button id="plannerAddTarget" type="button">Add factory output</button><div id="plannerFactoryTargets"></div></details>
       <details id="plannerInventory"><summary>Stock on hand (total jobs)</summary><p>Enter native item counts or L of fluid (1000 L = 1 bucket). Stock is shared across branches and deducted once per job. Continuous rates and reusable startup stock remain separate.</p><label class="gtnhCalcField" for="plannerStockGood">Material name or exact ID<input id="plannerStockGood" list="plannerStockGoods" autocomplete="off"><datalist id="plannerStockGoods"></datalist></label><label class="gtnhCalcField" for="plannerStockAmount">Stock quantity<input id="plannerStockAmount" type="number" min="0" step="any" value="1"></label><button id="plannerAddStock" type="button">Set stock quantity</button><div id="plannerInventoryList"></div></details>
       <details><summary>Supply and expansion settings</summary><div class="gtnhCalcChecks">${Object.entries({waterFree:"Supply water freely",steamFree:"Supply steam freely",cellsReusable:"Expand returned-cell stock details",expandCircuits:"Expand circuit production",expandMachines:"Expand machine production",expandPlatesWires:"Expand plates, wires and cables",reuseByproducts:"Reuse earlier co-products (order affects totals)"}).map(([key,label])=>`<label><input type="checkbox" data-setting="${key}"> ${label}</label>`).join("")}</div><p>Only actually returned containers/tools are reusable; consumed empty cells remain requirements.</p><button id="plannerResetChoices" type="button">Clear route and supply overrides</button></details>
       <div class="gtnhCalcActions"><button id="calcUseSearch" type="button">Use search text</button><button id="calcClear" type="button">Clear</button></div></section>
@@ -300,10 +301,13 @@ export function installPlanner() {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     });
+    planTools = mountPlanTools(overlay, { dataset, snapshot: () => { read(); return state; }, apply: applySavedState, download });
     sync(); render();
   }
-  function open() { load(); ensure(); sync(); render(); previousFocus = document.activeElement; document.getElementById("gtnhCalcOverlay").classList.add("show"); document.getElementById("calcTarget").focus({ preventScroll: true }); }
+  function open() { load(); ensure(); sync(); render(); planTools.refresh(); const overlay = document.getElementById("gtnhCalcOverlay"); if (!overlay.classList.contains("show")) previousFocus = document.activeElement; overlay.classList.add("show"); document.getElementById("calcTarget").focus({ preventScroll: true }); }
   function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); (previousFocus?.isConnected ? previousFocus : document.getElementById("toolCalc"))?.focus(); }
+  function applySavedState(next) { load(); state = normalizePlannerState(next); built = true; calculate(); save(); open(); tab("tree"); const tree = document.getElementById("calcTree"); tree.tabIndex = -1; tree.focus({ preventScroll: true }); }
+  installSharedPlanNotice({ dataset: () => catalog()?.dataset, apply: applySavedState, download });
   window.GTNH_CALC = { open, close, build,
     planItem(id) {
       load(); const good = catalog()?.resolve(id); if (!good) return false;

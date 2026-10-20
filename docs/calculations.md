@@ -101,3 +101,28 @@ Verified real example: GTNH 2.8.0 route `r~7CR1mklsMhyejhfODug_QQ==`
 produces 1000 L Epichlorohydrin in 640 ticks at 30 EU/t. 2000 L requires
 2 executions and 38,400 EU. A 3000 L/min target requires 1.6 base machines,
 2 installed machines, 48 average EU/t and 60 installed EU/t.
+
+## Named saved plans and shared links
+
+**Saved plans and sharing** keeps up to 100 named plans per dataset/export on the
+current browser. Save current as new preserves other named plans; Replace selected
+updates only the selected named plan. Load selected replaces the active draft.
+Deleting has an undo action for the current page session. Each selected plan can
+be downloaded as the existing portable JSON format and imported through Code /
+Export. Library keys include the full dataset ID and checksum, so different
+versions or changed exports cannot share recipe choices accidentally.
+
+Storage mutations re-read current data, validate existing records and write once.
+Malformed libraries are retained, and storage/quota failures display an error
+rather than discarding old entries. Library storage has a 3 MB serialized-text
+limit; browser storage quotas may be lower. Existing draft/settings keys remain
+unchanged. Saved plans are local browser data, not account/cloud synchronization.
+
+**Create shareable link** gzip-compresses a versioned plan into the URL fragment.
+The URL retains the GitHub Pages subpath and selects the exact dataset. No plan
+hosting service is required, and fragments are not sent in HTTP requests. Links
+include outputs, routes, machine profiles, inventory and supplied-input settings.
+A recipient sees a preview and must choose Load shared plan before their draft
+is replaced; they can also download its JSON. Missing/mismatched checksums,
+unsupported codecs and invalid payloads fail visibly. Link data is limited to
+24,000 characters and decompressed data to 2 MB; larger plans should use JSON.

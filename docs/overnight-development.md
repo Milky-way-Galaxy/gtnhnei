@@ -1,9 +1,13 @@
 # Autonomous development report — 2026-10-19
 
-Review PR: https://github.com/Milky-way-Galaxy/gtnhnei/pull/4
+Historical #4–#5 milestone report. See the [current continuation report](development-2026-10-20.md) for factory plans, the additional 2.9.0 dataset, comparisons, shared plans and flow recovery.
 
-Branch: `feat/production-planner-and-datasets`, stacked on the unchanged fixes in
-PR #3 (`fix/startup-and-search`, `ae6c781`). Nothing is merged or deployed.
+Review PRs: https://github.com/Milky-way-Galaxy/gtnhnei/pull/4 and
+https://github.com/Milky-way-Galaxy/gtnhnei/pull/5
+
+Branches: `feat/production-planner-and-datasets` (#4) and `feat/planner-inventory`
+(#5), stacked on the unchanged fixes in PR #3 (`fix/startup-and-search`,
+`ae6c781`). Nothing is merged or deployed.
 
 ## Completed functionality
 
@@ -20,7 +24,7 @@ recipe records, with item/fluid/OreDict IDs retained throughout.
   Consumed cells remain requirements; guaranteed returns and zero-amount tools
   are classified separately. Circuits are provisioned once per physical machine,
   not once per parallel lane.
-- Total and per-second/minute/hour quantities, GT fluid L/bucket conversion,
+- Total and per-second/minute/hour quantities, native item-stack and GT fluid L/bucket conversion,
   whole/fractional executions and expected chance yields. Whole jobs schedule
   complete processing waves over the configured machines/lanes.
 - Base machine equivalents, installed machine counts, average/installed EU/t,
@@ -31,6 +35,18 @@ recipe records, with item/fluid/OreDict IDs retained throughout.
 - Dataset-bound JSON import/export, CSV material ledgers, standalone full-tree
   SVG exports and base-recipe gtnh-flow YAML. JSON restores legacy preferences
   and rejects incompatible dataset identities/checksums before replacing state.
+- Finite consumable stock on hand for total jobs, spent once across dependency
+  branches before expanding the remaining quantities. Used/unspent stock is
+  visible, editable, saved per dataset and included in portable plans. Rates
+  retain ongoing requirements; startup seeds/tools remain a separate ledger.
+- Fixed-rate machines distinguish required counts from configured installed
+  counts and use the latter for installed power/startup circuits. Tiny positive
+  rates still require a machine; rounding corrects floating-point noise.
+
+With 1000 L Epichlorohydrin already owned, the 2000 L job below needs only one
+execution and 19,200 EU. Owning 1500 L Chlorine as well reduces the outstanding
+Chlorine requirement to 500 L. Two native stacks of buckets mean 32 buckets,
+while two stacks of GTNH Ender Pearls mean 128, as verified from the actual data.
 
 Real-data anchor: route `r~7CR1mklsMhyejhfODug_QQ==` produces 1000 L
 Epichlorohydrin in 640 ticks at 30 EU/t. The implemented calculations verify:
@@ -89,6 +105,28 @@ was displayed as 49 EU/t. The same issue could promote one machine to two for
 peak power. A ULP-bounded correction fixes these ceilings while keeping genuine
 fractional requirements rounded upward. Eight Python regression cases cover it.
 
+### Calculator integration and initialization cleanup
+
+The separate material calculator's explicit root route now takes precedence over
+saved maker defaults. New maker/supplied-input choices and ignored materials use
+exact IDs, including ID case. Legacy unique-name maker choices remain supported;
+an ambiguous name needs an identifying recipe ID rather than guessing a variant.
+Legacy ignored names migrate to all previously matching IDs, retaining coverage
+while allowing variants to be unignored independently.
+
+Navigation used to replace its own observed labels every 80 ms. That continually
+rescheduled the maker decorator and could prevent its controls from appearing.
+Navigation and maker badges now update only when their value changes; desktop
+and touch tests verify that labels/material rows settle without idle DOM writes.
+Rows carry explicit good IDs, so status badges cannot become part of a parsed name.
+
+The ignore picker reads structured recipe inputs, outputs and returned stock;
+obsolete YAML parsing/filtering/math helpers were removed. The legacy flow preview
+also delegates to the structured exporter, preserves real subsecond timing and
+explicit routes, and refuses unknown values. Failed material calculations clear
+stale result objects, and blocked settings storage retains working session state.
+Targeted unused-variable linting guards the maintained calculator/data modules.
+
 ## Bugs addressed
 
 - Calculator shell never calculating materials or machines.
@@ -107,17 +145,28 @@ fractional requirements rounded upward. Eight Python regression cases cover it.
 - Missing Python ZIP, permanently rejected initialization promises and concurrent
   worker requests sharing the wrong YAML.
 - Flow power/machine-count ceiling errors caused by floating-point noise.
+- Inventory being expanded as though the player owns no materials.
+- Zero installed machines for tiny rates and fixed-machine power/stock mismatch.
+- Manual route mode silently executing an unlocked sole recipe.
+- Explicit material routes overridden by saved makers; cross-variant maker choices.
+- Self-triggering navigation updates starving maker controls and badge text being
+  read back as part of material identity.
+- Legacy flow preview inventing unknown/subsecond durations from page text.
+- Settings-storage errors preventing the material calculator from initializing.
+- Invalid parallel/overclock field edits hiding the controls behind a calculation
+  error; invalid edits now retain the previous valid profile and result.
 
 ## Verification
 
-Final application results: 42 Node tests and 44 browser scenarios passed. The same results are recorded in the PR and final handoff. The suite
+Final application results: **61 Node tests and 58 browser scenarios passed**.
+The Node tests passed on both Node 24 and Node 22 (the CI runtime). The suite
 includes the inherited startup/search/recipe regressions and new calculator,
 version, import/export, filtering, navigation and accessibility scenarios.
 
 | Check | Result |
 | --- | --- |
-| Node tests | 42 passed |
-| Desktop and Pixel 7 touch-emulated browser tests | **44 passed** |
+| Node tests | 61 passed |
+| Desktop and Pixel 7 touch-emulated browser tests | **58 passed** |
 | ESLint | Passed |
 | Static site/module validation | Passed |
 | Packaged Python source/hash validation | 24 files passed |
@@ -141,11 +190,44 @@ Implementation commits:
 - `5ad920a` — search filters, permalinks and scalable planner navigation.
 - `bc8529b` — packaged browser solver, worker serialization and retry.
 - `1f3481b` — calculation precision, state migration, accurate recipe information and flow power correction.
+- `48a00f2` — finite inventory, native stacks, manual routes and configured machine power.
+- `f331723` — exact-ID makers/ignored inputs, stable initialization, structured picker/legacy flow preview, storage recovery and stricter lint.
+
+The final export audit found five real name groups that differ only by
+capitalization, including item/fluid Sweet Coffee. YAML identity checks now use
+the same case folding as the solver, retaining separate ID labels for those
+goods. Recipe exports also reject ambiguous/partial queries instead of choosing
+a fuzzy match. Regression cases use the real goods' IDs and names.
 
 Follow-up documentation records final coverage and limitations. The first clean CI runner exposed a transitive graphviz dependency in the focused Python test; the CI follow-up installs the vendor's declared requirements rather than relying on packages already present locally. PR #4 is stacked
 on #3; review/merge #3 first, then retarget #4 to main for its own review. GitHub
-Actions is separate from the local results; pending remote checks are not claimed
-as passes. Recovery bundles/patches are prepared in the workspace.
+Actions passed for #4 (`897cdb1`) and the inventory milestone in #5 (`48a00f2`);
+the PR checks track subsequent commits. Review #5 after #4; its target is #4's
+feature branch. Recovery bundles/patches include both feature branches.
+
+## Trying the delivered functionality
+
+Serve the branch with `node tools/serve.js` and open
+`http://127.0.0.1:4173/gtnhnei/`. In Planner, select
+`f:gregtech:liquid_epichlorhydrin`, 2000 L, depth 1 and the first 30 EU/t,
+32-second production route. Build the plan. Add 1000 L of the target and 1500 L
+Chlorine under Stock on hand to reproduce the 19,200 EU / 500 L remaining example.
+Change to 3000 L per minute to reproduce the verified throughput case; finite
+stock stays separate from that continuous rate.
+
+## Files changed
+
+The [#4 files](https://github.com/Milky-way-Galaxy/gtnhnei/pull/4/files) and
+[#5 files](https://github.com/Milky-way-Galaxy/gtnhnei/pull/5/files) contain the
+complete diffs. Principal implementation groups:
+
+| Area | Files |
+| --- | --- |
+| Calculators | `production-engine.js`, `planner-ui.js`, `planner-state.js`, `planner.css`, `calc.js`, `materialcalc.js`, `makerchoice.js`, `maker-state.js`, `recipe-export.js` |
+| Data and versions | `recipe-data.js`, `repository-loader.js`, `data-loader.js`, `datasets.js`, `data/manifest.json` |
+| Search/navigation | `app.js`, `search-controls.js`, `search-controls.css`, `navsplit.js`, `topstrip.js`, `style.css`, `index.html`, `loaderguard.js` |
+| Flow | `flowcalc.js`, `flowfix.js`, `gtnhflow-pyodide.js`, `gtnhflow-pyodide-worker.js`, `tools/package-flow.py`, packaged Python source/manifests and rounding helpers/tests |
+| Verification/docs | Node/browser regression suites, `tools/audit-data.js`, CI workflow, ESLint/package scripts, README and `docs/` |
 
 ## Remaining work and recommended next milestones
 
@@ -161,7 +243,8 @@ as passes. Recovery bundles/patches are prepared in the workspace.
 4. **Global production balancing.** The current recursive planner is conservative:
    cross-branch byproducts are not automatically credited, cycles stop at supplied
    inputs, and whole-batch rounding happens per branch. Closed recycling loops,
-   multi-target planning and inventory-aware optimization need a verified solver.
+   multi-target planning and optimal stock allocation need a verified solver.
+   Finite consumable inventory is implemented, but is allocated in dependency order.
 5. **Coverage and devices.** Audit the reported NASA Workbench recipe gap against
    an actual GTNH version/item, repair the nine upstream fixture failures, and
    test Safari and physical phones. Chromium touch emulation is not device testing.

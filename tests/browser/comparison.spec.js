@@ -1,0 +1,32 @@
+import {test,expect} from "@playwright/test";
+import {readFile} from "node:fs/promises";
+const url="./?dataset=gtnh-2.8.0&item=f%3Agregtech%3Aliquid_epichlorhydrin";
+test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem("gtnhnei_help_seen","1"));});
+test("real cross-version recipes compare on demand without replacing the active repository, with complete JSON export",async({page})=>{
+  const errors=[];page.on("pageerror",error=>errors.push(error.message));
+  await page.goto(url);await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.evaluate(async()=>{window.testActiveRepository=(await import("./dist/repository.js")).Repository.current;});
+  await page.locator("#compareCurrentItem").click();await expect(page.locator("#versionCompareDialog")).toBeVisible();
+  await page.locator("#versionCompareRun").click();
+  await expect(page.locator("#versionCompareSummary")).toHaveText("11 unchanged · 0 modified · 2 removed · 2 added",{timeout:30000});
+  expect(await page.evaluate(async()=>window.testActiveRepository===(await import("./dist/repository.js")).Repository.current)).toBe(true);
+  await expect(page.locator("#toolDb")).toContainText("2.8.0");
+  await page.locator('[data-compare-kind="added"]').first().locator("summary").click();
+  await expect(page.locator('[data-compare-kind="added"]').first()).toContainText("f:gregtech:hydrogen");
+  await page.locator('[data-compare-kind="removed"]').first().locator("summary").click();
+  await expect(page.locator('[data-compare-kind="removed"]').first()).toContainText("f:GalacticraftMars:hydrogen");
+  const pending=page.waitForEvent("download");await page.locator("#versionCompareDownload").click();const download=await pending;
+  const data=JSON.parse(await readFile(await download.path(),"utf8"));expect(data.before.id).toBe("gtnh-2.8.0");expect(data.after.id).toBe("gtnh-2.9.0");expect(data.result.unchanged.length).toBe(11);expect(data.result.added.length).toBe(2);
+  await page.keyboard.press("Escape");await expect(page.locator("#versionCompareDialog")).not.toBeVisible();await expect(page.locator("#compareCurrentItem")).toBeFocused();expect(errors).toEqual([]);
+});
+test("comparison failures can retry and closing cancels the download without a stale result",async({page})=>{
+  let requests=0;await page.route("**/data/gtnh-2.9.0/data.bin",async route=>{if(++requests===1)await route.fulfill({status:503,body:"unavailable"});else await route.continue();});
+  await page.goto(url);await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();await page.locator("#compareCurrentItem").click();await page.locator("#versionCompareRun").click();
+  await expect(page.locator("#versionCompareStatus")).toContainText("HTTP 503");await expect(page.locator("#versionCompareRun")).toBeEnabled();
+  await page.locator("#versionCompareRun").click();await expect(page.locator("#versionCompareSummary")).toContainText("11 unchanged",{timeout:30000});
+  await page.locator("#versionCompareClose").click();
+  await page.route("**/data/gtnh-2.9.0/data.bin",route=>route.abort());
+  await page.locator("#compareCurrentItem").click();await page.locator("#versionCompareRun").click();await page.locator("#versionCompareClose").click();
+  await expect(page.locator("#versionCompareDialog")).not.toBeVisible();
+  await page.locator("#compareCurrentItem").click();await expect(page.locator("#versionCompareResults")).toBeEmpty();await expect(page.locator("#versionCompareRun")).toBeEnabled();
+});

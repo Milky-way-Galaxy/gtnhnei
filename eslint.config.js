@@ -14,5 +14,9 @@ export default [
       "constructor-super": "error",
       "valid-typeof": "error"
     }
+  },
+  {
+    files: ["production-engine.js", "machine-*.js", "factory-*.js", "recipe-data.js", "recipe-export.js", "recipe-compare.js", "recipe-details.js", "version-compare-ui.js", "plan-*.js", "planner*.js", "maker*.js", "materialcalc.js", "datasets.js", "repository-loader.js", "search-controls.js"],
+    rules: { "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }] }
   }
 ];

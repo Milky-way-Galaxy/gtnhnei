@@ -18,6 +18,27 @@
 .plannerNode button { margin-top: 7px; }
 .plannerProfile { display: flex; gap: 9px; flex-wrap: wrap; }
 .plannerProfile label { flex: 1 1 120px; }
+#gtnhCalcOverlay .plannerProfileCheck { flex-direction: row; align-items: center; }
+.plannerProfileCheck input { flex-shrink: 0; }
+.plannerMachineResult { padding: 8px; border-left: 3px solid #8fe6d1; color: #a5e7d8; }
+.plannerCapacity { padding: 12px; margin: 14px 0; border: 1px solid #42667a; border-radius: 9px; background: #0d2436; }
+.plannerCapacityHeadline strong { color: #8fe6d1; }
+.plannerCapacityOutputs { padding-left: 20px; }
+.plannerCapacityWarning { color: #ffd59b; }
+.plannerCapacityStage { margin-top: 10px; padding: 12px; background: #0c1a29; border: 1px solid #2b465d; border-radius: 8px; min-width: 0; }
+.plannerCapacityStage[data-limiting=true] { border-left: 4px solid #e9b86b; }
+.plannerCapacityStage small { display: block; overflow-wrap: anywhere; color: #a3b9ce; }
+.plannerCapacityControls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 10px 0; }
+.plannerCapacityControls label { flex: 1 1 140px; min-width: 0; }
+.plannerCapacityControls button { min-height: 44px; }
+.plannerMaterialActions { display: flex; flex-direction: column; gap: 6px; }
+.plannerStockRow { display: flex; align-items: end; gap: 8px; margin: 12px 0; }
+.plannerStockRow label { flex: 1; min-width: 0; }
+.plannerStockRow small { color: #a3b9ce; overflow-wrap: anywhere; }
+.plannerStockRow button { min-height: 44px; }
+.plannerFactoryTarget { padding: 12px 0; margin: 8px 0; border-bottom: 1px solid #34506a; }
+.plannerFactoryTarget > small { display: block; color: #a3b9ce; overflow-wrap: anywhere; }
+.matGoodId { display: block; color: #a3b9ce; overflow-wrap: anywhere; font-size: 12px; }
 .plannerDiagram { overflow: auto; max-width: 100%; max-height: 65vh; border: 1px solid #34506a; background: #071220; }
 .plannerImport { padding: 8px; border: 1px solid #3a536b; border-radius: 8px; }
 #gtnhCalcOverlay #calcCodeOut { min-height: 280px; width: 100%; background: #091523; color: #eaf2ff; padding: 12px; }
@@ -35,3 +56,18 @@
 #gtnhCalcOverlay .gtnhCalcPanel { background: #081321; }
 .matRouteLabel { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 #matRouteChoice { width: 100%; min-height: 44px; padding: 8px; color: #eaf2ff; background: #12283b; border: 1px solid #39576b; border-radius: 8px; font-size: 16px; }
+#plannerPlanTools [hidden] { display: none !important; }
+#plannerPlanTools { margin: 14px 0; }
+#plannerPlanTools label, #plannerPlanTools button { margin-top: 8px; }
+.plannerLibraryActions { display: flex; flex-wrap: wrap; gap: 8px; }
+#plannerLibraryStatus { color: #a7d9ef; overflow-wrap: anywhere; }
+#sharedPlanBanner { margin: 12px; padding: 14px; background: #14334c; color: #eaf2ff; border: 1px solid #507e9e; border-radius: 8px; }
+#sharedPlanBanner button { min-height: 44px; margin: 4px; padding: 8px 12px; border: 1px solid #507e9e; border-radius: 6px; color: #eaf2ff; background: #1c425e; }
+#sharedPlanBanner p { overflow-wrap: anywhere; }
+.plannerRecipeMetadata dl, .recipeDetails dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+.plannerRecipeMetadata dt, .recipeDetails dt { overflow-wrap: anywhere; }
+.plannerRecipeMetadata dd, .recipeDetails dd { margin: 0; font-variant-numeric: tabular-nums; }
+.plannerHint { color: #a3b9ce; }
+.recipeDetails { margin-top: 12px; padding: 10px; background: #0c2133; border: 1px solid #38506b; border-radius: 8px; overflow-wrap: anywhere; }
+.recipeDetails summary { cursor: pointer; min-height: 32px; }
+.recipeDetails p { color: #b7c9dc; font-size: 13px; }

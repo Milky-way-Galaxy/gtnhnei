@@ -34,6 +34,7 @@ export class RecipeCatalog {
   describe(good) {
     return { id: good.id, name: good.name || good.id, type: good instanceof Fluid ? "fluid" : good instanceof OreDict ? "ore" : "item",
       unit: good instanceof Fluid ? "L" : "items", iconId: good.iconId ?? null, mod: good.mod ?? "",
+      stackSize: good instanceof Item ? good.stackSize : null,
       alternatives: good instanceof OreDict ? good.items.map(item => ({ id: item.id, name: item.name })) : undefined };
   }
   matches(query) { return this.byName.get(String(query).trim().toLowerCase()) || []; }
@@ -59,11 +60,11 @@ export class RecipeCatalog {
       ([RecipeIoType.ItemOutput, RecipeIoType.FluidOutput].includes(io.type) ? outputs : inputs).push(entry);
     }
     const gt = raw.gtRecipe;
-    const recipe = { id: raw.id, datasetId: this.dataset.id, machine: raw.recipeType.name,
+    const recipe = { id: raw.id, datasetId: this.dataset.id, machine: raw.recipeType.name, shapeless: raw.recipeType.shapeless,
       durationTicks: gt?.durationTicks > 0 ? gt.durationTicks : null,
       voltage: gt ? gt.voltage : null, amperage: gt ? gt.amperage : null,
       eut: gt && gt.voltage >= 0 && gt.amperage > 0 ? gt.voltage * gt.amperage : null,
-      tier: gt ? tierName(gt.voltage) : null, inputs, outputs,
+      tier: gt ? tierName(gt.voltage) : null, circuitConflicts: gt?.circuitConflicts ?? null, specialValue: gt?.specialValue ?? null, inputs, outputs,
       crafters: [...raw.recipeType.singleblocks, ...raw.recipeType.multiblocks].filter(Boolean).map(good => ({ id: good.id, name: good.name })),
       metadata: gt ? gt.metadata.map(value => ({ key: value.key, value: value.value })) : [] };
     this.recipeCache.set(raw.id, recipe);

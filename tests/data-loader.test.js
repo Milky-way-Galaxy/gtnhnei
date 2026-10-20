@@ -75,6 +75,11 @@ test("network failures identify the connection problem", async t => {
   t.mock.method(globalThis, "fetch", async () => { throw new TypeError("Failed to fetch"); });
   await assert.rejects(fetchDatabase(), /Check your connection and retry/);
 });
+test("comparison downloads receive their abort signal instead of continuing after the dialog closes", async t => {
+  const controller=new AbortController();controller.abort();
+  t.mock.method(globalThis,"fetch",async(url,{signal})=>{assert.equal(url,"data/other.bin");assert.equal(signal,controller.signal);signal.throwIfAborted();});
+  await assert.rejects(fetchDatabase(()=>{},"data/other.bin",{signal:controller.signal}),error=>error.cause.name==="AbortError");
+});
 
 test("HTTP errors include the status and can be retried", async t => {
   t.mock.method(globalThis, "fetch", async () => new Response("missing", { status: 404 }));

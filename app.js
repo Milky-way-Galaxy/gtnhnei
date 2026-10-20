@@ -12,6 +12,8 @@ import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
+import { openVersionComparison } from "./version-compare-ui.js";
+import { appendRecipeDetails } from "./recipe-details.js";
 import { fetchDatabase } from "./data-loader.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
@@ -520,6 +522,8 @@ function renderRecipes(obj, mode, push = true) {
   link.href = url.href; breadcrumb.appendChild(link);
   const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
   plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
+  const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
+  compare.addEventListener("click", () => openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production")); breadcrumb.appendChild(compare);
 
   renderMachineTabs();
   renderRecipeList();
@@ -1106,66 +1110,6 @@ function amountText(io) {
   return `x${io.amount}`;
 }
 
-function ioBox(io) {
-  const box = document.createElement("div");
-  box.className = "goods";
-  box.title = nameOf(io.goods);
-
-  const shown = displayObj(io.goods);
-  const icon = document.createElement("div");
-  icon.className = "icon";
-  if (shown) setIcon(icon, shown.iconId);
-  window.registerOreIcon(icon, io.goods);
-
-  const text = document.createElement("div");
-  text.className = "goodsName";
-
-  let extra = "";
-  if (io.probability < 1) extra = ` (${Math.round(io.probability * 100)}%)`;
-
-  text.textContent = `${amountText(io)} ${nameOf(io.goods)}${extra}`.trim();
-
-  box.appendChild(icon);
-  box.appendChild(text);
-
-  attachControls(box, io.goods);
-
-  return box;
-}
-
-function ioRow(recipe, label, types) {
-  const block = document.createElement("div");
-  block.className = "ioBlock";
-
-  const l = document.createElement("div");
-  l.className = "label";
-  l.textContent = label;
-
-  const items = document.createElement("div");
-  items.className = "ioItems";
-
-  let count = 0;
-
-  for (const io of recipe.items) {
-    if (types.includes(io.type)) {
-      items.appendChild(ioBox(io));
-      count++;
-    }
-  }
-
-  if (count === 0) {
-    const e = document.createElement("div");
-    e.className = "goodsName";
-    e.textContent = "none";
-    items.appendChild(e);
-  }
-
-  block.appendChild(l);
-  block.appendChild(items);
-
-  return block;
-}
-
 function formatDuration(gt) {
   if (!gt) return null;
   const sec = gt.durationSeconds;
@@ -1174,86 +1118,6 @@ function formatDuration(gt) {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
   return `${m}m ${s}s`;
-}
-
-function recipeCard(recipe) {
-  const card = document.createElement("div");
-  card.className = "recipe";
-
-  const head = document.createElement("div");
-  head.className = "recipeHead";
-
-  const left = document.createElement("div");
-
-  const title = document.createElement("div");
-  title.className = "recipeTitle";
-
-  const machineIcon = findMachineIcon(recipeMachineName(recipe), recipe);
-  if (machineIcon !== null && machineIcon !== undefined) {
-    const ic = document.createElement("span");
-    ic.className = "tabIcon";
-    setIcon(ic, machineIcon);
-    title.appendChild(ic);
-  }
-
-  const titleText = document.createElement("span");
-  titleText.textContent = recipeMachineName(recipe);
-  title.appendChild(titleText);
-
-  const id = document.createElement("div");
-  id.className = "recipeId";
-  id.textContent = recipe.id ?? "";
-
-  left.appendChild(title);
-  left.appendChild(id);
-
-  const badges = document.createElement("div");
-  badges.className = "badges";
-
-  if (recipe.gtRecipe) {
-    const gt = recipe.gtRecipe;
-
-    const tier = document.createElement("span");
-    tier.className = "badge tier";
-    tier.textContent = tierFromEu(gt.voltage);
-    badges.appendChild(tier);
-
-    const eu = document.createElement("span");
-    eu.className = "badge eu";
-    eu.textContent = `${gt.voltage ?? "?"} EU/t`;
-    badges.appendChild(eu);
-
-    const amp = document.createElement("span");
-    amp.className = "badge";
-    amp.textContent = `${gt.amperage ?? "?"}A`;
-    badges.appendChild(amp);
-
-    const dur = formatDuration(gt);
-    if (dur) {
-      const time = document.createElement("span");
-      time.className = "badge time";
-      time.textContent = dur;
-      badges.appendChild(time);
-    }
-  }
-
-  head.appendChild(left);
-  head.appendChild(badges);
-
-  card.appendChild(head);
-
-  card.appendChild(ioRow(recipe, "Input", [
-    RecipeIoType.ItemInput,
-    RecipeIoType.OreDictInput,
-    RecipeIoType.FluidInput
-  ]));
-
-  card.appendChild(ioRow(recipe, "Output", [
-    RecipeIoType.ItemOutput,
-    RecipeIoType.FluidOutput
-  ]));
-
-  return card;
 }
 
 grid.addEventListener("scroll", scheduleGridFill, { passive: true });
@@ -1536,6 +1400,7 @@ function recipeCardNei(recipe) {
   body.appendChild(outputSide);
 
   card.appendChild(body);
+  appendRecipeDetails(card, recipe);
   return card;
 }
 

@@ -1,5 +1,4 @@
 import { calculateProduction } from "./production-engine.js";
-import { compactName } from "./recipe-data.js";
 /* === GTNH Atlas Material Calculator v4: manual ignore filters === */
 (() => {
   "use strict";
@@ -16,7 +15,7 @@ import { compactName } from "./recipe-data.js";
   const defaultState = {
     target: "",
     amount: 1,
-    amountMode: "runs", // runs | target
+    amountMode: "runs", // runs | target | stacks
     routeIndex: 0,
     depth: 1,
     nodeLimit: 2500,
@@ -32,9 +31,8 @@ import { compactName } from "./recipe-data.js";
 
   let state = loadState();
   let lastRows = [];
-  let lastCandidateNames = [];
+  let lastCandidateIds = [];
   let lastErrors = [];
-  let visitedNodes = 0;
   let saveTimer = null;
 
   function loadState() {
@@ -59,7 +57,9 @@ import { compactName } from "./recipe-data.js";
 
     if (!Array.isArray(merged.manualIgnored)) merged.manualIgnored = [];
 
-    if (localStorage.getItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated") !== "1") {
+    let migrated = false;
+    try { migrated = localStorage.getItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated") === "1"; } catch {}
+    if (!migrated) {
       merged.cellsReusable = newer.cellsReusable ?? old.cellsReusable ?? true;
       merged.ignoreCircuits = newer.ignoreCircuits ?? old.ignoreCircuits ?? true;
       merged.ignoreTargetOutputs = newer.ignoreTargetOutputs ?? old.ignoreTargetOutputs ?? true;
@@ -67,8 +67,10 @@ import { compactName } from "./recipe-data.js";
       merged.depth = Math.max(1, Number(merged.depth || 1));
       merged.manualIgnored = Array.isArray(merged.manualIgnored) ? merged.manualIgnored : [];
 
-      localStorage.setItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated", "1");
-      localStorage.setItem(scopedKey(), JSON.stringify(merged));
+      try {
+        localStorage.setItem(scopedKey() === STORE_KEY ? "gtnh_material_calc_v4_migrated" : scopedKey() + "_migrated", "1");
+        localStorage.setItem(scopedKey(), JSON.stringify(merged));
+      } catch {}
     }
 
     return merged;
@@ -76,7 +78,8 @@ import { compactName } from "./recipe-data.js";
 
   function saveState() {
     state.manualIgnored = normalizeNameList(state.manualIgnored);
-    localStorage.setItem(scopedKey(), JSON.stringify(state));
+    try { localStorage.setItem(scopedKey(), JSON.stringify(state)); }
+    catch { toast("Settings cannot be saved in this browser. Copy results before closing."); }
   }
 
   function scheduleSave() {
@@ -103,8 +106,9 @@ import { compactName } from "./recipe-data.js";
   }
 
   function cleanName(s) {
-    return String(s || "")
-      .trim()
+    const text = String(s || "").trim();
+    if (/^[ifo]:/.test(text)) return text;
+    return text
       .replace(/^x\d+\s+/i, "")
       .replace(/^L\s+/i, "")
       .replace(/\s+/g, " ")
@@ -117,7 +121,7 @@ import { compactName } from "./recipe-data.js";
 
     for (const raw of list || []) {
       const name = cleanName(raw);
-      const key = compact(name);
+      const key = ignoredKey(name);
 
       if (!name || !key || seen.has(key)) continue;
 
@@ -127,10 +131,21 @@ import { compactName } from "./recipe-data.js";
 
     return out.sort((a, b) => a.localeCompare(b));
   }
+  const ignoredKey = name => /^[ifo]:/.test(name) ? name : compact(name);
 
-  function amountNum(v) {
-    const n = Number(String(v ?? "").replace(/,/g, "").trim());
-    return Number.isFinite(n) ? n : 0;
+  function migrateIgnoredNames() {
+    const catalog = window.GTNH_CATALOG;
+    if (!catalog) return;
+    const names = state.manualIgnored.filter(value => !/^[ifo]:/.test(value));
+    if (!names.length) return;
+    const keys = new Set(names.map(compact)), resolved = new Set(), ids = [];
+    for (const good of catalog.goods) {
+      const key = compact(good.name);
+      if (keys.has(key)) { ids.push(good.id); resolved.add(key); }
+    }
+    // Preserve all variants previously covered by a legacy name. They can now
+    // be unignored independently; unknown legacy labels remain recoverable.
+    state.manualIgnored = normalizeNameList([...state.manualIgnored.filter(name => !resolved.has(compact(name))), ...ids]);
   }
 
   function clampInt(v, min, max) {
@@ -198,305 +213,30 @@ import { compactName } from "./recipe-data.js";
     return "";
   }
 
-  function parseYaml(yaml) {
-    const result = {
-      machine: "",
-      tier: "",
-      eut: "",
-      dur: "",
-      input: {},
-      output: {},
-      inputOrder: [],
-      outputOrder: []
-    };
-
-    let section = "";
-
-    for (const raw of String(yaml || "").split(/\r?\n/)) {
-      const line = raw.replace(/#.*$/, "");
-      if (!line.trim()) continue;
-
-      const mMachine = line.match(/^\s*-\s*m:\s*(.+?)\s*$/i);
-      if (mMachine) {
-        result.machine = mMachine[1].trim();
-        continue;
-      }
-
-      const mTier = line.match(/^\s*tier:\s*(.+?)\s*$/i);
-      if (mTier) {
-        result.tier = mTier[1].trim();
-        continue;
-      }
-
-      const mEut = line.match(/^\s*eut:\s*(.+?)\s*$/i);
-      if (mEut) {
-        result.eut = mEut[1].trim();
-        continue;
-      }
-
-      const mDur = line.match(/^\s*dur:\s*(.+?)\s*$/i);
-      if (mDur) {
-        result.dur = mDur[1].trim();
-        continue;
-      }
-
-      if (/^\s*I:\s*(\{\s*\})?\s*$/i.test(line)) {
-        section = "input";
-        continue;
-      }
-
-      if (/^\s*O:\s*(\{\s*\})?\s*$/i.test(line)) {
-        section = "output";
-        continue;
-      }
-
-      const mItem = line.match(/^\s{4,}(.+?):\s*(.+?)\s*$/);
-      if (mItem && section) {
-        const name = cleanName(mItem[1]);
-        const amt = amountNum(mItem[2]);
-
-        if (!name || name === "{}" || !amt) continue;
-
-        result[section][name] = (result[section][name] || 0) + amt;
-
-        const orderKey = section === "input" ? "inputOrder" : "outputOrder";
-        if (!result[orderKey].includes(name)) result[orderKey].push(name);
-      }
-    }
-
-    return result;
-  }
-
-  function normalizeMap(map) {
-    const out = {};
-
-    for (const [rawName, rawAmount] of Object.entries(map || {})) {
-      const name = cleanName(rawName);
-      const amount = amountNum(rawAmount);
-
-      if (!name || !amount) continue;
-
-      out[name] = (out[name] || 0) + amount;
-    }
-
-    return out;
-  }
-
-  function scaleMap(map, scale) {
-    const out = {};
-
-    for (const [name, amount] of Object.entries(map || {})) {
-      out[name] = amountNum(amount) * scale;
-    }
-
-    return out;
-  }
-
   function manualIgnoredSet() {
-    return new Set(normalizeNameList(state.manualIgnored).map(compact));
+    return new Set(normalizeNameList(state.manualIgnored).map(ignoredKey));
   }
 
-  function isManualIgnored(name) {
-    return manualIgnoredSet().has(compact(name));
-  }
-
-  function isIgnoredName(name, productName = "") {
-    const c = compact(name);
-    const product = compact(productName || state.target);
-
-    if (!c) return true;
-
-    if (isManualIgnored(name)) return true;
-
-    if (state.waterFree && c === "water") return true;
-
-    if (state.steamFree && (
-      c === "steam" ||
-      c === "superheatedsteam" ||
-      c === "densesteam"
-    )) return true;
-
-    if (state.cellsReusable && (
-      c === "emptycell" ||
-      c === "emptyfluidcell" ||
-      c === "cell" ||
-      c.includes("emptycell")
-    )) return true;
-
-    if (state.ignoreCircuits && (
-      c === "programmedcircuit" ||
-      c === "integratedcircuit" ||
-      c.includes("programmedcircuit") ||
-      c.includes("circuitconfiguration")
-    )) return true;
-
-    if (state.ignoreTargetOutputs && product && c === product) return true;
-
-    return false;
-  }
-
-  function getRecipeBase(name, routeIndex = 0) {
-    const api = window.GTNHNEI_FLOW_EXPORT_API;
-
-    if (!api?.yamlForRecipe) {
-      return {
-        ok: false,
-        error: "Recipe export API is not ready.",
-        input: {},
-        output: {},
-        inputOrder: [],
-        outputOrder: [],
-        machine: ""
-      };
-    }
-
-    try {
-      const chosenRoute = window.GTNH_MAKER_API?.routeFor?.(name, routeIndex) ?? routeIndex;
-      const res = api.yamlForRecipe(name, chosenRoute, {
-        targetAmount: 1
-      });
-
-      const parsed = parseYaml(res?.yaml || "");
-
-      let input = normalizeMap(res?.input || parsed.input);
-      let output = normalizeMap(res?.output || parsed.output);
-
-      if (!Object.keys(input).length && res?.input) input = normalizeMap(res.input);
-      if (!Object.keys(output).length && res?.output) output = normalizeMap(res.output);
-
-      return {
-        ok: !!res?.ok || !!parsed.machine || !!Object.keys(input).length,
-        yaml: res?.yaml || "",
-        machine: res?.machine || parsed.machine,
-        tier: res?.tier || parsed.tier,
-        eut: res?.eut ?? parsed.eut,
-        dur: res?.dur ?? parsed.dur,
-        input,
-        output,
-        inputOrder: Object.keys(input),
-        outputOrder: Object.keys(output)
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        error: String(err?.message || err),
-        input: {},
-        output: {},
-        inputOrder: [],
-        outputOrder: [],
-        machine: ""
-      };
-    }
-  }
-
-  function producedAmount(data, productName) {
-    const productKey = compact(productName);
-
-    for (const [name, amount] of Object.entries(data.output || {})) {
-      if (compact(name) === productKey) return amountNum(amount);
-    }
-
-    for (const [name, amount] of Object.entries(data.input || {})) {
-      if (compact(name) === productKey) return amountNum(amount);
-    }
-
-    return 1;
-  }
-
-  function scaleRecipe(base, productName, desiredAmount) {
-    const produced = Math.max(1e-12, producedAmount(base, productName));
-    const scale = Math.max(0, amountNum(desiredAmount)) / produced;
-
-    return {
-      ...base,
-      scale,
-      produced,
-      input: scaleMap(base.input, scale),
-      output: scaleMap(base.output, scale)
-    };
-  }
-
-  function cleanedInputs(data, productName, applyManual = true) {
-    const input = normalizeMap(data.input || {});
-    const output = normalizeMap(data.output || {});
-
-    const entries = Object.entries(input);
-    const outputKeys = new Set(Object.keys(output).map(compact));
-    const productKey = compact(productName);
-
-    let firstTargetIndex = -1;
-
-    if (state.ignoreTargetOutputs && productKey) {
-      firstTargetIndex = entries.findIndex(([name]) => compact(name) === productKey);
-    }
-
-    return entries.filter(([name], index) => {
-      const c = compact(name);
-
-      if (applyManual && isManualIgnored(name)) return false;
-
-      if (state.waterFree && c === "water") return false;
-
-      if (state.steamFree && (
-        c === "steam" ||
-        c === "superheatedsteam" ||
-        c === "densesteam"
-      )) return false;
-
-      if (state.cellsReusable && (
-        c === "emptycell" ||
-        c === "emptyfluidcell" ||
-        c === "cell" ||
-        c.includes("emptycell")
-      )) return false;
-
-      if (state.ignoreCircuits && (
-        c === "programmedcircuit" ||
-        c === "integratedcircuit" ||
-        c.includes("programmedcircuit") ||
-        c.includes("circuitconfiguration")
-      )) return false;
-
-      if (state.ignoreTargetOutputs && productKey && c === productKey) return false;
-      if (outputKeys.has(c)) return false;
-      if (firstTargetIndex >= 0 && index >= firstTargetIndex) return false;
-
-      return true;
-    });
+  function isManualIgnored(name, ignored = manualIgnoredSet()) {
+    const good = window.GTNH_CATALOG?.resolve(name);
+    return ignored.has(ignoredKey(name)) || !!(good && ignored.has(compact(good.name)));
   }
 
   function collectCandidatesForPopup() {
     const names = new Set();
 
     for (const row of lastRows || []) {
-      if (row?.name) names.add(cleanName(row.name));
+      if (row?.id || row?.name) names.add(row.id || cleanName(row.name));
     }
 
-    for (const name of lastCandidateNames || []) {
+    for (const name of lastCandidateIds || []) {
       if (name) names.add(cleanName(name));
     }
 
-    const target = cleanName(state.target);
-
-    if (target) {
-      const base = getRecipeBase(target, state.routeIndex);
-      const produced = producedAmount(base, target);
-
-      let desiredAmount;
-      if (state.amountMode === "runs") {
-        desiredAmount = produced * Math.max(0, amountNum(state.amount));
-      } else {
-        desiredAmount = Math.max(0, amountNum(state.amount));
-      }
-
-      const scaled = scaleRecipe(base, target, desiredAmount);
-
-      for (const [name] of cleanedInputs(scaled, target, false)) {
-        names.add(cleanName(name));
-      }
-
-      for (const name of Object.keys(scaled.input || {})) names.add(cleanName(name));
-      for (const name of Object.keys(scaled.output || {})) names.add(cleanName(name));
+    const catalog = window.GTNH_CATALOG, target = catalog?.resolve(state.target);
+    const recipe = target ? catalog.recipes(target)[state.routeIndex] : null;
+    if (recipe) {
+      for (const io of [...recipe.inputs, ...recipe.outputs]) names.add(io.id);
     }
 
     for (const name of state.manualIgnored || []) {
@@ -505,54 +245,36 @@ import { compactName } from "./recipe-data.js";
 
     return [...names]
       .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-  }
-
-  function addRow(map, name, amount, source, depth) {
-    name = cleanName(name);
-    amount = amountNum(amount);
-
-    if (!name || !amount || isIgnoredName(name)) return;
-
-    const key = compact(name);
-
-    if (!map.has(key)) {
-      map.set(key, {
-        name,
-        amount: 0,
-        sources: new Set(),
-        minDepth: depth
-      });
-    }
-
-    const row = map.get(key);
-    row.amount += amount;
-    row.sources.add(source);
-    row.minDepth = Math.min(row.minDepth, depth);
+      .sort((a, b) => (catalog?.resolve(a)?.name || a).localeCompare(catalog?.resolve(b)?.name || b));
   }
 
   function calculate() {
     readForm(); saveState();
-    lastErrors = []; lastRows = []; lastCandidateNames = [];
+    lastErrors = []; lastRows = []; lastCandidateIds = [];
+    window.GTNH_MATCALC.lastPlan = null;
     const catalog = window.GTNH_CATALOG;
     try {
       if (!catalog) throw new Error("Recipe data is still loading.");
+      migrateIgnoredNames();
       const target = catalog.resolve(state.target);
       if (!target) throw new Error("Select an exact item/fluid name or ID. Duplicate names need an exact ID.");
-      const routeChoices = { [target.id]: state.routeIndex }, externalInputs = [], freeInputs = [];
-      const makers = window.GTNH_MAKER_API?.getState?.() || {};
+      const routeChoices = {}, externalInputs = [], freeInputs = [], ignored = manualIgnoredSet();
+      const makers = window.GTNH_MAKER_API;
+      for (const id of Object.keys(makers?.getState().externalInputs || {})) if (/^[ifo]:/.test(id) && makers.isExternalInput(id)) externalInputs.push(id);
+      for (const id of state.manualIgnored) if (/^[ifo]:/.test(id) && catalog.resolve(id)) freeInputs.push(id);
       for (const good of catalog.goods) {
-        const name = (good.name || "").toLowerCase(), key = compactName(name);
-        const maker = makers.makers?.[key];
+        const name = (good.name || "").toLowerCase();
+        const maker = makers?.makerInfo(good.id);
         if (maker) routeChoices[good.id] = maker.recipeId || maker.routeIndex;
-        if (makers.externalInputs?.[key]) externalInputs.push(good.id);
-        if (isManualIgnored(name) || state.waterFree && name === "water" || state.steamFree && ["steam", "superheated steam", "dense steam"].includes(name)) freeInputs.push(good.id);
+        if (makers?.isExternalInput(good.id) || state.ignoreCircuits && good.id !== target.id && /circuit/.test(name)) externalInputs.push(good.id);
+        if (isManualIgnored(good.id, ignored) || state.waterFree && name === "water" || state.steamFree && ["steam", "superheated steam", "dense steam"].includes(name)) freeInputs.push(good.id);
       }
+      routeChoices[target.id] = state.routeIndex;
       const result = calculateProduction(catalog, { target: target.id, amount: state.amount,
-        unit: state.amountMode === "runs" ? "batches" : catalog.describe(target).unit, depth: state.depth,
+        unit: state.amountMode === "runs" ? "batches" : state.amountMode === "stacks" ? "stacks" : catalog.describe(target).unit, depth: state.depth,
         rounding: "fractional", nodeLimit: state.nodeLimit, routeChoices, externalInputs, freeInputs, routeMode: "ask" });
       lastRows = result.materials.map(row => ({ ...row, sources: row.reason, depth: 0 })).sort((a,b) => a.name.localeCompare(b.name));
-      lastCandidateNames = lastRows.map(row => row.name);
+      lastCandidateIds = [...result.materials, ...result.reusable, ...result.byproducts].map(row => row.id);
       lastErrors = result.warnings;
       window.GTNH_MATCALC.lastPlan = result;
       renderResults();
@@ -604,6 +326,7 @@ import { compactName } from "./recipe-data.js";
                 <select id="matAmountMode">
                   <option value="runs">recipe runs</option>
                   <option value="target">target amount</option>
+                  <option value="stacks">target stacks (native item size)</option>
                 </select>
               </label>
             </div>
@@ -636,6 +359,7 @@ import { compactName } from "./recipe-data.js";
                 <label class="matCheck"><input id="matWaterFree" type="checkbox"> Ignore water</label>
                 <label class="matCheck"><input id="matSteamFree" type="checkbox"> Ignore steam</label>
                 <label class="matCheck"><input id="matCellsReusable" type="checkbox"> Expand reusable stock details</label>
+                <label class="matCheck"><input id="matIgnoreCircuits" type="checkbox"> Don't expand circuit production</label>
               </div>
 
               <label>
@@ -781,7 +505,7 @@ import { compactName } from "./recipe-data.js";
         </div>
 
         <div class="gtnhIgnoreManualAdd">
-          <input id="gtnhIgnoreManualText" placeholder="type material name, e.g. programmed circuit">
+          <input id="gtnhIgnoreManualText" list="matGoods" aria-label="Material name or exact ID to ignore" placeholder="material name or exact item/fluid ID">
           <button type="button" id="gtnhIgnoreManualAddBtn">Add</button>
         </div>
 
@@ -812,7 +536,9 @@ import { compactName } from "./recipe-data.js";
         return;
       }
 
-      addManualIgnored(name);
+      const good = window.GTNH_CATALOG?.resolve(name);
+      if (!good) { toast("Select an exact name or item/fluid ID. Duplicate names need an ID."); return; }
+      addManualIgnored(good.id);
       if (input) input.value = "";
       renderIgnorePicker();
       syncForm();
@@ -835,7 +561,7 @@ import { compactName } from "./recipe-data.js";
     });
 
     ov.querySelector("#gtnhIgnoreUseCurrent")?.addEventListener("click", () => {
-      const names = lastRows.map(r => r.name).filter(Boolean);
+      const names = lastRows.map(r => r.id || r.name).filter(Boolean);
 
       if (!names.length) {
         toast("No current result list.");
@@ -863,9 +589,9 @@ import { compactName } from "./recipe-data.js";
   }
 
   function removeManualIgnored(name) {
-    const key = compact(name);
+    const key = ignoredKey(name);
     state.manualIgnored = normalizeNameList(
-      (state.manualIgnored || []).filter(x => compact(x) !== key)
+      (state.manualIgnored || []).filter(x => ignoredKey(x) !== key)
     );
   }
 
@@ -880,6 +606,7 @@ import { compactName } from "./recipe-data.js";
   }
 
   function openIgnorePicker() {
+    migrateIgnoredNames();
     ensureIgnoreOverlay().classList.add("show");
     renderIgnorePicker();
   }
@@ -906,11 +633,11 @@ import { compactName } from "./recipe-data.js";
     const ignored = manualIgnoredSet();
 
     box.innerHTML = names.map(name => {
-      const on = ignored.has(compact(name));
+      const on = isManualIgnored(name, ignored), good = window.GTNH_CATALOG?.resolve(name);
 
       return `
         <button type="button" class="gtnhIgnoreChip ${on ? "ignored" : ""}" data-name="${esc(name)}">
-          <span>${esc(name)}</span>
+          <span>${esc(good?.name || name)}${good ? `<small class="matGoodId">${esc(good.id)}</small>` : ""}</span>
           <b>${on ? "ignored" : "active"}</b>
         </button>
       `;
@@ -927,6 +654,7 @@ import { compactName } from "./recipe-data.js";
   }
 
   function syncForm() {
+    migrateIgnoredNames();
     const catalog = window.GTNH_CATALOG, select = document.getElementById("matRouteChoice");
     const target = catalog?.resolve(state.target);
     if (select) {
@@ -964,7 +692,7 @@ import { compactName } from "./recipe-data.js";
       const list = normalizeNameList(state.manualIgnored);
 
       summary.innerHTML = list.length
-        ? `<b>Manually ignored:</b> ${list.map(esc).join(", ")}`
+        ? `<b>Manually ignored:</b> ${list.map(value => esc(catalog?.resolve(value)?.name || value)).join(", ")}`
         : `<b>Manually ignored:</b> none`;
     }
   }
@@ -974,7 +702,7 @@ import { compactName } from "./recipe-data.js";
 
     state.target = String(val("matTarget")).trim();
     state.amount = Math.max(0, Number(val("matAmount") || 1));
-    state.amountMode = String(val("matAmountMode") || "runs") === "target" ? "target" : "runs";
+    state.amountMode = ["target", "stacks"].includes(val("matAmountMode")) ? val("matAmountMode") : "runs";
     state.depth = clampInt(val("matDepth") || 1, 1, 50);
     state.routeIndex = Math.max(0, Number(val("matRoute") || 1) - 1);
     state.nodeLimit = clampInt(val("matNodeLimit") || 2500, 100, 20000);
@@ -1021,11 +749,11 @@ import { compactName } from "./recipe-data.js";
         </thead>
         <tbody>
           ${lastRows.map(r => `
-            <tr>
+            <tr data-good-id="${esc(r.id)}" data-good-name="${esc(r.name)}">
               <td>${esc(amountText(r.amount))} ${esc(r.unit || "items")}</td>
-              <td>${esc(r.name)}</td>
+              <td><span class="matGoodName">${esc(r.name)}</span>${window.GTNH_CATALOG?.matches(r.name).length > 1 ? `<small class="matGoodId">${esc(r.id)}</small>` : ""}</td>
               <td>
-                <button type="button" class="matIgnoreInlineBtn" data-name="${esc(r.name)}">
+                <button type="button" class="matIgnoreInlineBtn" data-name="${esc(r.id || r.name)}">
                   ignore
                 </button>
               </td>
@@ -1079,7 +807,7 @@ import { compactName } from "./recipe-data.js";
     close,
     calculate,
     openIgnorePicker,
-    getState: () => ({ ...state }),
+    getState: () => structuredClone(state),
     getLastRows: () => lastRows.slice(),
     getManualIgnored: () => normalizeNameList(state.manualIgnored)
   };

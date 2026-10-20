@@ -9,7 +9,7 @@
     const oldCalc = document.getElementById("toolCalc");
     if (!oldCalc) return;
 
-    oldCalc.textContent = "Planner";
+    if (oldCalc.textContent !== "Planner") oldCalc.textContent = "Planner";
     oldCalc.title = "Route planner, recipe tree, YAML, gtnh-flow export";
 
     let btn = document.getElementById("toolMatCalc");
@@ -30,7 +30,7 @@
       });
     }
 
-    btn.textContent = "Calculator";
+    if (btn.textContent !== "Calculator") btn.textContent = "Calculator";
   }
 
   function renameOldOverlay() {

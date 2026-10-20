@@ -1,3 +1,5 @@
+import { SUPPORTED_DATA_VERSIONS } from "./dist/repository.js";
+
 export const DATASET_STORAGE_KEY = "gtnh_atlas_dataset_v1";
 export function validateManifest(manifest) {
   if (manifest?.schemaVersion !== 1 || !Array.isArray(manifest.datasets) || !manifest.datasets.length) throw new Error("Unsupported recipe dataset manifest.");
@@ -5,7 +7,7 @@ export function validateManifest(manifest) {
   for (const dataset of manifest.datasets) {
     if (!/^[a-z0-9][a-z0-9.-]+$/.test(dataset.id) || ids.has(dataset.id)) throw new Error("Duplicate or invalid dataset ID.");
     ids.add(dataset.id);
-    if (dataset.available && (dataset.format !== 5 || !/^[a-f0-9]{64}$/.test(dataset.sha256 || "") || !/^[a-f0-9]{64}$/.test(dataset.uncompressedSha256 || "") ||
+    if (dataset.available && (!SUPPORTED_DATA_VERSIONS.includes(dataset.format) || !/^[a-f0-9]{64}$/.test(dataset.sha256 || "") || !/^[a-f0-9]{64}$/.test(dataset.uncompressedSha256 || "") ||
       !dataset.packVersion || !/^[a-f0-9]{40}$/.test(dataset.sourceRevision || "") || !dataset.source || !dataset.dataUrl || !dataset.atlasUrl)) throw new Error(`Dataset ${dataset.id} lacks verified provenance, supported format, or checksums.`);
     if (dataset.available && [dataset.dataUrl, dataset.atlasUrl].some(path => /^(?:\/|[a-z]+:)|\.\./i.test(path))) throw new Error("Datasets must use local relative asset paths.");
   }

@@ -7,7 +7,7 @@ class ResponsiveRepository extends Repository {
   FillObjectPositionMap(elements) { (this.pendingMaps ||= []).push(elements); }
   FillRecipesRemap(remap) { this.pendingRemap = remap; }
 }
-export async function loadRepository(buffer, { onProgress = () => {}, yieldControl = yieldToBrowser, signal } = {}) {
+export async function loadRepository(buffer, { onProgress = () => {}, yieldControl = yieldToBrowser, signal, publish = true } = {}) {
   const repository = new ResponsiveRepository(buffer);
   const total = repository.pendingMaps.reduce((sum, rows) => sum + rows.length, 0) + repository.pendingRemap.length;
   let completed = 0;
@@ -27,6 +27,7 @@ export async function loadRepository(buffer, { onProgress = () => {}, yieldContr
     completed += Math.min(4000, remap.length - offset); onProgress({ completed, total }); await yieldControl();
   }
   delete repository.pendingMaps; delete repository.pendingRemap;
-  Repository.current = repository;
+  signal?.throwIfAborted();
+  if (publish) Repository.current = repository;
   return repository;
 }

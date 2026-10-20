@@ -33,15 +33,25 @@
       "packVersion": "2.7.4",
       "available": false,
       "source": "https://shadowtheage.github.io/gtnh-2.7.4/",
-      "reason": "Authentic upstream archive uses binary format 3; the current parser supports format 5."
+      "reason": "Authentic upstream archive uses binary format 3; its parser adapter has not been validated."
     },
     {
       "id": "gtnh-2.9.0",
-      "label": "GTNH 2.9.0 upstream",
+      "label": "GTNH 2.9.0",
       "packVersion": "2.9.0",
-      "available": false,
+      "available": true,
       "source": "https://github.com/ShadowTheAge/gtnh-data/tree/d200440ea31d0357068a294d7312acf1146de909",
-      "reason": "Upstream export uses format 7; a validated parser adapter and matching atlas are required."
+      "format": 7,
+      "dataUrl": "data/gtnh-2.9.0/data.bin",
+      "atlasUrl": "data/gtnh-2.9.0/atlas.webp",
+      "sha256": "624c9a20c8476dc630c274145dc04c72d7c582e130a3599dc49ce9aee0a2fe73",
+      "uncompressedSha256": "6771f2ef68a58ec6b1c864ab238dabfa1ec5f919c3fd9b7b69c7eb5efa934739",
+      "atlasSha256": "4079548e2e53a55b85d3809821ea11cfbf1bde898014979e9e6afea62204f185",
+      "items": 50811,
+      "fluids": 1476,
+      "recipes": 221760,
+      "sourceRevision": "d200440ea31d0357068a294d7312acf1146de909",
+      "verification": "Database and matching atlas Git blob IDs match pinned upstream 2.9.0-v7 exactly; format-7 fields checked against pinned upstream parser, 2026-10-20."
     }
   ]
 }

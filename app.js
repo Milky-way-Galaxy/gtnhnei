@@ -16,6 +16,7 @@ import { openVersionComparison } from "./version-compare-ui.js";
 import { appendRecipeDetails } from "./recipe-details.js";
 import { loadVerifiedDatabase } from "./database-cache.js";
 import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
+import { getPreference, setPreference } from "./preferences.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
 const search = document.getElementById("search");
@@ -81,11 +82,11 @@ function autoGridLimit() {
 }
 
 function getGridLimitMode() {
-  return localStorage.getItem(GRID_LIMIT_MODE_KEY) || "auto";
+  return getPreference(GRID_LIMIT_MODE_KEY, "auto");
 }
 
 function getMaxGridTotal() {
-  const saved = clampGridLimit(localStorage.getItem(GRID_LIMIT_KEY) || GRID_LIMIT_MIN);
+  const saved = clampGridLimit(getPreference(GRID_LIMIT_KEY, GRID_LIMIT_MIN));
 
   if (getGridLimitMode() === "auto") {
     return clampGridLimit(Math.max(saved, autoGridLimit()));
@@ -96,8 +97,8 @@ function getMaxGridTotal() {
 
 function setMaxGridTotal(n, mode = "manual") {
   const limit = clampGridLimit(n);
-  localStorage.setItem(GRID_LIMIT_KEY, String(limit));
-  localStorage.setItem(GRID_LIMIT_MODE_KEY, mode);
+  setPreference(GRID_LIMIT_KEY, limit);
+  setPreference(GRID_LIMIT_MODE_KEY, mode);
   return limit;
 }
 
@@ -120,7 +121,7 @@ function mountGridLimitControls(status, total) {
   panel.innerHTML = `
     <div class="atlasGridLimitText">
       <b>Item grid</b>
-      <span>auto-loads while scrolling · loaded up to ${limit} of ${total ?? "?"}</span>
+      <span>up to ${limit} of ${total ?? "?"} matches</span>
     </div>
     <div class="atlasGridLimitBtns">
       <button type="button" data-grid-limit="more">Load now</button>

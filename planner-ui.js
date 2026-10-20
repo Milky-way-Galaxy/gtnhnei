@@ -7,6 +7,7 @@ import { machinePerformance } from "./machine-model.js";
 import { machineProfileHtml, initialMachineConfig } from "./machine-profile-ui.js";
 import { factoryCapacityHtml } from "./factory-capacity-ui.js";
 import { createSupplyTools } from "./supply-ui.js";
+import { openRouteChoices } from "./route-choice-ui.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
@@ -133,7 +134,7 @@ export function installPlanner() {
     }
     const routes = good ? catalog().recipes(good) : [];
     if (!routes.length) return "";
-    return `<label>Production route<select data-route-good="${esc(node.id)}"><option value="">${["ask", "manual"].includes(state.routeMode) ? "Choose a route" : "Automatic route policy"}</option>${routes.map((r, index) => { const metrics = recipeMetrics(r, node), unit = catalog().describe(good).unit; return `<option value="${esc(r.id)}" ${node.recipeId === r.id ? "selected" : ""} ${metrics.output > 0 ? "" : "disabled"}>${index + 1}. ${esc(r.machine)} · ${r.tier || "non-electric/unknown"} · ${r.durationTicks === null ? "time unknown" : fmt(r.durationTicks / 20) + "s"} · ${fmt(r.eut)} EU/t · net ${fmt(metrics.output)} ${unit}/batch${metrics.expected ? " (expected)" : ""} · ${fmt(metrics.energyPerOutput)} EU/${unit === "items" ? "item" : unit}</option>`; }).join("")}</select></label>`;
+    return `<label>Production route<select data-route-good="${esc(node.id)}"><option value="">${["ask", "manual"].includes(state.routeMode) ? "Choose a route" : "Automatic route policy"}</option>${routes.map((r, index) => { const metrics = recipeMetrics(r, node), unit = catalog().describe(good).unit; return `<option value="${esc(r.id)}" ${node.recipeId === r.id ? "selected" : ""} ${metrics.output > 0 ? "" : "disabled"}>${index + 1}. ${esc(r.machine)} · ${r.tier || "non-electric/unknown"} · ${r.durationTicks === null ? "time unknown" : fmt(r.durationTicks / 20) + "s"} · ${fmt(r.eut)} EU/t · net ${fmt(metrics.output)} ${unit}/batch${metrics.expected ? " (expected)" : ""} · ${fmt(metrics.energyPerOutput)} EU/${unit === "items" ? "item" : unit}</option>`; }).join("")}</select></label><button type="button" data-compare-good="${esc(node.id)}" data-selected-recipe="${esc(node.recipeId || "")}">Compare ${routes.length} production routes</button>`;
   }
   function summary() {
     if (!plan) return error || "Enter a target and press Build tree.";
@@ -167,6 +168,7 @@ export function installPlanner() {
     const expandedMachines = new Set([...box.querySelectorAll("details[open][data-machine-id]")].map(node => node.dataset.machineId));
     const active = document.activeElement;
     const restore = focusedTarget !== undefined ? `[data-target-index="${focusedTarget}"][data-target-field="${focusedTargetField}"]` : focusedStock ? `[data-stock-quantity="${CSS.escape(focusedStock)}"]` : active?.dataset.routeGood ? `[data-route-good="${CSS.escape(active.dataset.routeGood)}"]` :
+      active?.dataset.compareGood ? `[data-compare-good="${CSS.escape(active.dataset.compareGood)}"]` :
       active?.dataset.installedMachines ? `[data-installed-machines="${CSS.escape(active.dataset.installedMachines)}"]` :
       active?.dataset.addMachine ? `[data-add-machine="${CSS.escape(active.dataset.addMachine)}"]` :
       active?.dataset.defaultMachines ? `[data-installed-machines="${CSS.escape(active.dataset.defaultMachines)}"]` :
@@ -238,6 +240,11 @@ export function installPlanner() {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.calcTab) { tab(button.dataset.calcTab); return; }
       if (button.dataset.plannerCode) { restoreCodeOutput(); codeTab = button.dataset.plannerCode; render(); return; }
+      if (button.dataset.compareGood) {
+        openRouteChoices(catalog(), button.dataset.compareGood, button.dataset.selectedRecipe, recipeId => {
+          state.routeChoices[button.dataset.compareGood] = recipeId; built = true; save(); calculate(); render();
+        }); return;
+      }
       if (button.dataset.supply) { state.rawOverrides.push(button.dataset.supply); built = true; save(); calculate(); render(); return; }
       if (button.dataset.stock) {
         tab("planner"); overlay.querySelector("#plannerInventory").open = true;

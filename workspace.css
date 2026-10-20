@@ -84,6 +84,23 @@ button, summary { cursor: pointer; }
 .supplyRow.supplyPrepared { opacity: .65; }
 .supplyPrepared label b { text-decoration: line-through; }
 .supplyNotes { color: #b9ccdc; padding-left: 18px; }
+.routeChoiceFilters { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.routeChoiceFilters select { width: 100%; min-height: 44px; background: #0c2031; color: #eaf3fa; border: 1px solid #395b74; border-radius: 8px; font-size: 16px; padding: 8px; }
+.routeChoice { padding: 14px; margin: 12px 0; border: 1px solid #35526a; border-radius: 10px; }
+.routeChoice[data-selected=true] { border-color: #71cbbb; background: #103039; }
+.routeChoice header { display: flex; gap: 10px; align-items: start; justify-content: space-between; }
+.routeChoice header button { flex: none; }
+.routeChoice h3 { margin: 0 0 5px; font-size: 17px; }
+.routeChoice small { display: block; color: #9fbbcf; overflow-wrap: anywhere; font-size: 12px; }
+.routeChoice h3 small { display: inline; }
+.routeMetrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+.routeMetrics > div { background: #10263b; padding: 7px; border-radius: 6px; font-size: 12px; }
+.routeMetrics b { display: block; color: #b2eadd; font-size: 16px; margin-top: 3px; }
+.routeIngredients { display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px; }
+.routeIngredients ul { padding-left: 18px; }
+.routeIngredients li { margin-bottom: 7px; }
+.routeChoice dl { display: grid; grid-template-columns: 1fr auto; }
+.routeChoice dd { margin-left: 10px; }
 @media (max-width: 700px) {
   body { padding: 4px; gap: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
   #seoIntro.seoIntro { padding: 8px 46px 8px 10px; }
@@ -102,6 +119,9 @@ button, summary { cursor: pointer; }
   .supplySummary { grid-template-columns: 1fr; }
   .supplyRow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .supplyAmount { text-align: left; padding-left: 32px; }
+  .routeChoiceFilters, .routeIngredients { grid-template-columns: 1fr; }
+  .routeMetrics { grid-template-columns: 1fr 1fr; }
+  .routeChoice header { flex-wrap: wrap; }
   .libraryRow { grid-template-columns: 32px minmax(0, 1fr); gap: 9px; }
   .libraryActions { grid-column: 2; justify-content: flex-start; max-width: none; }
 }

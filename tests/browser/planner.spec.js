@@ -53,7 +53,7 @@ test("portable JSON import and CSV/SVG downloads contain real computed data", as
 test("machine profiles explicitly change rate, energy and parallel capacity", async ({ page }) => {
   await start(page);
   const profile = page.locator(".plannerProfile").first();
-  await profile.locator("..").locator("summary").click();
+  await profile.locator("..").locator(":scope > summary").click();
   await profile.locator('[data-profile-field="parallels"]').fill("0");
   await profile.locator('[data-profile-field="parallels"]').blur();
   await expect(profile.locator('[data-profile-field="parallels"]')).toHaveValue("1");

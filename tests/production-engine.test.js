@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { Repository } from "../dist/repository.js";
 import { RecipeCatalog } from "../recipe-data.js";
 import { exportRecipeYaml, exportPlanYaml } from "../recipe-export.js";
-import { calculateProduction, calculateFactory, machinePerformance, ceilPositive } from "../production-engine.js";
+import { calculateProduction, calculateFactory, machinePerformance, ceilPositive, recipeMetrics, selectRecipe } from "../production-engine.js";
 
 const good = (id, type = "item") => ({ id, name: id, type, unit: type === "fluid" ? "L" : "items", amount: 1, probability: 1 });
 const io = (id, amount, probability = 1) => ({ ...good(id), amount, probability });
@@ -118,6 +118,8 @@ test("real epichlorohydrin throughput: 3000 L/min needs 1.6 base machines, 48 av
   assert.equal(result.knownAverageEut, 48);
   assert.equal(result.knownInstalledEut, 60);
   assert.equal(result.capacity, 31.25);
+  assert.equal(result.targets[0].installedCount, 2);
+  assert.equal(result.targets[0].installedCapacity, 62.5);
 });
 test("real data bucket conversion, stable recipe IDs and structured metadata remain exact", () => {
   const result = calculateProduction(catalog, { ...epiOptions, amount: 3, unit: "buckets" });
@@ -325,4 +327,32 @@ test("real factory co-product demand reuses hydrogen without duplicating the epi
 test("factory validation rejects mixed totals/rates, unsafe quantities, conflicting counts and excess targets", () => {
   const c=fixture([recipe("a",[],[io("product",1)]),recipe("b",[],[io("other",1)])]);
   for(const targets of [[],Array(21).fill({target:"product",amount:1}),[{target:"product",amount:1,rateMode:"total"},{target:"other",amount:1,rateMode:"per_second"}],[{target:"product",amount:1,machineCount:1},{target:"product",amount:1,machineCount:2}],[{target:"product",amount:Infinity}]]) assert.throws(()=>calculateFactory(c,{...options,targets}));
+});
+test("route efficiency uses net expected output and distinguishes EU/t from energy per output",()=>{
+  const lowPower=recipe("low-power",[],[io("product",1)],{durationTicks:1000,eut:10}),efficient=recipe("efficient",[],[io("product",2)],{durationTicks:20,eut:30});
+  assert.equal(selectRecipe([lowPower,efficient],good("product"),{routeMode:"lowest_eut"}).id,"low-power");
+  assert.equal(selectRecipe([lowPower,efficient],good("product"),{routeMode:"lowest_energy"}).id,"efficient");
+  assert.equal(recipeMetrics(efficient,good("product")).energyPerOutput,300);
+  const autocatalytic=recipe("seeded",[io("product",1)],[io("product",3)]);
+  assert.equal(recipeMetrics(autocatalytic,good("product")).output,2);
+  assert.equal(recipeMetrics(autocatalytic,good("product")).energyPerOutput,3000);
+  const chance=recipe("chance",[],[io("product",1000,.25)]);
+  assert.deepEqual(recipeMetrics(chance,good("product")),{output:250,expected:true,outputPerSecond:25,energyPerOutput:24});
+  assert.equal(recipeMetrics(recipe("extra",[],[io("product",1),io("other",1,.1)]),good("product")).expected,false);
+});
+test("automatic scores retain known timing, stable ties, valid legacy indexes and net-positive routes",()=>{
+  const unknown=recipe("unknown",[],[io("product",1)],{durationTicks:null,eut:null}),known=recipe("known",[],[io("product",1)]),zero=recipe("no-net",[io("product",1)],[io("product",1)]);
+  assert.equal(selectRecipe([unknown,known],good("product"),{routeMode:"lowest_energy"}).id,"known");
+  assert.equal(selectRecipe([known,{...known,id:"alpha"}],good("product"),{routeMode:"lowest_energy"}).id,"alpha");
+  assert.equal(selectRecipe([zero,known],good("product"),{routeMode:"ask"}).id,"known");
+  assert.equal(selectRecipe([zero,known],good("product"),{routeChoices:{product:1}}).id,"known");
+  assert.equal(selectRecipe([zero,known],good("product"),{routeChoices:{product:0}}),null);
+});
+test("installed capacity follows the actual fixed pool while recipe metadata remains explicit",()=>{
+  const result=calculateProduction(catalog,{...epiOptions,amount:3000,rateMode:"per_minute",machineMode:"fixed",machineCount:3});
+  assert.equal(result.targets[0].installedCount,3);assert.equal(result.targets[0].installedCapacity,93.75);
+  const target="i:gregtech:gt.metaitem.01:12393",route="r~--l7UvQdPwieyDfV6NjffQ==";
+  const hot=calculateProduction(catalog,{target,amount:1,unit:"items",depth:1,routeChoices:{[target]:route}});
+  assert.equal(hot.knownEnergy,10598400);assert.equal(hot.steps[0].recipe.metadata.find(row=>row.key==="coil_heat").value,5400);
+  assert.ok(hot.warnings.some(text=>text.includes("machine-specific conditions")));
 });

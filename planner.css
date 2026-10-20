@@ -51,3 +51,10 @@
 #sharedPlanBanner { margin: 12px; padding: 14px; background: #14334c; color: #eaf2ff; border: 1px solid #507e9e; border-radius: 8px; }
 #sharedPlanBanner button { min-height: 44px; margin: 4px; padding: 8px 12px; border: 1px solid #507e9e; border-radius: 6px; color: #eaf2ff; background: #1c425e; }
 #sharedPlanBanner p { overflow-wrap: anywhere; }
+.plannerRecipeMetadata dl, .recipeDetails dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+.plannerRecipeMetadata dt, .recipeDetails dt { overflow-wrap: anywhere; }
+.plannerRecipeMetadata dd, .recipeDetails dd { margin: 0; font-variant-numeric: tabular-nums; }
+.plannerHint { color: #a3b9ce; }
+.recipeDetails { margin-top: 12px; padding: 10px; background: #0c2133; border: 1px solid #38506b; border-radius: 8px; overflow-wrap: anywhere; }
+.recipeDetails summary { cursor: pointer; min-height: 32px; }
+.recipeDetails p { color: #b7c9dc; font-size: 13px; }

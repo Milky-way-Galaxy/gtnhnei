@@ -43,26 +43,44 @@ export function machinePerformance(recipe, config = {}) {
   return { durationTicks, parallels, laneEut, eut: laneEut * parallels, batchesPerSecond: 20 * parallels / durationTicks };
 }
 
+// Base, expected net output only; this is not the cost of an upstream chain.
+export function recipeMetrics(recipe, good) {
+  const balance = recipeBalance(recipe), output = balance.outputs.find(io => io.id === good.id)?.amount || 0;
+  const knownTime = recipe.durationTicks > 0;
+  return { output, expected: [...recipe.inputs, ...recipe.outputs].some(io => io.id === good.id && io.probability < 1),
+    outputPerSecond: knownTime && output > 0 ? 20 * output / recipe.durationTicks : null,
+    energyPerOutput: knownTime && recipe.eut !== null && recipe.eut !== undefined && output > 0 ? recipe.durationTicks * recipe.eut / output : null };
+}
+
 export function selectRecipe(recipes, good, options = {}) {
-  const viable = recipes.filter(recipe => recipeBalance(recipe).outputs.some(io => io.id === good.id && io.amount > EPS));
   const chosen = options.routeChoices?.[good.id] ?? options.routeChoices?.[good.name?.toLowerCase()];
   if (chosen !== undefined) {
     const selected = typeof chosen === "number" ? recipes[chosen] : recipes.find(recipe => recipe.id === chosen);
-    return selected && viable.includes(selected) ? selected : null;
+    // A locked route needs one balance check, even when a good has thousands of
+    // alternatives. Keep legacy numeric indexes tied to the original list.
+    return selected && recipeBalance(selected).outputs.some(io => io.id === good.id && io.amount > EPS) ? selected : null;
   }
-  if (options.routeMode === "manual") return null;
-  if (viable.length === 1) return viable[0];
-  if (["ask", "manual"].includes(options.routeMode || "ask")) return null;
-  const score = recipe => {
-    const yieldAmount = recipeBalance(recipe).outputs.find(io => io.id === good.id).amount;
-    switch (options.routeMode) {
-      case "fastest": return recipe.durationTicks === null ? Infinity : recipe.durationTicks / yieldAmount;
-      case "lowest_eut": return recipe.eut ?? Infinity;
-      case "fewest_inputs": return recipeBalance(recipe).inputs.length;
-      default: return recipe.voltage ?? Infinity;
+  const mode = options.routeMode || "ask";
+  if (mode === "manual") return null;
+  let best = null, bestScore = Infinity;
+  for (const recipe of recipes) {
+    const balance = recipeBalance(recipe), output = balance.outputs.find(io => io.id === good.id)?.amount;
+    if (!(output > EPS)) continue;
+    if (mode === "ask") {
+      if (best) return null;
+      best = recipe; continue;
     }
-  };
-  return viable.slice().sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))[0] || null;
+    let score;
+    switch (mode) {
+      case "fastest": score = recipe.durationTicks > 0 ? recipe.durationTicks / output : Infinity; break;
+      case "lowest_eut": score = recipe.eut ?? Infinity; break;
+      case "lowest_energy": score = recipe.durationTicks > 0 && recipe.eut !== null && recipe.eut !== undefined ? recipe.durationTicks * recipe.eut / output : Infinity; break;
+      case "fewest_inputs": score = balance.inputs.length; break;
+      default: score = recipe.voltage ?? Infinity;
+    }
+    if (!best || score < bestScore || score === bestScore && recipe.id.localeCompare(best.id) < 0) { best = recipe; bestScore = score; }
+  }
+  return best;
 }
 
 function prepareDemand(catalog, options) {
@@ -205,6 +223,7 @@ export function calculateFactory(catalog, options) {
     node.routeCount = recipes.length;
     if (recipe.outputs.some(io => io.probability < 1)) warnings.add("Chance outputs use expected yields, not guaranteed amounts. Actual batches can vary.");
     if (!node.performance) warnings.add(`${recipe.machine}: timing/power is not available in this dataset; machine count and energy are unknown.`);
+    if (recipe.metadata?.some(entry => entry.key !== "recycle") || recipe.specialValue || recipe.circuitConflicts) warnings.add("Recipe metadata, special values and circuit conflicts are shown with machine requirements. Generic profiles do not evaluate these machine-specific conditions.");
     if (machineConfigs[recipe.id]?.overclocks || (machineConfigs[recipe.id]?.parallels || 1) > 1) warnings.add("Custom machine profiles use the selected generic OC/parallel model. Verify machine-specific limits, amperage, heat and voltage before building.");
     const previous = steps.get(recipe.id);
     if (previous) previous.batches += batches;
@@ -252,7 +271,10 @@ export function calculateFactory(catalog, options) {
     const timeSeconds = !isRate && ["from-inventory", "from-byproduct"].includes(node.status) ? 0 : !isRate && performance ?
       (options.rounding === "fractional" ? node.batches / (performance.parallels * demand.fixedMachines) : ceilPositive(node.batches / (performance.parallels * demand.fixedMachines))) * performance.durationTicks / 20 : null;
     if (isRate && options.machineMode === "fixed" && capacity !== null && demand.requested > capacity + EPS) warnings.add(`${demand.targetGood.name}: requested output exceeds the ${demand.fixedMachines} root machine(s) capacity of ${capacity.toPrecision(6)} ${demand.targetGood.unit}/s.`);
-    return { ...demand.targetGood, requested: demand.requested, rateMode: demand.rateMode, machineCount: demand.fixedMachines, root: node, capacity, timeSeconds };
+    const step = machineRows.find(step => step.recipeId === node.recipeId);
+    const installedCount = isRate ? step?.installedCount ?? null : null;
+    const installedCapacity = capacity !== null && installedCount !== null ? capacity / demand.fixedMachines * installedCount : null;
+    return { ...demand.targetGood, requested: demand.requested, rateMode: demand.rateMode, machineCount: demand.fixedMachines, root: node, capacity, installedCount, installedCapacity, timeSeconds };
   });
   if (isRate && options.machineMode === "fixed") for (const step of machineRows) {
     if (step.equivalents !== null && step.equivalents > step.installedCount + EPS) warnings.add(`${step.machine}: combined demand needs ${step.equivalents.toPrecision(6)} machine equivalents; only ${step.installedCount} are configured.`);

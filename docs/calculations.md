@@ -126,3 +126,35 @@ A recipient sees a preview and must choose Load shared plan before their draft
 is replaced; they can also download its JSON. Missing/mismatched checksums,
 unsupported codecs and invalid payloads fail visibly. Link data is limited to
 24,000 characters and decompressed data to 2 MB; larger plans should use JSON.
+
+## Route efficiency and exported recipe details
+
+Route suggestions show expected net target yield per batch and base EU per native
+item or fluid L. Guaranteed target returns are subtracted from gross output, so
+seeded recipes are compared by actual net production. Only uncertainty in the
+selected target's IO marks its yield as expected. Zero-net-output routes are
+unavailable as production choices.
+
+**Lowest base energy per output** compares ticks × EU/t / expected net output.
+This differs from Lowest EU/t, which compares machine power alone. Automatic
+policies evaluate individual base recipes; upstream energy, initial inventory,
+whole-job rounding and machine-specific bonuses are not globally optimized.
+Known timing/power ranks before unknown estimates; explicit route IDs and legacy
+numeric route choices retain precedence. Locked routes balance only the selected
+recipe; automatic scoring uses one pass instead of sorting repeated balances.
+
+Each recipe card and embedded card exposes its exact recipe ID, known base
+energy per batch, and exported metadata/special values/circuit-conflict fields.
+The planner repeats these metadata fields beside the machine profile. Generic
+OC/parallel profiles do not evaluate them. For example, actual 2.8.0 recipe
+`r~--l7UvQdPwieyDfV6NjffQ==` makes one Hot Oriharukon Ingot with `coil_heat = 5400`,
+1380 ticks at 7680 EU/t, totaling 10,598,400 EU. These are dataset values, not a
+claim that a particular player-built furnace can run it.
+
+Rate results show capacity from the **installed recipe machine pool**, rather
+than the default one-machine count used for configured-root estimates. A 50 L/s
+Epichlorohydrin target installs two base machines with 62.5 L/s recipe capacity;
+the Hydrogen target supplied by that route is labeled From co-products. Each
+machine step shows its own average/installed EU/t or total job energy. In the JS
+result API, the existing `capacity` field keeps its configured-root meaning;
+`targets[].installedCount` and `installedCapacity` expose the installed pool.

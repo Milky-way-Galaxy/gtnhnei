@@ -8,7 +8,7 @@ export function normalizePlannerState(raw) {
   const state = { ...structuredClone(defaultPlannerState), ...raw, settings: { ...defaultPlannerState.settings, ...raw.settings } };
   if (!Number.isFinite(Number(state.amount)) || Number(state.amount) <= 0) throw new Error("Amount must be finite and greater than zero.");
   for (const [key, values] of Object.entries({ rateMode: ["total", "per_second", "per_minute", "per_hour"], unit: ["items", "L", "buckets", "batches", "stacks"],
-    routeMode: ["ask", "manual", "lowest_tier", "lowest_eut", "fastest", "fewest_inputs"], rounding: ["whole", "fractional"], machineMode: ["auto", "fixed"] })) {
+    routeMode: ["ask", "manual", "lowest_tier", "lowest_eut", "lowest_energy", "fastest", "fewest_inputs"], rounding: ["whole", "fractional"], machineMode: ["auto", "fixed"] })) {
     if (!values.includes(state[key])) throw new Error(`Invalid ${key}.`);
   }
   if (typeof state.target !== "string" || state.target.length > 512) throw new Error("Invalid target.");

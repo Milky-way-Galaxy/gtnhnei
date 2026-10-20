@@ -29,7 +29,7 @@ async function isServing() {
 }
 try {
   if (!(await isServing())) {
-    server = spawn(process.execPath, [resolve(root, "tools/serve.js")], {
+    server = spawn(process.execPath, [resolve(root, "tools/serve.js"), "--staged"], {
       cwd: root,
       stdio: "ignore",
     });

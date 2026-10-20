@@ -8,12 +8,16 @@
     "test:browser": "playwright test",
     "lint": "eslint .",
     "check": "node tools/check-site.js",
-    "build": "npm run check && npm run check:flow",
+    "build": "npm run check && npm run check:flow && npm run check:offline",
     "verify": "npm run lint && npm run build && npm test && npm run test:browser",
     "check:flow": "python3 tools/package-flow.py --check",
     "audit:data": "node tools/audit-data.js",
     "smoke:flow": "node tools/smoke-flow.js",
-    "check:machines": "python3 tools/machine-reference.py"
+    "check:machines": "python3 tools/machine-reference.py",
+    "offline:manifest": "node tools/offline-manifest.js --write",
+    "check:offline": "node tools/offline-manifest.js",
+    "stage": "node tools/stage-site.js",
+    "benchmark:startup": "node tools/benchmark-startup.js"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

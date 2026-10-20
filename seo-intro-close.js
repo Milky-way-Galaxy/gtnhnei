@@ -1,4 +1,5 @@
 /* === GTNH Atlas closeable intro === */
+import { getPreference, setPreference, removePreference } from "./preferences.js";
 (() => {
   "use strict";
 
@@ -18,7 +19,7 @@
     btn.className = "seoIntroShow";
 
     btn.addEventListener("click", () => {
-      localStorage.removeItem(KEY);
+      removePreference(KEY);
       const intro = qs("#seoIntro");
       if (intro) intro.classList.remove("seoIntroHidden");
       btn.remove();
@@ -47,7 +48,7 @@
       btn.setAttribute("aria-label", "Hide intro");
 
       btn.addEventListener("click", () => {
-        localStorage.setItem(KEY, "1");
+        setPreference(KEY, "1");
         intro.classList.add("seoIntroHidden");
         makeShowButton();
       });
@@ -55,7 +56,7 @@
       intro.prepend(btn);
     }
 
-    if (localStorage.getItem(KEY) === "1") {
+    if (getPreference(KEY) === "1") {
       intro.classList.add("seoIntroHidden");
       makeShowButton();
     }

@@ -7,15 +7,25 @@ import {
   RecipeIoType
 } from "./dist/repository.js";
 import { SearchQuery } from "./dist/searchQuery.js";
-import { loadDatasetSelection, verifyDatasetBuffer } from "./datasets.js";
+import { loadDatasetSelection } from "./datasets.js";
 import { filterGoods, mountSearchFilters, defaultSearchFilters } from "./search-controls.js";
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
 import { openVersionComparison } from "./version-compare-ui.js";
 import { appendRecipeDetails } from "./recipe-details.js";
-import { fetchDatabase } from "./data-loader.js";
+import { loadVerifiedDatabase } from "./database-cache.js";
+import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
+import { getPreference, setPreference } from "./preferences.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
+
+// Debug/integration imports must share the same module identity as the app.
+// The Pages artifact stamps every local module with this content-derived ID.
+window.GTNH_MODULE_URL = path => {
+  const url = new URL(path, document.baseURI), build = document.querySelector('meta[name="atlas-build"]')?.content;
+  if (build && build !== "development") url.searchParams.set("v", build);
+  return url.href;
+};
 
 const search = document.getElementById("search");
 const clear = document.getElementById("clear");
@@ -80,11 +90,11 @@ function autoGridLimit() {
 }
 
 function getGridLimitMode() {
-  return localStorage.getItem(GRID_LIMIT_MODE_KEY) || "auto";
+  return getPreference(GRID_LIMIT_MODE_KEY, "auto");
 }
 
 function getMaxGridTotal() {
-  const saved = clampGridLimit(localStorage.getItem(GRID_LIMIT_KEY) || GRID_LIMIT_MIN);
+  const saved = clampGridLimit(getPreference(GRID_LIMIT_KEY, GRID_LIMIT_MIN));
 
   if (getGridLimitMode() === "auto") {
     return clampGridLimit(Math.max(saved, autoGridLimit()));
@@ -95,8 +105,8 @@ function getMaxGridTotal() {
 
 function setMaxGridTotal(n, mode = "manual") {
   const limit = clampGridLimit(n);
-  localStorage.setItem(GRID_LIMIT_KEY, String(limit));
-  localStorage.setItem(GRID_LIMIT_MODE_KEY, mode);
+  setPreference(GRID_LIMIT_KEY, limit);
+  setPreference(GRID_LIMIT_MODE_KEY, mode);
   return limit;
 }
 
@@ -119,7 +129,7 @@ function mountGridLimitControls(status, total) {
   panel.innerHTML = `
     <div class="atlasGridLimitText">
       <b>Item grid</b>
-      <span>auto-loads while scrolling · loaded up to ${limit} of ${total ?? "?"}</span>
+      <span>up to ${limit} of ${total ?? "?"} matches</span>
     </div>
     <div class="atlasGridLimitBtns">
       <button type="button" data-grid-limit="more">Load now</button>
@@ -339,16 +349,17 @@ window.addEventListener("resize", refreshTipPosition);
 async function load() {
   if (loading) return;
   loading = true;
+  const started = performance.now();
   setLoadState("fetch", "Fetching and decompressing recipe database…");
   try {
     const dataset = await loadDatasetSelection();
-    const buffer = await fetchDatabase(({ received, total }) => {
+    const databaseStarted = performance.now();
+    const { buffer, source, saved } = await loadVerifiedDatabase(dataset, ({ received, total }) => {
       const mb = (received / 1000000).toFixed(1);
       const size = total ? ` of ${(total / 1000000).toFixed(1)} MB` : " MB";
       setLoadState("fetch", `Downloading and decompressing: ${mb}${size}…`);
-    }, dataset.dataUrl);
-    setLoadState("verify", `Verifying ${dataset.label} data…`);
-    await verifyDatasetBuffer(buffer, dataset);
+    }, { onStatus: setLoadState });
+    window.GTNH_DATABASE_LOAD = { source, saved, databaseMs: performance.now() - databaseStarted };
     setLoadState("index", "Building the item and recipe index…");
     // Give the browser a paint opportunity before synchronous index construction.
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
@@ -374,6 +385,7 @@ async function load() {
     // Install dependent APIs in registration order before enabling the UI.
     await dataReady;
     renderSearchGrid(false);
+    window.GTNH_DATABASE_LOAD.startupMs = performance.now() - started;
     setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
     const params = new URLSearchParams(location.search), linkedId = params.get("item");
     if (linkedId) {
@@ -498,6 +510,7 @@ function renderRecipes(obj, mode, push = true) {
   if (push) pushView({ type: "recipes", obj, mode });
 
   currentView = { type: "recipes", obj, mode };
+  if (/^[if]:/.test(obj.id)) recordVisit(obj.id, mode === "Usage" ? "usage" : "production");
   activeMachine = "All";
   currentRecipes = recipesFor(obj, mode);
 
@@ -524,6 +537,11 @@ function renderRecipes(obj, mode, push = true) {
   plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
   const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
   compare.addEventListener("click", () => openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production")); breadcrumb.appendChild(compare);
+  if (/^[if]:/.test(obj.id)) {
+    const favorite = document.createElement("button"); favorite.id = "favoriteCurrentItem"; favorite.type = "button";
+    const sync = () => { const saved = isFavorite(obj.id); favorite.textContent = saved ? "★ Favorited" : "☆ Favorite"; favorite.setAttribute("aria-pressed", String(saved)); };
+    favorite.addEventListener("click", () => { toggleFavorite(obj.id); sync(); }); sync(); breadcrumb.appendChild(favorite);
+  }
 
   renderMachineTabs();
   renderRecipeList();
@@ -1634,6 +1652,7 @@ machineTabs.addEventListener("pointerdown", () => {
   window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
 
   function findByNameV17(name) {
+    if (/^[ifo]:/.test(String(name || ""))) return window.GTNH_CATALOG?.resolve(name) || null;
     try {
       if (window.GTNHNEI_ICON_API?.findObjectByName) {
         return window.GTNHNEI_ICON_API.findObjectByName(name);
@@ -1985,16 +2004,25 @@ grid.addEventListener("focusin", event => {
   event.target.tabIndex = 0;
 });
 grid.addEventListener("keydown", event => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   const slot = event.target.closest(".slot"); if (!slot) return;
   const good = window.GTNH_CATALOG?.resolve(slot.dataset.goodsId);
   if (event.key.toLowerCase() === "u" && good) { event.preventDefault(); openUsage(good); return; }
+  if (event.key.toLowerCase() === "r" && good) { event.preventDefault(); openProduction(good); return; }
+  if (event.key.toLowerCase() === "f" && good) { event.preventDefault(); toggleFavorite(good.id); return; }
   const slots = [...grid.querySelectorAll(".slot")], index = slots.indexOf(slot);
   const columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
   const next = { ArrowRight: index + 1, ArrowLeft: index - 1, ArrowDown: index + columns, ArrowUp: index - columns, Home: 0, End: slots.length - 1 }[event.key];
   if (next !== undefined) { event.preventDefault(); slots[Math.max(0, Math.min(slots.length - 1, next))]?.focus(); }
 });
 document.addEventListener("keydown", event => {
-  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], [role=dialog]")) {
+  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog]") && !document.querySelector("dialog[open]")) {
     event.preventDefault(); search.focus();
   }
+});
+window.addEventListener("gtnh-library-changed", () => {
+  const button = document.getElementById("favoriteCurrentItem");
+  if (!button || currentView.type !== "recipes") return;
+  const saved = isFavorite(currentView.obj.id);
+  button.textContent = saved ? "★ Favorited" : "☆ Favorite"; button.setAttribute("aria-pressed", String(saved));
 });

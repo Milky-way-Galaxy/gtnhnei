@@ -1,8 +1,11 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, extname, sep } from "node:path";
+import { stageSite } from "./stage-site.js";
 
-const root = resolve(import.meta.dirname, "..");
+const staged = process.argv.includes("--staged");
+if (staged) await stageSite();
+const root = resolve(import.meta.dirname, "..", staged ? "_site" : ".");
 const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".webp": "image/webp" };
 createServer(async (req, res) => {
   try {

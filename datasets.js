@@ -21,7 +21,7 @@ export function selectDataset(manifest, selection) {
   return dataset;
 }
 export async function loadDatasetSelection() {
-  const response = await fetch("data/manifest.json");
+  const response = await fetch("data/manifest.json", { cache: "no-cache" });
   if (!response.ok) throw new Error(`Recipe dataset manifest could not load (HTTP ${response.status}).`);
   const manifest = validateManifest(await response.json());
   let stored; try { stored = localStorage.getItem(DATASET_STORAGE_KEY); } catch { /* Session-only selection remains possible. */ }
@@ -34,7 +34,7 @@ export async function loadDatasetSelection() {
       const url = new URL(location.href); url.searchParams.set("dataset", id); location.assign(url);
     }
   };
-  document.documentElement.style.setProperty("--atlas-image", `url("${dataset.atlasUrl}")`);
+  document.documentElement.style.setProperty("--atlas-image", `url("${dataset.atlasUrl}?sha=${dataset.atlasSha256}")`);
   window.dispatchEvent(new Event("gtnh-dataset-selected"));
   return dataset;
 }

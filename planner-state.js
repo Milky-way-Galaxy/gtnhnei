@@ -2,6 +2,7 @@ import { validateMachineConfig, defaultRuleset } from "./machine-model.js";
 export const defaultPlannerState = {
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
   rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
+  operatingSeconds: 3600, operatingBasis: "requested", checklist: {},
   settings: { waterFree: true, steamFree: true, cellsReusable: true, expandCircuits: false, expandMachines: false, expandPlatesWires: false, reuseByproducts: false }
 };
 export function normalizePlannerState(raw) {
@@ -13,6 +14,10 @@ export function normalizePlannerState(raw) {
     if (!values.includes(state[key])) throw new Error(`Invalid ${key}.`);
   }
   if (typeof state.target !== "string" || state.target.length > 512) throw new Error("Invalid target.");
+  state.operatingSeconds = Number(state.operatingSeconds);
+  if (!Number.isFinite(state.operatingSeconds) || state.operatingSeconds < 1 || state.operatingSeconds > 31536000 || !["requested", "installed"].includes(state.operatingBasis)) throw new Error("Invalid operating supply projection settings.");
+  if (!state.checklist || typeof state.checklist !== "object" || Array.isArray(state.checklist) || Object.keys(state.checklist).length > 5000 || Object.entries(state.checklist).some(([key, amount]) => !/^(?:input|startup):[ifo]:/.test(key) || typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)) throw new Error("Invalid supply checklist.");
+  state.checklist = { ...state.checklist };
   for (const key of ["routeChoices", "oreChoices", "machineConfigs", "lockedRoutes"]) {
     if (!state[key] || typeof state[key] !== "object" || Array.isArray(state[key])) throw new Error(`Invalid ${key}.`);
     if (Object.keys(state[key]).length > 10000 || Object.hasOwn(state[key], "__proto__")) throw new Error(`Invalid ${key}.`);

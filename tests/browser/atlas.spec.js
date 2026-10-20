@@ -27,7 +27,7 @@ async function ready(page) {
 
 async function matchesQuery(page, query) {
   return page.evaluate(async query => {
-    const { Repository, Item, Fluid } = await import("./dist/repository.js");
+    const { Repository, Item, Fluid } = await import(window.GTNH_MODULE_URL("./dist/repository.js"));
     const { SearchQuery } = await import("./dist/searchQuery.js");
     const repo = Repository.current;
     const goods = [...repo.items].map(ptr => repo.GetObject(ptr, Item))

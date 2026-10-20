@@ -1,5 +1,5 @@
-import { fetchDatabase } from "./data-loader.js";
-import { verifyDatasetBuffer, selectDataset } from "./datasets.js";
+import { loadVerifiedDatabase } from "./database-cache.js";
+import { selectDataset } from "./datasets.js";
 import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { compareRecipes } from "./recipe-compare.js";
@@ -35,8 +35,8 @@ async function compare() {
   try {
     const other=selectDataset(window.GTNH_DATASETS.manifest,dialog.querySelector("#versionCompareDataset").value);
     status.textContent=`Loading ${other.label} for comparison…`;
-    const buffer=await fetchDatabase(({received,total})=>{if(current===sequence)status.textContent=`Downloading ${other.label}: ${(received/1000000).toFixed(1)}${total?` / ${(total/1000000).toFixed(1)}`:""} MB…`;},other.dataUrl,{signal});
-    await verifyDatasetBuffer(buffer,other);signal.throwIfAborted();status.textContent="Indexing comparison data…";
+    const {buffer}=await loadVerifiedDatabase(other,({received,total})=>{if(current===sequence)status.textContent=`Downloading ${other.label}: ${(received/1000000).toFixed(1)}${total?` / ${(total/1000000).toFixed(1)}`:""} MB…`;},{signal,onStatus:(phase,text)=>{if(current===sequence)status.textContent=text;}});
+    signal.throwIfAborted();status.textContent="Indexing comparison data…";
     const repository=await loadRepository(buffer,{yieldControl:yieldToBrowser,signal,publish:false});
     if(repository.items.length!==other.items||repository.fluids.length!==other.fluids||repository.recipes.length!==other.recipes)throw new Error("Comparison dataset record counts do not match its manifest.");
     // No shared current repository or full name index is published for this view.

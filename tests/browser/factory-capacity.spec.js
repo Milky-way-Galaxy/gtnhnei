@@ -4,7 +4,7 @@ const target="f:gregtech:liquid_epichlorhydrin", recipe="r~7CR1mklsMhyejhfODug_Q
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem("gtnhnei_help_seen","1"));});
 async function build(page, depth="1") {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target);
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcTarget").fill(target);
   await page.locator("#calcUnit").selectOption("L"); await page.locator("#calcAmount").fill("3000");
   await page.locator("#calcRateMode").selectOption("per_minute"); await page.locator("#calcDepth").selectOption(depth);
   await page.locator("#calcBuild").click();
@@ -41,7 +41,7 @@ test("recipe machine counts survive reload, portable plans and a useful machines
   const download=await pending; expect(download.suggestedFilename()).toBe("gtnh-atlas-machines.csv");
   const csv=await readFile(await download.path(),"utf8"); expect(csv).toContain('"Required machines","Installed machines"'); expect(csv).toContain(`"${recipe}"`); expect(csv).toContain('"2","3","recipe"');
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcBuild").click();
   await expect(input).toHaveValue("3"); expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().knownInstalledEut)).toBe(90);
   await page.locator('[data-calc-tab="code"]').click(); await page.locator("#plannerImport").setInputFiles({name:"factory.json",mimeType:"application/json",buffer:Buffer.from(json)});
   expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().capacityAnalysis.rateFactor)).toBe(1.875);

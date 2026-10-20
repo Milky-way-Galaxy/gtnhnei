@@ -1,5 +1,6 @@
 import { validateMachineConfig, defaultRuleset } from "./machine-model.js";
 export const defaultPlannerState = {
+  uiMode: "factory", nodeLimit: 2500,
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
   rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
   operatingSeconds: 3600, operatingBasis: "requested", checklist: {},
@@ -8,6 +9,9 @@ export const defaultPlannerState = {
 export function normalizePlannerState(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid plan settings.");
   const state = { ...structuredClone(defaultPlannerState), ...raw, settings: { ...defaultPlannerState.settings, ...raw.settings } };
+  if (!["basic", "factory"].includes(state.uiMode)) throw new Error("Invalid calculator mode.");
+  if (!Number.isInteger(Number(state.nodeLimit)) || Number(state.nodeLimit) < 10 || Number(state.nodeLimit) > 20000) throw new Error("Invalid dependency node limit.");
+  state.nodeLimit = Number(state.nodeLimit);
   if (!Number.isFinite(Number(state.amount)) || Number(state.amount) <= 0) throw new Error("Amount must be finite and greater than zero.");
   for (const [key, values] of Object.entries({ rateMode: ["total", "per_second", "per_minute", "per_hour"], unit: ["items", "L", "buckets", "batches", "stacks"],
     routeMode: ["ask", "manual", "lowest_tier", "lowest_eut", "lowest_energy", "fastest", "fewest_inputs"], rounding: ["whole", "fractional"], machineMode: ["auto", "fixed"] })) {

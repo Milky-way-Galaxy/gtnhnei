@@ -1,4 +1,20 @@
 import { test, expect } from "@playwright/test";
+test("full-plan previews show real route effects without mutating the current plan", async ({ page }) => {
+  const target = "f:gregtech:liquid_epichlorhydrin", route = "r~7CR1mklsMhyejhfODug_QQ==";
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target); await page.locator("#calcAmount").fill("2000");
+  await page.locator("#calcBuild").click(); await page.locator(`select[data-route-good="${target}"]`).first().selectOption(route);
+  const original = await page.evaluate(() => ({ state: window.GTNH_CALC.getState(), plan: window.GTNH_CALC.getPlan() }));
+  await page.locator(`[data-compare-good="${target}"]`).first().click();
+  const candidate = page.locator(`.routeChoice:not([data-route-recipe="${route}"])`).filter({ has: page.locator('[data-preview-route]:enabled') }).first();
+  await candidate.locator("[data-preview-route]").click();
+  await expect(page.locator("#routePlanPreview")).toContainText("38,400");
+  await expect(page.locator("#routePlanPreview")).toContainText("Nothing is applied");
+  expect(await page.evaluate(() => window.GTNH_CALC.getState())).toEqual(original.state);
+  expect(await page.evaluate(() => window.GTNH_CALC.getPlan().knownEnergy)).toBe(38400);
+  await candidate.locator("[data-pick-route]").click();
+  expect(await page.evaluate(id => window.GTNH_CALC.getState().routeChoices[id], target)).not.toBe(route);
+});
 const target = "f:gregtech:liquid_epichlorhydrin", route = "r~7CR1mklsMhyejhfODug_QQ==";
 test("route cards expose real base metrics, filter safely and apply an exact production route", async ({ page }, info) => {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();

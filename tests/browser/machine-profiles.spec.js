@@ -3,7 +3,7 @@ test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorag
 test("checked EBF model validates real heat/power, retains bad edits and round trips settings", async ({ page }, testInfo) => {
   const target="i:gregtech:gt.metaitem.01:12393", route="r~--l7UvQdPwieyDfV6NjffQ==";
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target);
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcTarget").fill(target);
   await page.locator("#calcBuild").click(); await page.locator(`select[data-route-good="${target}"]`).selectOption(route);
   const machine = page.locator(`[data-machine-id="${route}"]`), profile = machine.locator("[data-profile]");
   await machine.locator(":scope > summary").click();
@@ -44,7 +44,7 @@ test("checked EBF model validates real heat/power, retains bad edits and round t
   expect(JSON.parse(json).schemaVersion).toBe(3);
   expect(JSON.parse(json).settings.machineConfigs[route].ruleset).toBe("gt5-5.09.51.470");
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcBuild").click();
   expect(await page.evaluate(() => window.GTNH_CALC.getPlan().root.performance.durationTicks)).toBe(345);
 });
 for (const [dataset, route, reference] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_QQ==","gt5-5.09.51.470"],["gtnh-2.9.0","r~RgUYVgBcPJmt4u3DO2ZYIg==","gt5-5.09.54.205"]]) {
@@ -52,7 +52,7 @@ for (const [dataset, route, reference] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     const target = "f:gregtech:liquid_epichlorhydrin";
     await page.goto(`./?dataset=${dataset}`); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-    await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target); await page.locator("#calcUnit").selectOption("L");
+    await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcTarget").fill(target); await page.locator("#calcUnit").selectOption("L");
     await page.locator("#calcBuild").click(); await page.locator(`select[data-route-good="${target}"]`).selectOption(route);
     const machine = page.locator(`[data-machine-id="${route}"]`), profile = machine.locator("[data-profile]");
     await machine.locator(":scope > summary").click();
@@ -72,7 +72,7 @@ for (const [dataset, route, reference] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_
 test("an unused invalid legacy profile preserves the working draft, preferences and JSON export",async({page})=>{
   const target="f:gregtech:liquid_epichlorhydrin", route="r~7CR1mklsMhyejhfODug_QQ==";
   await page.addInitScript(({target,route})=>localStorage.setItem("gtnh_atlas_planner_v1_gtnh-2.8.0",JSON.stringify({target,amount:2000,unit:"L",routeChoices:{[target]:route},settings:{waterFree:false},machineConfigs:{"r~--l7UvQdPwieyDfV6NjffQ==":{parallels:0}}})),{target,route});
-  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); await page.locator("#toolCalc").click();
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   await expect(page.locator("#calcTarget")).toHaveValue(target); await page.locator("#calcBuild").click();
   expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().knownEnergy)).toBe(38400);
   expect(await page.evaluate(()=>window.GTNH_CALC.getState().settings.waterFree)).toBe(false);

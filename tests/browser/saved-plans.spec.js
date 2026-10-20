@@ -18,7 +18,7 @@ async function ready(page) {
 async function start(page) {
   await page.goto("./");
   await ready(page);
-  await page.locator("#toolCalc").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   await page.locator("#calcTarget").fill(target);
   await page.locator("#calcAmount").fill("2000");
   await page.locator("#calcUnit").selectOption("L");
@@ -67,7 +67,7 @@ test("named real plans save, replace, reload, download, delete and undo with foc
   await expect(page.locator("#toolCalc")).toBeFocused();
   await page.reload();
   await ready(page);
-  await page.locator("#toolCalc").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   await page.locator("#plannerLibrary > summary").click();
   await expect(page.locator("#plannerSavedPlan option")).toHaveCount(3);
   await page.locator("#plannerSavedPlan").selectOption(first);

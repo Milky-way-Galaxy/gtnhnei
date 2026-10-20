@@ -92,12 +92,15 @@ The staging transform itself contributes to the build ID. Integration/debug
 imports can use `window.GTNH_MODULE_URL(path)` to share app module identity.
 
 Playwright serves this staged artifact at the GitHub Pages subpath. Publish Atlas
-reuses the complete Site checks workflow before deploying through Pages Actions,
-replacing the ambiguous legacy/Jekyll publication path.
-The deployment job selects the Actions source with its scoped `pages: write`
-token; the connected development integration does not have Pages-settings write
-access (its direct setup request returned 403). Actual setup/deployment results
-are recorded in the PR's release status.
+reuses the complete Site checks workflow before deploying through Pages Actions.
+It configures the existing Pages site without changing repository settings.
+Both the connected integration and the scoped Actions token returned 403 when
+attempting to change the Pages source. That settings mutation was removed from
+the deployment path. An administrator can select GitHub Actions in Settings →
+Pages to retire automatic legacy/Jekyll builds; until then, a main push can start
+both publishers. The checked workflow runs after its full test gate. Actual
+deployment results and the public build marker are recorded in the PR release
+status; a successful legacy build alone does not prove the staged artifact is live.
 
 ## Local startup measurement
 

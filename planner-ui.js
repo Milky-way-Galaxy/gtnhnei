@@ -3,6 +3,8 @@ import { exportPlanYaml, planCsv } from "./recipe-export.js";
 import { defaultPlannerState, normalizePlannerState, serializePlan, importPlan } from "./planner-state.js";
 import { mountPlanTools, installSharedPlanNotice } from "./plan-tools-ui.js";
 import { recipeMetadataRows } from "./recipe-details.js";
+import { machinePerformance } from "./machine-model.js";
+import { machineProfileHtml, initialMachineConfig } from "./machine-profile-ui.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
@@ -147,6 +149,7 @@ export function installPlanner() {
     const box = root.querySelector("#calcTree");
     const workspace = root.querySelector(".gtnhCalcWorkspace"), scroll = workspace.scrollTop;
     const expanded = new Set([...box.querySelectorAll("details[open][data-node-id]")].map(node => node.dataset.nodeId));
+    const expandedMachines = new Set([...box.querySelectorAll("details[open][data-machine-id]")].map(node => node.dataset.machineId));
     const active = document.activeElement;
     const restore = focusedTarget !== undefined ? `[data-target-index="${focusedTarget}"][data-target-field="${focusedTargetField}"]` : focusedStock ? `[data-stock-quantity="${CSS.escape(focusedStock)}"]` : active?.dataset.routeGood ? `[data-route-good="${CSS.escape(active.dataset.routeGood)}"]` :
       active?.dataset.ore ? `[data-ore="${CSS.escape(active.dataset.ore)}"]` :
@@ -157,7 +160,7 @@ export function installPlanner() {
       box.innerHTML = `<p class="plannerDataset">${esc(dataset().label)} · ${plan.targets.length > 1 ? `Factory: ${plan.targets.length} outputs` : `${esc(plan.target.name)} · ${fmt(plan.requested)} ${esc(plan.target.unit)}${plan.isRate ? "/s" : ""}`}</p>
         <div class="plannerMetrics"><div>${plan.isRate ? "Known average EU/t" : "Known energy"}<b>${fmt(plan.isRate ? plan.knownAverageEut : plan.knownEnergy)}${plan.isRate ? "" : " EU"}</b></div><div>${plan.isRate ? "Installed EU/t" : plan.targets.length > 1 ? "Processing times" : "Root processing time"}<b>${plan.isRate ? fmt(plan.knownInstalledEut) : plan.targets.length > 1 ? "Per output below" : fmt(plan.rootTimeSeconds) + " s"}</b></div></div>
         ${plan.targets.length > 1 ? `<h4>Factory outputs</h4><div class="plannerTable"><table><thead><tr><th>Output</th><th>Demand${plan.isRate ? "/s" : ""}</th><th>${plan.isRate ? "Installed recipe capacity/s" : "Root time (s)"}</th></tr></thead><tbody>${plan.targets.map(target=>`<tr><td>${esc(target.name)}<small>${esc(target.id)}</small></td><td>${fmt(target.requested)} ${esc(target.unit)}</td><td>${target.root.status === "from-byproduct" ? "From co-products" : fmt(plan.isRate ? target.installedCapacity : target.timeSeconds)}</td></tr>`).join("")}</tbody></table></div>` : ""}
-        <p>${plan.targets.length === 1 && plan.capacity !== null ? plan.isRate ? `Installed root recipe capacity (${fmt(plan.targets[0].installedCount)} machines): ${fmt(plan.targets[0].installedCapacity)} ${esc(plan.target.unit)}/s. ` : `Root capacity with ${state.machineCount} machine(s): ${fmt(plan.capacity)} ${esc(plan.target.unit)}/s. ` : ""}${plan.hasUnknownPower ? "Some timing/power values are unknown. Totals cover known machines only." : "Base recipe timing and power; no automatic multiblock bonuses."}</p>
+        <p>${plan.targets.length === 1 && plan.capacity !== null ? plan.isRate ? `Installed root recipe capacity (${fmt(plan.targets[0].installedCount)} machines): ${fmt(plan.targets[0].installedCapacity)} ${esc(plan.target.unit)}/s. ` : `Root capacity with ${state.machineCount} machine(s): ${fmt(plan.capacity)} ${esc(plan.target.unit)}/s. ` : ""}${plan.hasUnknownPower ? "Some timing/power values are unknown. Totals cover known machines only." : "Timing and power use the selected recipe profiles; no other multiblock bonuses are assumed."}</p>
         <details ${plan.unresolved.length ? "open" : ""}><summary>Warnings and unresolved routes (${plan.warnings.length})</summary><ul>${plan.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>
         <h4>Required materials ${plan.isRate ? "per second" : ""}</h4>${table(plan.materials, "actions")}
         ${plan.inventoryUsed.length ? `<details open><summary>Used from inventory (${plan.inventoryUsed.length})</summary>${table(plan.inventoryUsed)}</details>` : ""}
@@ -168,9 +171,9 @@ export function installPlanner() {
         <h4>Dependency tree</h4><p>${plan.nodes.length} nodes. ${plan.truncated ? "Node limit reached; boundary materials retained." : ""}</p>
         <div class="plannerNodes">${plan.nodes.slice(0, displayNodeLimit).map(node => `<details class="plannerNode" data-node-key="${node.key}" data-node-id="${esc(node.id)}" ${node.depth < 2 || expanded.has(node.id) ? "open" : ""}><summary><b>${esc(node.name)}</b> · ${fmt(node.amount)} ${esc(node.unit)}${plan.isRate ? "/s" : ""} · ${esc(node.status.replaceAll("-", " "))}</summary><small>${esc(node.id)} · depth ${node.depth}</small>${node.inventoryUsed ? `<p>${fmt(node.inventoryUsed)} ${esc(node.unit)} supplied from inventory; ${fmt(node.productionAmount)} remaining demand.</p>` : ""}${node.byproductUsed ? `<p>${fmt(node.byproductUsed)} ${esc(node.unit)} supplied from earlier co-products.</p>` : ""}${node.recipeId ? `<p>${esc(node.machine)} · ${fmt(node.batches)} batches${plan.isRate ? "/s" : ""}</p>` : ""}${node.depth === 0 ? routeControl(node) : `<div data-route-slot="${node.key}"></div>`}<button data-supply="${esc(node.id)}" type="button">Supply externally</button></details>`).join("")}</div>
         ${plan.nodes.length > displayNodeLimit ? `<button type="button" id="plannerShowMore">Show ${Math.min(250, plan.nodes.length-displayNodeLimit)} more dependency nodes</button>` : ""}
-        <h4>Machine requirements</h4><p>Parallel lanes and overclock models are explicit assumptions; verify the selected machine supports them.</p>
-        ${plan.steps.map(step => { const cfg = state.machineConfigs[step.recipeId] || {}, metadata = recipeMetadataRows(step.recipe); return `<details class="plannerNode"><summary>${esc(step.machine)} · ${plan.isRate ? fmt(step.count) + " required machines (" + fmt(step.equivalents) + " equivalent)" : fmt(step.batches) + " batches"}</summary><p>${step.performance ? fmt(step.performance.durationTicks) + " ticks/batch · " + fmt(step.performance.eut) + " EU/t at full load" + (plan.isRate && step.installedCount !== step.count ? ` · ${fmt(step.installedCount)} configured machines` : "") : "Timing/power unknown"}</p><p>${plan.isRate ? `Average: ${fmt(step.averageEut)} EU/t · installed: ${fmt(step.installedEut)} EU/t` : `Known step energy: ${fmt(step.energy)} EU`}</p>${metadata.length ? `<details class="plannerRecipeMetadata"><summary>Recipe metadata</summary><dl>${metadata.map(row => `<dt>${esc(row.key)}</dt><dd>${esc(row.value)}</dd>`).join("")}</dl><p>These exported conditions are not evaluated by the generic OC/parallel profile.</p></details>` : ""}
-          <div class="plannerProfile" data-profile="${esc(step.recipeId)}"><label>Parallel lanes<input type="number" min="1" max="4096" data-profile-field="parallels" value="${cfg.parallels || 1}"></label><label>Overclocks<input type="number" min="0" max="10" data-profile-field="overclocks" value="${cfg.overclocks || 0}"></label><label>OC model<select data-profile-field="overclockMode"><option value="normal">Normal (4×EU / 2×speed)</option><option value="perfect" ${cfg.overclockMode === "perfect" ? "selected" : ""}>Perfect (4×EU / 4×speed)</option></select></label></div></details>`; }).join("")}
+        <h4>Machine requirements</h4><p>Choose a generic assumption or a named GT5 reference. Machine-specific conditions still require verification.</p>
+        ${plan.steps.map(step => { const cfg = state.machineConfigs[step.recipeId] || {}, metadata = recipeMetadataRows(step.recipe), p = step.performance; return `<details class="plannerNode" data-machine-id="${esc(step.recipeId)}" ${expandedMachines.has(step.recipeId) ? "open" : ""}><summary>${esc(step.machine)} · ${plan.isRate ? fmt(step.count) + " required machines (" + fmt(step.equivalents) + " equivalent)" : fmt(step.batches) + " batches"}</summary><p>${p ? fmt(p.durationTicks) + " ticks/batch · " + fmt(p.eut) + " EU/t at full load" + (plan.isRate && step.installedCount !== step.count ? ` · ${fmt(step.installedCount)} configured machines` : "") : "Timing/power unknown"}</p><p>${plan.isRate ? `Average: ${fmt(step.averageEut)} EU/t · installed: ${fmt(step.installedEut)} EU/t` : `Known step energy: ${fmt(step.energy)} EU`}</p>${p?.model ? `<p class="plannerMachineResult">Applied ${p.overclocks} overclocks · ${p.heatOverclocks} heat-perfect · ${p.heatDiscounts} heat discounts · ${fmt(p.availableEut)} EU/t supply${p.tickLimited ? " · one-tick floor reached" : ""}</p>` : ""}${metadata.length ? `<details class="plannerRecipeMetadata"><summary>Recipe metadata</summary><dl>${metadata.map(row => `<dt>${esc(row.key)}</dt><dd>${esc(row.value)}</dd>`).join("")}</dl><p>${p?.model === "ebf" ? "coil_heat is evaluated against the configured machine heat. Other conditions still require verification." : "These exported conditions are not evaluated by this OC/parallel profile."}</p></details>` : ""}
+          ${machineProfileHtml(step, cfg, dataset().id)}</details>`; }).join("")}
         <h4>Dependency diagram</h4><div class="plannerDiagram" role="img" aria-label="Recipe dependency diagram">${diagram()}</div>`;
     }
     if (restore) root.querySelector(restore)?.focus({ preventScroll: true });
@@ -279,13 +282,21 @@ export function installPlanner() {
         if (input.value) state.routeChoices[input.dataset.routeGood] = input.value; else delete state.routeChoices[input.dataset.routeGood];
       } else if (input.dataset.ore) state.oreChoices[input.dataset.ore] = input.value;
       else if (input.dataset.profileField) {
-        const id = input.closest("[data-profile]").dataset.profile;
-        if (input.dataset.profileField !== "overclockMode" && (!input.value || !input.checkValidity())) {
-          input.value = state.machineConfigs[id]?.[input.dataset.profileField] ?? (input.dataset.profileField === "parallels" ? 1 : 0);
-          overlay.querySelector("#plannerStatus").textContent = "Parallel lanes must be whole numbers from 1–4096; overclocks from 0–10. Previous profile retained.";
+        const id = input.closest("[data-profile]").dataset.profile, field = input.dataset.profileField;
+        const previous = state.machineConfigs[id] || {}, recipe = plan?.steps.find(step => step.recipeId === id)?.recipe;
+        if (!recipe) return;
+        try {
+          if (!input.checkValidity() || input.type === "number" && !input.value) throw new Error("Enter a whole number within the field's limits.");
+          const value = input.type === "checkbox" ? input.checked : input.tagName === "SELECT" && field !== "voltageTier" ? input.value : Number(input.value);
+          const next = field === "model" ? initialMachineConfig(recipe, previous, value, dataset().id) : { ...previous, [field]: value };
+          machinePerformance(recipe, next);
+          state.machineConfigs[id] = next;
+        } catch (failure) {
+          if (input.type === "checkbox") input.checked = !!previous[field];
+          else input.value = previous[field] ?? ({parallels:1, model:"generic", overclockMode:"normal"}[field] ?? 0);
+          overlay.querySelector("#plannerStatus").textContent = `${failure.message} Previous profile retained.`;
           return;
         }
-        state.machineConfigs[id] = { ...(state.machineConfigs[id] || {}), [input.dataset.profileField]: input.dataset.profileField === "overclockMode" ? input.value : Number(input.value) };
       } else if (input.id === "plannerImport") {
         try {
           if (input.files[0]?.size > 2000000) throw new Error("Plan exceeds the 2 MB import limit.");

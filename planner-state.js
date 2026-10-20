@@ -1,3 +1,4 @@
+import { validateMachineConfig } from "./machine-model.js";
 export const defaultPlannerState = {
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
   rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
@@ -17,6 +18,7 @@ export function normalizePlannerState(raw) {
     if (Object.keys(state[key]).length > 10000 || Object.hasOwn(state[key], "__proto__")) throw new Error(`Invalid ${key}.`);
   }
   for (const key of ["rawOverrides", "ignored"]) if (!Array.isArray(state[key]) || state[key].some(value => typeof value !== "string")) throw new Error(`Invalid ${key}.`);
+  for (const config of Object.values(state.machineConfigs)) validateMachineConfig(config);
   if (!state.inventory || typeof state.inventory !== "object" || Array.isArray(state.inventory) || Object.keys(state.inventory).length > 1000 || Object.hasOwn(state.inventory, "__proto__")) throw new Error("Invalid inventory.");
   state.inventory = { ...state.inventory };
   for (const [id, quantity] of Object.entries(state.inventory)) {

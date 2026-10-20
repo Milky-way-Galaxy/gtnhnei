@@ -121,6 +121,17 @@ test("real epichlorohydrin throughput: 3000 L/min needs 1.6 base machines, 48 av
   assert.equal(result.targets[0].installedCount, 2);
   assert.equal(result.targets[0].installedCapacity, 62.5);
 });
+test("real hot Oriharukon uses the checked EBF profile without changing item/fluid demand", () => {
+  const target = "i:gregtech:gt.metaitem.01:12393", route = "r~--l7UvQdPwieyDfV6NjffQ==";
+  const opts = { target, amount:1, depth:1, routeChoices:{[target]:route} };
+  const original = calculateProduction(catalog, opts);
+  const checked = calculateProduction(catalog, {...opts, machineConfigs:{[route]:{model:"ebf", voltageTier:6, machineHeat:7200, ruleset:"gt5-5.09.51.470"}}});
+  assert.deepEqual(checked.materials, original.materials); assert.deepEqual(checked.reusable, original.reusable);
+  assert.equal(checked.steps[0].recipe.durationTicks,1380); assert.equal(checked.steps[0].recipe.eut,7680);
+  assert.equal(checked.rootTimeSeconds,17.25); assert.equal(checked.knownEnergy,9565125);
+  assert.equal(checked.steps[0].performance.heatOverclocks,1);
+  assert.match(exportPlanYaml(checked),/eut: 7680\n  dur: 69/);
+});
 test("real data bucket conversion, stable recipe IDs and structured metadata remain exact", () => {
   const result = calculateProduction(catalog, { ...epiOptions, amount: 3, unit: "buckets" });
   assert.equal(result.requested, 3000);

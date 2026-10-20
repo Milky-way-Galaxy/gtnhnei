@@ -18,6 +18,9 @@
 .plannerNode button { margin-top: 7px; }
 .plannerProfile { display: flex; gap: 9px; flex-wrap: wrap; }
 .plannerProfile label { flex: 1 1 120px; }
+#gtnhCalcOverlay .plannerProfileCheck { flex-direction: row; align-items: center; }
+.plannerProfileCheck input { flex-shrink: 0; }
+.plannerMachineResult { padding: 8px; border-left: 3px solid #8fe6d1; color: #a5e7d8; }
 .plannerMaterialActions { display: flex; flex-direction: column; gap: 6px; }
 .plannerStockRow { display: flex; align-items: end; gap: 8px; margin: 12px 0; }
 .plannerStockRow label { flex: 1; min-width: 0; }

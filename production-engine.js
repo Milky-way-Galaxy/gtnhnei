@@ -1,3 +1,5 @@
+import { machinePerformance } from "./machine-model.js";
+export { machinePerformance } from "./machine-model.js";
 const EPS = 1e-10;
 // Arithmetic such as (0.1 + 0.2) / 0.3 can land just above an integer.
 // Correct a few floating-point ULPs, without dropping small positive demands.
@@ -29,18 +31,6 @@ export function recipeBalance(recipe) {
   for (const [id, input] of inputs) add(netInputs, input, input.amount - (outputs.get(id)?.amount || 0));
   for (const [id, output] of outputs) add(netOutputs, output, output.amount - (inputs.get(id)?.amount || 0));
   return { inputs: [...netInputs.values()], outputs: [...netOutputs.values()], reusable: [...reusable.values()] };
-}
-
-export function machinePerformance(recipe, config = {}) {
-  if (!(recipe.durationTicks > 0) || recipe.eut === null) return null;
-  const parallels = Number(config.parallels ?? 1), overclocks = Number(config.overclocks ?? 0);
-  if (!Number.isInteger(parallels) || parallels < 1 || parallels > 4096 || !Number.isInteger(overclocks) || overclocks < 0 || overclocks > 10) {
-    throw new Error("Parallel lanes must be 1–4096 and overclocks 0–10.");
-  }
-  if (config.overclockMode && !["normal", "perfect"].includes(config.overclockMode)) throw new Error("Unknown overclock model.");
-  const durationTicks = Math.max(1, Math.floor(recipe.durationTicks / (config.overclockMode === "perfect" ? 4 : 2) ** overclocks));
-  const laneEut = recipe.eut * 4 ** overclocks;
-  return { durationTicks, parallels, laneEut, eut: laneEut * parallels, batchesPerSecond: 20 * parallels / durationTicks };
 }
 
 // Base, expected net output only; this is not the cost of an upstream chain.
@@ -223,8 +213,11 @@ export function calculateFactory(catalog, options) {
     node.routeCount = recipes.length;
     if (recipe.outputs.some(io => io.probability < 1)) warnings.add("Chance outputs use expected yields, not guaranteed amounts. Actual batches can vary.");
     if (!node.performance) warnings.add(`${recipe.machine}: timing/power is not available in this dataset; machine count and energy are unknown.`);
-    if (recipe.metadata?.some(entry => entry.key !== "recycle") || recipe.specialValue || recipe.circuitConflicts) warnings.add("Recipe metadata, special values and circuit conflicts are shown with machine requirements. Generic profiles do not evaluate these machine-specific conditions.");
-    if (machineConfigs[recipe.id]?.overclocks || (machineConfigs[recipe.id]?.parallels || 1) > 1) warnings.add("Custom machine profiles use the selected generic OC/parallel model. Verify machine-specific limits, amperage, heat and voltage before building.");
+    if (recipe.metadata?.some(entry => entry.key !== "recycle") || recipe.specialValue || recipe.circuitConflicts) warnings.add("Recipe metadata, special values and circuit conflicts are shown with machine requirements. Only EBF coil heat is checked by the matching reference profile; remaining machine-specific conditions require verification.");
+    if (node.performance?.model) {
+      warnings.add("GT5 reference profiles check configured power and EBF heat. Other recipe conditions, maintenance, subtick parallelism and machine-specific bonuses still require verification.");
+      if (node.performance.tickLimited) warnings.add(`${recipe.machine}: overclocks reach the one-tick floor; extra power does not provide subtick production in this model. Try lowering the OC limit.`);
+    } else if (machineConfigs[recipe.id]?.overclocks || (machineConfigs[recipe.id]?.parallels || 1) > 1) warnings.add("Custom machine profiles use the selected generic OC/parallel model. Verify machine-specific limits, amperage, heat and voltage before building.");
     const previous = steps.get(recipe.id);
     if (previous) previous.batches += batches;
     else steps.set(recipe.id, { recipeId: recipe.id, machine: recipe.machine, recipe, batches, performance: node.performance });

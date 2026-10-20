@@ -81,7 +81,10 @@ Whole-batch root time schedules complete waves across the requested machines/par
 Profiles explicitly select parallel lanes and overclocks. Normal overclocks
 multiply per-lane EU/t by 4 and divide time by 2; perfect OCs divide time by 4.
 Duration truncates to whole ticks, with a one-tick floor. No subtick behavior or
-machine-specific bonuses are assumed. Check heat, voltage, amperage, parallel
+machine-specific bonuses are assumed by the generic profile. Opt-in named GT5
+profiles check configured power, voltage and EBF heat, using release-pinned
+numerical references. See [machine models](machine-models.md) for verified source
+versions, independent Java verification and limits. Check parallel
 limits, coils, machine modifiers and multiblock behavior in-game. Recipes with
 missing timing/power report unknown values instead of invented machine counts.
 

@@ -1,0 +1,51 @@
+import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem("gtnhnei_help_seen", "1")); });
+test("checked EBF model validates real heat/power, retains bad edits and round trips settings", async ({ page }) => {
+  const target="i:gregtech:gt.metaitem.01:12393", route="r~--l7UvQdPwieyDfV6NjffQ==";
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target);
+  await page.locator("#calcBuild").click(); await page.locator(`select[data-route-good="${target}"]`).selectOption(route);
+  const machine = page.locator(`[data-machine-id="${route}"]`), profile = machine.locator("[data-profile]");
+  await machine.locator(":scope > summary").click();
+  await profile.locator('[data-profile-field="model"]').selectOption("ebf");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveValue("5400");
+  await profile.locator('[data-profile-field="voltageTier"]').selectOption("6");
+  await profile.locator('[data-profile-field="machineHeat"]').fill("7200");
+  await profile.locator('[data-profile-field="machineHeat"]').blur();
+  await expect(machine.locator(".plannerMachineResult")).toContainText("Applied 1 overclocks · 1 heat-perfect · 2 heat discounts");
+  expect(await page.evaluate(() => window.GTNH_CALC.getPlan().knownEnergy)).toBe(9565125);
+  await profile.locator('[data-profile-field="machineHeat"]').fill("5399"); await profile.locator('[data-profile-field="machineHeat"]').blur();
+  await expect(page.locator("#plannerStatus")).toContainText("Insufficient EBF heat");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveValue("7200");
+  await profile.locator('[data-profile-field="voltageTier"]').selectOption("4");
+  await expect(page.locator("#plannerStatus")).toContainText("Insufficient input power");
+  await expect(profile.locator('[data-profile-field="voltageTier"]')).toHaveValue("6");
+  await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
+  const json = await page.locator("#calcCodeOut").inputValue();
+  expect(JSON.parse(json).settings.machineConfigs[route].ruleset).toBe("gt5-5.09.51.470");
+  await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+  await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();
+  expect(await page.evaluate(() => window.GTNH_CALC.getPlan().root.performance.durationTicks)).toBe(345);
+});
+for (const [dataset, route, reference] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_QQ==","gt5-5.09.51.470"],["gtnh-2.9.0","r~RgUYVgBcPJmt4u3DO2ZYIg==","gt5-5.09.54.205"]]) {
+  test(`${dataset}: real fluid recipe voltage profile uses a named reference and preserves generic settings`, async ({ page }) => {
+    const errors = []; page.on("pageerror", error => errors.push(error.message));
+    const target = "f:gregtech:liquid_epichlorhydrin";
+    await page.goto(`./?dataset=${dataset}`); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
+    await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target); await page.locator("#calcUnit").selectOption("L");
+    await page.locator("#calcBuild").click(); await page.locator(`select[data-route-good="${target}"]`).selectOption(route);
+    const machine = page.locator(`[data-machine-id="${route}"]`), profile = machine.locator("[data-profile]");
+    await machine.locator(":scope > summary").click();
+    await profile.locator('[data-profile-field="overclocks"]').fill("2"); await profile.locator('[data-profile-field="overclocks"]').blur();
+    await profile.locator('[data-profile-field="model"]').selectOption("gt5");
+    await expect(profile.locator('[data-profile-field="ruleset"]')).toHaveValue(reference);
+    await profile.locator('[data-profile-field="voltageTier"]').selectOption("2");
+    const p = await page.evaluate(() => window.GTNH_CALC.getPlan().root.performance);
+    expect(p.durationTicks).toBe(320); expect(p.eut).toBe(120); expect(p.overclocks).toBe(1);
+    await profile.locator('[data-profile-field="model"]').selectOption("generic");
+    await expect(profile.locator('[data-profile-field="overclocks"]')).toHaveValue("2");
+    expect(await page.evaluate(() => window.GTNH_CALC.getPlan().root.performance.durationTicks)).toBe(160);
+    expect(await page.locator("#gtnhCalcOverlay").evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}

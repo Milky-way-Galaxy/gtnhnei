@@ -98,7 +98,8 @@ exports with matching atlases and independent checksums. The default 2.8.0 asset
 remain unchanged. On-demand recipe comparisons keep exact good IDs across the
 two snapshots. **2.8.4 remains unavailable** until a matching export is verified.
 See [calculation assumptions](docs/calculations.md), [dataset provenance](docs/datasets.md)
-and the [current development report](docs/development-2026-10-20.md).
+the [latest machine/factory report](docs/machine-and-factory-capacity.md), and
+the [earlier calculator/version/flow report](docs/development-2026-10-20.md).
 
 Additional checks:
 

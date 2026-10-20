@@ -31,9 +31,19 @@ for (const [version, route] of [["2.8.0", "r~7CR1mklsMhyejhfODug_QQ=="], ["2.9.0
     const downloadEvent = page.waitForEvent("download"); await page.locator("#supplyCsv").click(); const file = await downloadEvent;
     const csv = await readFile(await file.path(), "utf8");
     expect(csv).toContain('"Duration (seconds)"'); expect(csv).toContain('"7200","0.625"'); expect(csv).toContain(chlorine.id);
-    await page.evaluate(() => { window.print = () => { window.printSnapshot = { onlySupplies: document.body.classList.contains("atlasPrintingSupplies"), hiddenApp: getComputedStyle(document.querySelector(".app")).display, rootOverflow: getComputedStyle(document.documentElement).overflow }; }; });
-    await page.emulateMedia({ media: "print" }); await page.locator("#supplyPrint").click();
-    expect(await page.evaluate(() => window.printSnapshot)).toEqual({ onlySupplies: true, hiddenApp: "none", rootOverflow: "visible" });
+    await page.evaluate(() => { window.printSnapshots = []; window.print = () => window.printSnapshots.push(document.body.classList.contains("atlasPrintingSupplies")); });
+    // Activate the real control in screen media. Print-media hit testing is not
+    // an interactive browser operation and differs between Firefox and Chromium.
+    await page.locator("#supplyPrint").click();
+    await page.locator("#supplyPrint").focus(); await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => ({ snapshots: window.printSnapshots, cleaned: !document.body.classList.contains("atlasPrintingSupplies") }))).toEqual({ snapshots: [true, true], cleaned: true });
+    await page.emulateMedia({ media: "print" });
+    const printed = await page.evaluate(() => {
+      const roots = [document.documentElement, document.body]; roots.forEach(root => root.classList.add("atlasPrintingSupplies"));
+      try { return { hiddenApp: getComputedStyle(document.querySelector(".app")).display, rootOverflow: getComputedStyle(document.documentElement).overflow }; }
+      finally { roots.forEach(root => root.classList.remove("atlasPrintingSupplies")); }
+    });
+    expect(printed).toEqual({ hiddenApp: "none", rootOverflow: "visible" });
     await page.emulateMedia({ media: "screen" });
   });
 }

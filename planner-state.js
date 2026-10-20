@@ -18,7 +18,14 @@ export function normalizePlannerState(raw) {
     if (Object.keys(state[key]).length > 10000 || Object.hasOwn(state[key], "__proto__")) throw new Error(`Invalid ${key}.`);
   }
   for (const key of ["rawOverrides", "ignored"]) if (!Array.isArray(state[key]) || state[key].some(value => typeof value !== "string")) throw new Error(`Invalid ${key}.`);
-  for (const config of Object.values(state.machineConfigs)) validateMachineConfig(config);
+  for (const config of Object.values(state.machineConfigs)) {
+    if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("Invalid machine profile.");
+    // Earlier drafts/imports accepted arbitrary generic profile values. An
+    // unused stale profile must not discard unrelated routes/preferences on
+    // restore. The engine validates every profile it actually uses. New profile
+    // fields, introduced with checked models/count overrides, validate eagerly.
+    if (["model", "ruleset", "installedMachines", "voltageTier", "machineAmperage", "maxOverclocks", "machineHeat", "amperageOC", "coilLevel"].some(field => Object.hasOwn(config, field))) validateMachineConfig(config);
+  }
   if (!state.inventory || typeof state.inventory !== "object" || Array.isArray(state.inventory) || Object.keys(state.inventory).length > 1000 || Object.hasOwn(state.inventory, "__proto__")) throw new Error("Invalid inventory.");
   state.inventory = { ...state.inventory };
   for (const [id, quantity] of Object.entries(state.inventory)) {

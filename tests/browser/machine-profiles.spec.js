@@ -68,3 +68,13 @@ for (const [dataset, route, reference] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_
     expect(errors).toEqual([]);
   });
 }
+test("an unused invalid legacy profile preserves the working draft, preferences and JSON export",async({page})=>{
+  const target="f:gregtech:liquid_epichlorhydrin", route="r~7CR1mklsMhyejhfODug_QQ==";
+  await page.addInitScript(({target,route})=>localStorage.setItem("gtnh_atlas_planner_v1_gtnh-2.8.0",JSON.stringify({target,amount:2000,unit:"L",routeChoices:{[target]:route},settings:{waterFree:false},machineConfigs:{"r~--l7UvQdPwieyDfV6NjffQ==":{parallels:0}}})),{target,route});
+  await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); await page.locator("#toolCalc").click();
+  await expect(page.locator("#calcTarget")).toHaveValue(target); await page.locator("#calcBuild").click();
+  expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().knownEnergy)).toBe(38400);
+  expect(await page.evaluate(()=>window.GTNH_CALC.getState().settings.waterFree)).toBe(false);
+  await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
+  expect(JSON.parse(await page.locator("#calcCodeOut").inputValue()).settings.target).toBe(target);
+});

@@ -3,6 +3,10 @@
 The default **Generic · manual overclocks** profile preserves previous plans:
 explicit lanes, 4× EU/t per OC, 2× or 4× speed, whole ticks, one-tick minimum.
 It does not assert that a particular machine can support those settings.
+Old drafts can contain stale, unused generic profiles. Those values remain
+portable with their routes/preferences rather than resetting the whole draft.
+Every profile used in an actual calculation is validated before it affects
+results. New checked-profile and installed-count fields also validate on import.
 
 Two opt-in profiles add automatic, supply-constrained overclocks:
 

@@ -74,10 +74,18 @@ test("old generic profiles retain their results and checked settings survive dat
   const dataset = { id: "gtnh-2.8.0", sha256: "a".repeat(64) };
   const state = normalizePlannerState({ machineConfigs: { real: base, legacy: { parallels: 4, overclocks: 2 } } });
   assert.deepEqual(importPlan(serializePlan(state, dataset), dataset), state);
-  for (const bad of [null, [], {model:"invented"}, {ruleset:"latest"}, {maxOverclocks:15}, {voltageTier:-1}, {amperageOC:"false"}, {parallels:""}]) {
+  for (const bad of [null, [], {model:"invented"}, {ruleset:"latest"}, {maxOverclocks:15}, {voltageTier:-1}, {amperageOC:"false"}]) {
     assert.throws(() => validateMachineConfig(bad));
     assert.throws(() => normalizePlannerState({ machineConfigs: { a: bad } }));
   }
+  assert.throws(() => validateMachineConfig({parallels:""}));
+});
+test("unused invalid legacy generic profiles cannot discard existing routes, settings or portable drafts", () => {
+  const dataset={id:"gtnh-2.8.0",sha256:"a".repeat(64)};
+  const state=normalizePlannerState({target:"f:water",amount:2000,unit:"L",settings:{waterFree:false},routeChoices:{"f:water":"real-recipe"},machineConfigs:{unused:{parallels:0,overclocks:999}}});
+  assert.equal(state.settings.waterFree,false); assert.equal(state.routeChoices["f:water"],"real-recipe");
+  assert.deepEqual(importPlan(serializePlan(state,dataset),dataset),state);
+  assert.throws(()=>machinePerformance({eut:30,durationTicks:200},state.machineConfigs.unused),/Parallel lanes/);
 });
 test("switching profiles supplies explicit defaults without overwriting a saved generic OC count", () => {
   const checked = initialMachineConfig(ebf, {overclocks:3, parallels:4}, "ebf", "gtnh-2.8.0");

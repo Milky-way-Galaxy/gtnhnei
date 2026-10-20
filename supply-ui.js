@@ -58,8 +58,9 @@ export function createSupplyTools({ catalog, getPlan, getState, update }) {
       if (id === "supplyReset") { persist({ checklist: {} }); render(); }
       if (id === "supplyCsv" && supply) downloadText("gtnh-atlas-supplies.csv", supplyCsv(supply), "text/csv");
       if (id === "supplyPrint" && supply) {
-        document.body.classList.add("atlasPrintingSupplies");
-        try { window.print(); } finally { document.body.classList.remove("atlasPrintingSupplies"); }
+        const roots = [document.documentElement, document.body];
+        roots.forEach(root => root.classList.add("atlasPrintingSupplies"));
+        try { window.print(); } finally { roots.forEach(root => root.classList.remove("atlasPrintingSupplies")); }
       }
     });
   }

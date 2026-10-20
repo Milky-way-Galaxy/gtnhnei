@@ -45,3 +45,9 @@ test("invalid and oversized imports cannot partially change favorites", () => {
   assert.equal(library.read().favorites.length, 0);
   assert.throws(() => library.import("x".repeat(2_000_001)), /too large/);
 });
+test("clearing favorites is undoable without clearing recent history or duplicates", () => {
+  const { library } = setup(); library.toggle(goods[0].id); library.visit(goods[1].id);
+  const removed = library.clearFavorites(); assert.equal(library.read().favorites.length, 0); assert.equal(library.read().recent.length, 1);
+  library.toggle(goods[1].id); library.restoreFavorites(removed); library.restoreFavorites(removed);
+  assert.equal(library.read().favorites.length, 2); assert.equal(library.read().recent.length, 1);
+});

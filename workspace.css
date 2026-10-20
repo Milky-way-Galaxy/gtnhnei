@@ -54,6 +54,8 @@ button, summary { cursor: pointer; }
 .atlasHelpGrid h3 { color: #9adcec; margin-bottom: 4px; }
 .atlasHelpGrid p { color: #bbcddd; }
 .atlasDialog kbd { border: 1px solid #52708c; padding: 1px 5px; border-radius: 4px; color: #c5f1e8; }
+.atlasDialog .helpPreference { flex-direction: row; align-items: center; min-height: 44px; }
+.helpPreference input { width: 22px; min-height: 22px; height: 22px; margin-right: 8px; }
 #atlasNotice { position: fixed; z-index: 100000; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 28px); padding: 12px 16px; border: 1px solid #5c9eb1; border-radius: 10px; background: #112e42; color: #e4f9ff; box-shadow: 0 8px 32px #0008; }
 .gtnhSmallHint { position: fixed; z-index: 99990; bottom: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); border: 1px solid #5c9eb1; border-radius: 10px; padding: 12px; background: #112e42; color: #e4f9ff; display: none; }
 .gtnhSmallHint.show { display: block; }
@@ -126,7 +128,14 @@ button, summary { cursor: pointer; }
   .libraryActions { grid-column: 2; justify-content: flex-start; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (max-width: 780px) {
+  #gtnhCalcOverlay .gtnhCalcTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: visible; gap: 6px; padding: 8px; }
+  #gtnhCalcOverlay .gtnhCalcTabs button { grid-column: span 2; padding: 7px 4px; font-size: 13px; width: 100%; }
+  #gtnhCalcOverlay .gtnhCalcTabs #calcBuild, #gtnhCalcOverlay .gtnhCalcTabs #plannerSupplies { grid-column: span 3; }
+  #gtnhCalcOverlay .gtnhCalcTabs #calcBuild { background: #173d51 !important; border-color: #70d4e5 !important; color: #bcf6ed !important; }
+}
 @media print {
+  html.atlasPrintingSupplies { height: auto !important; overflow: visible !important; }
   body.atlasPrintingSupplies { height: auto; overflow: visible; display: block; background: white !important; }
   body.atlasPrintingSupplies > :not(#supplyDialog) { display: none !important; }
   body.atlasPrintingSupplies #supplyDialog { position: static; display: block; width: 100%; max-width: none; max-height: none; overflow: visible; margin: 0; border: 0; border-radius: 0; box-shadow: none; }

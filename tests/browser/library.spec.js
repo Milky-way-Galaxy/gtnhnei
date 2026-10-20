@@ -64,4 +64,15 @@ test("toolbar fits the viewport and native dialogs keep keyboard focus", async (
   await expect(page.locator('#itemLibraryDialog [data-dialog-close]')).toBeFocused();
   await page.keyboard.press("Escape"); await expect(page.locator("#toolFav")).toBeFocused();
   await page.keyboard.press("p"); await expect(page.locator("#gtnhCalcOverlay")).toBeVisible();
+  if (page.viewportSize().width <= 780) expect(await page.locator(".gtnhCalcTabs").evaluate(nav => [...nav.querySelectorAll("button")].every(button => { const r = button.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.height >= 44; }))).toBe(true);
+});
+test("legacy auto-help preference and undoable favorites clearing survive the workspace update", async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem("helpPreferenceTestStarted")) { localStorage.setItem("helpPreferenceTestStarted", "1"); localStorage.setItem("gtnhnei_help_seen", "always"); } });
+  await page.goto(`./?item=${encodeURIComponent(iron)}`); await ready(page);
+  await expect(page.locator("#gtnhHelpOverlay")).toBeVisible(); await expect(page.locator("#helpEveryVisit")).toBeChecked();
+  await page.locator("#helpEveryVisit").uncheck(); await page.keyboard.press("Escape");
+  await page.reload(); await ready(page); await expect(page.locator("#gtnhHelpOverlay")).not.toBeVisible();
+  await page.locator("#favoriteCurrentItem").click(); await page.locator("#toolFav").click();
+  await page.locator("#libraryClearFavorites").click(); await expect(page.locator("#itemLibraryList .libraryRow")).toHaveCount(0);
+  await page.locator("#libraryUndoClear").click(); await expect(page.locator("#itemLibraryList .libraryRow")).toHaveCount(1);
 });

@@ -31,9 +31,9 @@ for (const [version, route] of [["2.8.0", "r~7CR1mklsMhyejhfODug_QQ=="], ["2.9.0
     const downloadEvent = page.waitForEvent("download"); await page.locator("#supplyCsv").click(); const file = await downloadEvent;
     const csv = await readFile(await file.path(), "utf8");
     expect(csv).toContain('"Duration (seconds)"'); expect(csv).toContain('"7200","0.625"'); expect(csv).toContain(chlorine.id);
-    await page.evaluate(() => { window.print = () => { window.printSnapshot = { onlySupplies: document.body.classList.contains("atlasPrintingSupplies"), hiddenApp: getComputedStyle(document.querySelector(".app")).display }; }; });
+    await page.evaluate(() => { window.print = () => { window.printSnapshot = { onlySupplies: document.body.classList.contains("atlasPrintingSupplies"), hiddenApp: getComputedStyle(document.querySelector(".app")).display, rootOverflow: getComputedStyle(document.documentElement).overflow }; }; });
     await page.emulateMedia({ media: "print" }); await page.locator("#supplyPrint").click();
-    expect(await page.evaluate(() => window.printSnapshot)).toEqual({ onlySupplies: true, hiddenApp: "none" });
+    expect(await page.evaluate(() => window.printSnapshot)).toEqual({ onlySupplies: true, hiddenApp: "none", rootOverflow: "visible" });
     await page.emulateMedia({ media: "screen" });
   });
 }

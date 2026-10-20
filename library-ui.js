@@ -1,6 +1,6 @@
 import { ItemLibrary } from "./item-library.js";
 import { createDialog, escapeHtml as esc, notify, downloadText } from "./ui-dialog.js";
-let dialog, tab = "favorites", visible = 60, matches = [];
+let dialog, tab = "favorites", visible = 60, matches = [], clearedFavorites = null;
 const library = () => {
   if (!window.GTNH_CATALOG) throw new Error("Recipe data is still loading.");
   return new ItemLibrary(window.GTNH_CATALOG, localStorage);
@@ -24,8 +24,11 @@ function render() {
   const focused = document.activeElement, focusedItem = focused?.closest("[data-library-identity]")?.dataset.libraryIdentity, focusedAction = focused?.dataset.libraryAction;
   dialog.querySelectorAll("[data-library-tab]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.libraryTab === tab)));
   dialog.querySelector("#libraryClearRecent").hidden = tab !== "recent";
+  dialog.querySelector("#libraryClearFavorites").hidden = tab !== "favorites";
+  dialog.querySelector("#libraryUndoClear").hidden = !clearedFavorites?.length;
   try {
     const data = library().read(), query = dialog.querySelector("#libraryFilter").value.trim().toLowerCase();
+    dialog.querySelector("#libraryClearFavorites").disabled = !data.favorites.length;
     const favorites = new Set(data.favorites.map(entry => entry.id));
     const entries = data[tab].filter(entry => `${entry.name} ${entry.id || ""}`.toLowerCase().includes(query));
     list.innerHTML = entries.slice(0, visible).map((entry, index) => {
@@ -68,13 +71,15 @@ export function openItemLibrary(initialTab = "favorites") {
   if (!window.GTNH_CATALOG) { notify("Recipe data is still loading."); return; }
   if (!dialog) {
     dialog = createDialog("itemLibraryDialog", "Item library", "Favorites and recently viewed items stay with their GTNH version.");
-    dialog.querySelector(".atlasDialogBody").innerHTML = '<nav class="atlasDialogTabs" aria-label="Item library views"><button type="button" data-library-tab="favorites">★ Favorites</button><button type="button" data-library-tab="recent">Recent</button></nav><label>Filter saved items<input id="libraryFilter" type="search" placeholder="Name or ID"></label><div id="itemLibraryList"></div><button id="libraryMore" type="button" hidden>Show more saved items</button><details class="librarySearch"><summary>Add an item or fluid</summary><label>Find an exact item<input id="libraryGoodSearch" type="search" autocomplete="off" placeholder="Type at least two characters"></label><div id="librarySearchResults"></div></details><div class="atlasDialogActions"><button type="button" id="libraryExport">Export library / backup</button><label class="atlasImport">Import library<input id="libraryImport" type="file" accept=".json,application/json"></label><button id="libraryClearRecent" type="button" hidden>Clear recent history</button></div><p id="itemLibraryStatus" role="status" aria-live="polite"></p>';
+    dialog.querySelector(".atlasDialogBody").innerHTML = '<nav class="atlasDialogTabs" aria-label="Item library views"><button type="button" data-library-tab="favorites">★ Favorites</button><button type="button" data-library-tab="recent">Recent</button></nav><label>Filter saved items<input id="libraryFilter" type="search" placeholder="Name or ID"></label><div id="itemLibraryList"></div><button id="libraryMore" type="button" hidden>Show more saved items</button><details class="librarySearch"><summary>Add an item or fluid</summary><label>Find an exact item<input id="libraryGoodSearch" type="search" autocomplete="off" placeholder="Type at least two characters"></label><div id="librarySearchResults"></div></details><div class="atlasDialogActions"><button type="button" id="libraryExport">Export library / backup</button><label class="atlasImport">Import library<input id="libraryImport" type="file" accept=".json,application/json"></label><button id="libraryClearRecent" type="button" hidden>Clear recent history</button><button id="libraryClearFavorites" type="button">Clear all favorites</button><button id="libraryUndoClear" type="button" hidden>Undo clearing favorites</button></div><p id="itemLibraryStatus" role="status" aria-live="polite"></p>';
     dialog.addEventListener("click", event => {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.libraryTab) { tab = button.dataset.libraryTab; visible = 60; render(); }
       if (button.dataset.libraryAdd !== undefined) toggleFavorite(matches[Number(button.dataset.libraryAdd)].id);
       if (button.id === "libraryMore") { visible += 60; render(); }
       if (button.id === "libraryClearRecent") { try { library().clearRecent(); render(); } catch (error) { notify(error.message); } }
+      if (button.id === "libraryClearFavorites") { try { clearedFavorites = library().clearFavorites(); changed(); } catch (error) { notify(error.message); } }
+      if (button.id === "libraryUndoClear") { try { library().restoreFavorites(clearedFavorites || []); clearedFavorites = null; changed(); } catch (error) { notify(error.message); } }
       if (button.id === "libraryExport") { try { downloadText("gtnh-atlas-item-library.json", library().rawBackup()); } catch (error) { notify(error.message); } }
     });
     dialog.querySelector("#libraryFilter").addEventListener("input", () => { visible = 60; render(); });

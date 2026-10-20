@@ -2,6 +2,7 @@ import { openItemLibrary } from "./library-ui.js";
 import { openOfflineManager } from "./offline-ui.js";
 import { createDialog, notify } from "./ui-dialog.js";
 import { checkOfflineUpdate } from "./offline.js";
+import { getPreference, setPreference } from "./preferences.js";
 
 let versionDialog, help;
 function openVersionPicker() {
@@ -28,6 +29,13 @@ function showHelp() {
     help = createDialog("gtnhHelpOverlay", "Use Atlas", "Search recipes, plan a factory, and keep your work with its recipe version.");
     help.querySelector(".atlasDialogBody").innerHTML = `<div class="atlasHelpGrid"><section><h3>Recipe search</h3><p>Tap an item for recipes. Double tap or right click for usages. Hold to copy its name.</p><p>Search words, <code>@greg</code> for a mod, or an exact item/fluid ID. Search filters select items, fluids, mods and sorting.</p></section><section><h3>Production Planner</h3><p>Build material and machine requirements for one product or a factory with several outputs. Set total quantities or rates, choose routes, record stock, and check power and bottlenecks.</p><p>Open a recipe and choose <b>Plan this</b>, or use <b>Planner</b> in the toolbar. Named plans and shareable links are under Saved plans and sharing.</p></section><section><h3>Calculator and diagrams</h3><p>Calculator offers a simpler material breakdown. Planner includes a dependency tree and SVG download. The gtnh-flow solver is under Code / Export and loads its external runtime when requested.</p></section><section><h3>Keep useful items</h3><p>Star a recipe to favorite its exact item. Library includes favorites, recent history and portable JSON backups. Each GTNH version has its own library.</p></section><section><h3>Keyboard shortcuts</h3><p><kbd>/</kbd> Search · <kbd>P</kbd> Planner · <kbd>L</kbd> Library · <kbd>?</kbd> Help.</p><p>Focus a grid item: arrows move, <kbd>R</kbd> shows recipes, <kbd>U</kbd> shows usages, <kbd>F</kbd> toggles its favorite.</p></section><section><h3>Offline and updates</h3><p>Verified recipe data is cached for faster return visits. Choose Offline to save the app and matching icons for a complete version. Basic search, planning and saved work then run without a connection. The external flow solver still needs a connection.</p></section></div><p class="atlasMuted">Atlas reports assumptions and unresolved inputs in each plan. Machine reference models cover their documented GT5 formulas; check specialized multiblocks and recipe conditions in game.</p>`;
   }
+  if (!help.querySelector("#helpEveryVisit")) {
+    const label = document.createElement("label"); label.className = "helpPreference";
+    label.innerHTML = '<input type="checkbox" id="helpEveryVisit"> Show help on every visit';
+    help.querySelector(".atlasDialogBody").appendChild(label);
+    label.querySelector("input").addEventListener("change", event => setPreference("gtnhnei_help_seen", event.target.checked ? "always" : "1"));
+  }
+  help.querySelector("#helpEveryVisit").checked = getPreference("gtnhnei_help_seen") === "always";
   help.showModal();
 }
 function install() {
@@ -46,6 +54,7 @@ function install() {
   };
   window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
   checkOfflineUpdate(() => { const button = document.getElementById("toolOffline"); button.textContent = "Update ready"; button.classList.add("workspaceUpdate"); }).catch(() => {});
+  if (getPreference("gtnhnei_help_seen") === "always") setTimeout(showHelp, 550);
   document.addEventListener("keydown", event => {
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog]") || document.querySelector("dialog[open], #gtnhCalcOverlay.show, #gtnhMatCalcOverlay.show")) return;
     const key = event.key.toLowerCase();

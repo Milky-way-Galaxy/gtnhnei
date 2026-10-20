@@ -31,6 +31,10 @@ test("recipe permalinks preserve dataset, exact ID and usage mode and can open t
 test("grid supports arrow-key navigation and a single roving Tab stop", async ({ page }) => {
   await ready(page);
   const first = page.locator("#grid .slot").first(); await first.focus();
+  expect(await first.evaluate(slot => {
+    const event = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true });
+    slot.dispatchEvent(event); return event.defaultPrevented;
+  })).toBe(false);
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#grid .slot").nth(1)).toBeFocused();
   await expect(page.locator('#grid .slot[tabindex="0"]')).toHaveCount(1);

@@ -68,6 +68,8 @@ export class ItemLibrary {
     return this.write(value);
   }
   clearRecent() { const value = this.read(); value.recent = []; return this.write(value); }
+  clearFavorites() { const value = this.read(), removed = value.favorites; value.favorites = []; this.write(value); return removed; }
+  restoreFavorites(entries) { const value = this.read(); value.favorites = unique([...value.favorites, ...entries]); return this.write(value); }
   export() { return JSON.stringify(this.read(), null, 2); }
   rawBackup() { return this.storage.getItem(libraryKey(this.dataset)) || this.storage.getItem(legacyFavoritesKey(this.dataset)) || this.export(); }
   import(text) {

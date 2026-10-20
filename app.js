@@ -2004,6 +2004,7 @@ grid.addEventListener("focusin", event => {
   event.target.tabIndex = 0;
 });
 grid.addEventListener("keydown", event => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   const slot = event.target.closest(".slot"); if (!slot) return;
   const good = window.GTNH_CATALOG?.resolve(slot.dataset.goodsId);
   if (event.key.toLowerCase() === "u" && good) { event.preventDefault(); openUsage(good); return; }

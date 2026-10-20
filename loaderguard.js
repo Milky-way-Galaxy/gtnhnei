@@ -1,32 +1,31 @@
-/* === GTNH Atlas loader guard v1 === */
-(() => {
-  const start = Date.now();
+// Only this module owns the boot overlay. Slow downloads must never replace app DOM.
+const loader = document.getElementById("bootLoader");
+const message = loader.querySelector(".bootMsg");
+const note = loader.querySelector(".bootNote");
+const retry = document.getElementById("bootRetry");
+const search = document.getElementById("search");
+const clear = document.getElementById("clear");
+let slowTimer;
 
-  function findLoaderText() {
-    const all = [...document.querySelectorAll("body *")];
-    return all.find(el => /fetching data\/data\.bin/i.test(el.textContent || ""));
+export function onRetry(callback) {
+  retry.addEventListener("click", callback);
+}
+
+export function setLoadState(phase, text) {
+  clearTimeout(slowTimer);
+  loader.dataset.state = phase;
+  message.textContent = text;
+  retry.hidden = phase !== "error";
+  search.disabled = clear.disabled = phase !== "ready";
+  note.textContent = "";
+  loader.querySelector(".bootBar").hidden = phase === "error";
+  loader.hidden = phase === "ready";
+
+  if (phase !== "ready" && phase !== "error") {
+    slowTimer = setTimeout(() => {
+      note.textContent = "The database is large. Loading is still in progress; you can keep this tab open.";
+    }, 25000);
   }
+}
 
-  function showFail(reason) {
-    const el = findLoaderText();
-    if (!el) return;
-
-    el.innerHTML = `
-      <div style="color:#ffb4c8;font-weight:900">Load is taking too long.</div>
-      <div style="margin-top:8px;color:#cbd5e1;font-size:0.9em">
-        ${reason}<br>
-        Check <b>data/data.bin</b>, server logs, and browser console.
-      </div>
-    `;
-  }
-
-  setTimeout(() => {
-    const stillLoading = findLoaderText();
-    const hasGrid = document.querySelector("#grid .slot, .slot, #recipePage .recipeCard");
-
-    if (stillLoading && !hasGrid) {
-      showFail("Probably stuck during fetch, gzip decompression, or Repository.load().");
-      console.warn("[GTNH Atlas] Loader still active after", Date.now() - start, "ms");
-    }
-  }, 25000);
-})();
+setLoadState("fetch", "Fetching recipe database…");

@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta name="google-site-verification" content="siKqZRNoAEc6Sj7FrOv6OZ1SjhKerbEaIOl6ADf2qzo" />
   <meta charset="utf-8">
@@ -21,7 +21,7 @@
   <meta name="twitter:title" content="GTNH NEI Recipe Search & Calculator | GTNH Atlas">
   <meta name="twitter:description" content="Search GregTech: New Horizons recipes, usages, machines, materials, routes, favorites, calculators, and gtnh-flow diagrams in one mobile-friendly GTNH planner.">
 
-  <link rel="stylesheet" href="extras.css?v=1778628271">
+  <link rel="stylesheet" href="extras.css?v=20261019">
   <link rel="stylesheet" href="topstrip.css?v=1779006686">
   <link rel="stylesheet" href="calc.css?v=1779006686">
   <link rel="stylesheet" href="flowcalc.css?v=1779006686">
@@ -74,21 +74,23 @@
     </ul>
   </section>
 
-<div id="bootLoader" class="bootLoader">
+<div id="bootLoader" class="bootLoader" data-state="fetch">
   <div class="bootBox">
     <div class="bootTitle">GTNH Atlas</div>
-    <div class="bootMsg">Fetching data/data.bin...</div>
-    <div class="bootBar"></div>
+    <div class="bootMsg" role="status" aria-live="polite">Fetching recipe database…</div>
+    <div class="bootBar" aria-hidden="true"></div>
+    <p class="bootNote"></p>
+    <button id="bootRetry" type="button" hidden>Retry loading</button>
   </div>
 </div>
 
   <div class="app">
     <div class="topbar">
       <span class="title">GTNH Atlas</span>
-      <button id="navBack" disabled>←</button>
-      <button id="navForward" disabled>→</button>
-      <input id="search" placeholder="Search item/fluid">
-      <button id="clear">×</button>
+      <button id="navBack" aria-label="Back" disabled>←</button>
+      <button id="navForward" aria-label="Forward" disabled>→</button>
+      <input id="search" type="search" aria-label="Search items and fluids" placeholder="Search item/fluid" disabled>
+      <button id="clear" aria-label="Clear search" disabled>×</button>
     </div>
 
     <div id="status">Loading...</div>
@@ -103,21 +105,21 @@
 
   <div id="tip"></div>
 
-  <script type="module" src="app.js?v=1779029879"></script>
-  <script src="extras.js?v=1778628271" defer></script>
+  <script type="module" src="loaderguard.js"></script>
+  <script type="module" src="app.js?v=20261019"></script>
+  <script src="extras.js?v=20261019" defer></script>
   <script src="topstrip.js?v=1779006686" defer></script>
-  <script src="flowfix.js?v=1778894594"></script>
+  <script src="flowfix.js?v=1778894594" defer></script>
   <script src="calc.js?v=1779006686" defer></script>
-  <script src="flowcalc.js?v=1779006686"></script>
-  <script src="flowlayoutfix.js?v=1778894594"></script>
-  <script src="loaderguard.js?v=1778987596"></script>
-<script src="gtnhflow-pyodide.js?v=1779006686"></script>
-  <script src="materialcalc.js?v=1779006686"></script>
-  <script src="navsplit.js?v=1778987596"></script>
-  <script src="mobilepolish.js?v=1779006686"></script>
-  <script src="makerchoice.js?v=1778987596"></script>
-  <script src="gtnhflow-zoom.js?v=1778987596"></script>
-  <script src="feedback-hub.js?v=1779006686"></script>
-  <script src="seo-intro-close.js?v=1779012499"></script>
+  <script src="flowcalc.js?v=1779006686" defer></script>
+  <script src="flowlayoutfix.js?v=1778894594" defer></script>
+<script src="gtnhflow-pyodide.js?v=1779006686" defer></script>
+  <script src="materialcalc.js?v=1779006686" defer></script>
+  <script src="navsplit.js?v=1778987596" defer></script>
+  <script src="mobilepolish.js?v=20261019" defer></script>
+  <script src="makerchoice.js?v=20261019" defer></script>
+  <script src="gtnhflow-zoom.js?v=1778987596" defer></script>
+  <script src="feedback-hub.js?v=1779006686" defer></script>
+  <script src="seo-intro-close.js?v=1779012499" defer></script>
 </body>
 </html>

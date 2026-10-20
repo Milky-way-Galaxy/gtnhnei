@@ -19,6 +19,19 @@
   transition: opacity 260ms ease;
 }
 
+.bootLoader[hidden] {
+  display: none;
+}
+
+.bootNote {
+  color: #aebbd2;
+  font-size: 13px;
+}
+
+.bootLoader[data-state="error"] .bootMsg {
+  color: #ffb4c8;
+}
+
 .bootBox {
   width: min(420px, calc(100vw - 34px));
   padding: 22px;

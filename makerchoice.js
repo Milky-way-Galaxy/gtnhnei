@@ -690,14 +690,12 @@
   }
 
   function start() {
-    const timer = setInterval(() => {
-      if (wrapFlowApi()) {
-        clearInterval(timer);
-        decorate();
-      }
-    }, 250);
-
-    setTimeout(() => clearInterval(timer), 20000);
+    // The database may take much longer than 20 seconds on a phone connection.
+    window.addEventListener("gtnhnei-flow-export-ready", () => {
+      wrapFlowApi();
+      decorate();
+    });
+    wrapFlowApi();
 
     startObserver();
     decorate();

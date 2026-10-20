@@ -47,3 +47,28 @@ GTNH Atlas tries to make that easier by combining:
 
 ```text
 NEI-style search + recipe lookup + usage lookup + calculators + planning tools
+
+```
+
+
+## Development and checks
+
+The deployed app is plain HTML, CSS and JavaScript. Serve the repository over HTTP;
+there is no runtime package dependency or framework build step. Node 22+ is used
+only for development checks:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run verify
+```
+
+`npm run verify` runs lint, static asset/module validation, real-database tests,
+and desktop/mobile Chromium browser regressions. `npm run build` validates the
+static site; it does not generate or replace the checked-in `dist/` modules.
+To preview at the GitHub Pages repository path, run `node tools/serve.js` and open
+<http://127.0.0.1:4173/gtnhnei/>. An existing Chromium installation can be selected
+with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium`.
+
+See [validation notes](docs/validation.md) for startup behavior, test coverage and
+known limitations of the bundled legacy test suites.

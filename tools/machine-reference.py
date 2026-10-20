@@ -46,7 +46,7 @@ def cases():
                     perfect=False, ampOC=True, recipeHeat=1800, heat=2700, cap=14),
                # Actual bundled hot Oriharukon and Epichlorohydrin base values.
                dict(eut=7680, duration=1380, tier=6, amps=1, parallels=1,
-                    perfect=False, ampOC=False, recipeHeat=5400, heat=7200, cap=14),
+                    perfect=False, ampOC=False, recipeHeat=5400, heat=7601, cap=14),
                dict(eut=30, duration=640, tier=2, amps=1, parallels=1,
                     perfect=False, ampOC=False, recipeHeat=-1, heat=0, cap=14),
                dict(eut=7, duration=3, tier=14, amps=4096, parallels=1,

@@ -27,7 +27,7 @@
 {"eut": 30, "duration": 1024, "tier": 6, "amps": 4, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": -1, "heat": 0, "cap": 14},
 {"eut": 1920, "duration": 3, "tier": 5, "amps": 1, "parallels": 1, "perfect": true, "ampOC": false, "recipeHeat": -1, "heat": 0, "cap": 14},
 {"eut": 34, "duration": 1024, "tier": 2, "amps": 1, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": 1800, "heat": 2700, "cap": 14},
-{"eut": 7680, "duration": 1380, "tier": 6, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": 5400, "heat": 7200, "cap": 14},
+{"eut": 7680, "duration": 1380, "tier": 6, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": 5400, "heat": 7601, "cap": 14},
 {"eut": 30, "duration": 640, "tier": 2, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": -1, "heat": 0, "cap": 14},
 {"eut": 7, "duration": 3, "tier": 14, "amps": 4096, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": -1, "heat": 0, "cap": 14},
 {"eut": 30720, "duration": 1380, "tier": 14, "amps": 4096, "parallels": 4096, "perfect": true, "ampOC": false, "recipeHeat": -1, "heat": 0, "cap": 14},

@@ -58,6 +58,14 @@ test("2.9 cooperative indexing preserves remaps and real calculator quantities w
   assert.equal(result.materials.find(row=>row.name==="Chlorine").amount,100);
   assert.equal(catalog.resolve(target).tooltip,"C₃H₅ClO");
   assert.equal(catalog.resolve("i:minecraft:bucket:0").stackSize,16);
+  const metal="i:gregtech:gt.metaitem.01:12393", route="r~--l7UvQdPwieyDfV6NjffQ==";
+  const options={target:metal,amount:1,depth:1,routeChoices:{[metal]:route}};
+  const base=calculateProduction(catalog,options);
+  const heat=calculateProduction(catalog,{...options,machineConfigs:{[route]:{model:"ebf",ruleset:"gt5-5.09.54.205",voltageTier:6,coilLevel:8}}});
+  assert.equal(heat.dataset.id,"gtnh-2.9.0"); assert.equal(heat.root.performance.ruleset,"gt5-5.09.54.205");
+  assert.equal(heat.root.performance.machineHeat,7601); assert.equal(heat.root.performance.durationTicks,345);
+  assert.equal(heat.root.performance.eut,27725); assert.equal(heat.knownEnergy,9565125);
+  assert.deepEqual(heat.materials,base.materials); assert.deepEqual(heat.reusable,base.reusable);
 });
 test("unsupported binary formats fail before any repository is published", () => {
   const invalid=new ArrayBuffer(32);new Int32Array(invalid)[0]=6;

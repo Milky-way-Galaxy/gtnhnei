@@ -74,6 +74,13 @@ parallel lanes). Installed count rounds up; average and installed EU/t are shown
 separately. Total-craft energy = executions × effective ticks × per-lane EU/t.
 Fixed machine mode retains the required count and uses the configured root count
 for installed power and startup stock; insufficient capacity is warned explicitly.
+Each rate-plan recipe can override its own installed machine pool (including
+zero). This takes precedence over automatic sizing and fixed root counts. Clear
+the override to restore that recipe's default. Pools are keyed by recipe ID;
+separate recipes using the same machine type do not silently share a pool.
+Startup stock and installed power use the actual installed counts. Total jobs
+retain their existing configured-root timing; these rate-only overrides do not
+invent an upstream job schedule.
 Ceilings correct floating-point noise near integers and keep at least one machine
 for any positive required rate, however small.
 Whole-batch root time schedules complete waves across the requested machines/parallel lanes; fractional totals use continuous estimates. Root time excludes upstream staging and logistics. Startup stock provisions the configured root count/full parallel capacity, with non-consumed circuits counted once per physical machine.
@@ -104,6 +111,36 @@ Verified real example: GTNH 2.8.0 route `r~7CR1mklsMhyejhfODug_QQ==`
 produces 1000 L Epichlorohydrin in 640 ticks at 30 EU/t. 2000 L requires
 2 executions and 38,400 EU. A 3000 L/min target requires 1.6 base machines,
 2 installed machines, 48 average EU/t and 60 installed EU/t.
+
+## Factory bottlenecks
+
+Continuous plans include a **known-stage capacity ceiling** for the entire output
+mix. For every known recipe, capacity factor = installed machines / required
+machine equivalents. The lowest factor limits all outputs together, including
+shared intermediate demand. Multiple limiting recipes are shown when tied.
+Per-stage utilization = demanded equivalents / installed machines; a zero count
+stops the stage and gives a zero factory ceiling, without dividing by zero.
+
+For example, 3000 L/min Epichlorohydrin plus 6000 L/min of its earlier hydrogen
+co-product needs the same 1.6 reactor equivalents with co-product reuse. One
+installed base reactor limits this mix to 62.5%: 31.25 L/s Epichlorohydrin and
+62.5 L/s Hydrogen. It draws 30 installed EU/t; the **requested** mix still requires
+48 average EU/t. Material and average-power ledgers retain requested demand so
+an insufficient factory cannot appear to satisfy the target by shrinking it.
+
+This steady-state ceiling assumes all boundary inputs, transport, other recipe
+conditions and startup requirements can be supplied. Unknown timing or unresolved
+routes explicitly mark the analysis partial; no known executable stage produces
+an unknown ceiling, not unlimited capacity. It is not an actual completion-time,
+stochastic guarantee, machine-sharing scheduler or power-network simulation.
+
+The Tree view allows per-recipe counts, Add one machine and Use default count,
+and preserves focus/scroll while updating the analysis. Counts persist in saved
+and shared plans. **Download machines CSV** includes exact recipe/dataset IDs,
+profile references, timing, lane count, per-machine power, required/installed
+counts, utilization and limiting stages. Material CSV retains its prior format.
+YAML retains base recipes and explicitly excludes planner installed overrides
+and machine profiles; gtnh-flow performs its own sizing.
 
 ## Named saved plans and shared links
 

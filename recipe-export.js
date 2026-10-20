@@ -33,11 +33,22 @@ export function exportRecipeYaml(catalog, query, index = 0) {
     input: toMap(balance.inputs), output: toMap(balance.outputs), inputs: recipe.inputs, outputs: recipe.outputs, yaml };
 }
 
-export function planCsv(plan) {
+function csv(rows) {
   const quote = value => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  return [["Dataset", "ID", "Material", "Amount", "Unit", "Reason"], ...plan.materials.map(row =>
+  return rows.map(row => row.map(quote).join(",")).join("\r\n");
+}
+export function planCsv(plan) {
+  return csv([["Dataset", "ID", "Material", "Amount", "Unit", "Reason"], ...plan.materials.map(row =>
     [plan.dataset.id, row.id, row.name, row.amount, row.unit + (plan.isRate ? "/s" : ""), row.reason])]
-    .map(row => row.map(quote).join(",")).join("\r\n");
+  );
+}
+export function machinesCsv(plan) {
+  const capacity = new Map(plan.capacityAnalysis?.rows.map(row => [row.recipeId, row]) || []);
+  return csv([["Dataset", "Recipe ID", "Machine", "Model", "Calculation reference", "Executions" + (plan.isRate ? "/s" : ""), "Ticks/batch", "Parallel lanes", "EU/t at full load", "Required machines", "Installed machines", "Count source", "Utilization", "Limiting stage", "Installed EU/t", "Total job EU"],
+    ...plan.steps.map(step => [plan.dataset.id, step.recipeId, step.machine, step.performance?.model || "generic", step.performance?.ruleset,
+      step.batches, step.performance?.durationTicks, step.performance?.parallels, step.performance?.eut, step.count, step.installedCount,
+      plan.isRate ? step.installedSource : "", capacity.get(step.recipeId)?.utilization,
+      plan.isRate ? plan.capacityAnalysis.limitingRecipeIds.includes(step.recipeId) : "", step.installedEut, plan.isRate ? "" : step.energy])]);
 }
 export function exportPlanYaml(plan) {
   if (!plan.steps.length) return "# Build a resolved production plan first.\n";
@@ -46,7 +57,7 @@ export function exportPlanYaml(plan) {
     const name = io.name.toLowerCase(), ids = idsByName.get(name) || new Set(); ids.add(io.id); idsByName.set(name,ids);
   }
   const label = io => idsByName.get(io.name.toLowerCase())?.size > 1 ? `${io.name} [${io.id}]` : io.name;
-  const lines = [`# Dataset: ${plan.dataset.id}`, "# Quantities are base recipes; chance outputs use expected values.", "# Review machine-specific modifiers and byproduct/recycling links before solving."];
+  const lines = [`# Dataset: ${plan.dataset.id}`, "# Quantities are base recipes; chance outputs use expected values.", "# Planner installed counts and custom machine profiles are not applied to this base-recipe export.", "# Review machine-specific modifiers and byproduct/recycling links before solving."];
   for (const step of plan.steps) {
     const recipe = step.recipe, balance = recipeBalance(recipe);
     if (recipe.durationTicks === null || recipe.eut === null) { lines.push(`# OMITTED ${recipe.id}: timing unknown (${recipe.machine})`); continue; }

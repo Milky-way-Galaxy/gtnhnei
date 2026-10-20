@@ -1,4 +1,5 @@
 import { machinePerformance } from "./machine-model.js";
+import { analyzeFactoryCapacity } from "./factory-capacity.js";
 export { machinePerformance } from "./machine-model.js";
 const EPS = 1e-10;
 // Arithmetic such as (0.1 + 0.2) / 0.3 can land just above an integer.
@@ -246,15 +247,18 @@ export function calculateFactory(catalog, options) {
     const p = step.performance;
     const equivalents = isRate && p ? step.batches / p.batchesPerSecond : null;
     const count = equivalents === null ? null : ceilPositive(equivalents);
-    const installedCount = count === null ? null : options.machineMode === "fixed" && rootMachines.has(step.recipeId) ? rootMachines.get(step.recipeId) : count;
-    return { ...step, equivalents, count, installedCount, averageEut: equivalents === null ? null : equivalents * p.eut,
-      installedEut: installedCount === null ? null : installedCount * p.eut,
+    const override = isRate ? machineConfigs[step.recipeId]?.installedMachines : undefined;
+    const installedSource = override !== undefined ? "recipe" : options.machineMode === "fixed" && rootMachines.has(step.recipeId) ? "root" : "auto";
+    const installedCount = override !== undefined ? Number(override) : count === null ? null : installedSource === "root" ? rootMachines.get(step.recipeId) : count;
+    return { ...step, equivalents, count, installedCount, installedSource, averageEut: equivalents === null ? null : equivalents * p.eut,
+      installedEut: installedCount === null || !p ? null : installedCount * p.eut,
       energy: p ? step.batches * p.durationTicks * p.laneEut : null };
   });
   const reusableTotals = new Map();
   for (const entry of reusable.values()) {
     const step = machineRows.find(step => step.recipeId === entry.recipeId);
-    add(reusableTotals, entry, entry.amount * (rootMachines.has(entry.recipeId) && (!isRate || options.machineMode === "fixed") ? rootMachines.get(entry.recipeId) : Math.max(1, step?.count || 1)) * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
+    const count = isRate ? step?.installedCount ?? 1 : rootMachines.get(entry.recipeId) || 1;
+    add(reusableTotals, entry, entry.amount * count * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
   }
   const total = key => machineRows.reduce((sum, step) => sum + (step[key] || 0), 0);
   const targets = demands.map((demand, index) => {
@@ -263,20 +267,19 @@ export function calculateFactory(catalog, options) {
     const capacity = performance && yieldAmount ? performance.batchesPerSecond * yieldAmount * demand.fixedMachines : null;
     const timeSeconds = !isRate && ["from-inventory", "from-byproduct"].includes(node.status) ? 0 : !isRate && performance ?
       (options.rounding === "fractional" ? node.batches / (performance.parallels * demand.fixedMachines) : ceilPositive(node.batches / (performance.parallels * demand.fixedMachines))) * performance.durationTicks / 20 : null;
-    if (isRate && options.machineMode === "fixed" && capacity !== null && demand.requested > capacity + EPS) warnings.add(`${demand.targetGood.name}: requested output exceeds the ${demand.fixedMachines} root machine(s) capacity of ${capacity.toPrecision(6)} ${demand.targetGood.unit}/s.`);
     const step = machineRows.find(step => step.recipeId === node.recipeId);
     const installedCount = isRate ? step?.installedCount ?? null : null;
-    const installedCapacity = capacity !== null && installedCount !== null ? capacity / demand.fixedMachines * installedCount : null;
+    const installedCapacity = performance && yieldAmount && installedCount !== null ? performance.batchesPerSecond * yieldAmount * installedCount : null;
     return { ...demand.targetGood, requested: demand.requested, rateMode: demand.rateMode, machineCount: demand.fixedMachines, root: node, capacity, installedCount, installedCapacity, timeSeconds };
   });
-  if (isRate && options.machineMode === "fixed") for (const step of machineRows) {
-    if (step.equivalents !== null && step.equivalents > step.installedCount + EPS) warnings.add(`${step.machine}: combined demand needs ${step.equivalents.toPrecision(6)} machine equivalents; only ${step.installedCount} are configured.`);
+  if (isRate) for (const step of machineRows) {
+    if (step.equivalents !== null && step.equivalents > step.installedCount + EPS) warnings.add(`${step.machine}: requested production exceeds configured capacity; combined demand needs ${step.equivalents.toPrecision(6)} machine equivalents; only ${step.installedCount} are configured. Power/material rates describe requested demand.`);
   }
   const capacity = targets[0].capacity;
   if (options.reuseByproducts) warnings.add("Earlier co-products are reused once after their input expansion. Output/branch order can affect totals; future production and closed recycling loops are not credited.");
   else if (byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
   if (reusableTotals.size) warnings.add("Reusable quantities provision startup stock for the configured root machine count and full parallel capacity, not recurring consumption.");
-  return { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
+  const result = { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
     root, roots, targets, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()].filter(row => row.amount > 0), byproductsUsed: [...byproductsUsed.values()], reusable: [...reusableTotals.values()],
     inventoryUsed: [...inventoryUsed.values()], inventoryRemaining: [...inventory.values()].filter(row => row.amount > 0),
     steps: machineRows, warnings: [...warnings], unresolved, truncated: visits > nodeLimit,
@@ -284,4 +287,6 @@ export function calculateFactory(catalog, options) {
     knownInstalledEut: isRate ? total("installedEut") : null,
     hasUnknownPower: machineRows.some(step => !step.performance), capacity,
     rootTimeSeconds: targets.length === 1 ? targets[0].timeSeconds : null };
+  result.capacityAnalysis = analyzeFactoryCapacity(result);
+  return result;
 }

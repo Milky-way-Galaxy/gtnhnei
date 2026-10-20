@@ -132,6 +132,14 @@ test("real hot Oriharukon uses the checked EBF profile without changing item/flu
   assert.equal(checked.steps[0].performance.heatOverclocks,1);
   assert.match(exportPlanYaml(checked),/eut: 7680\n  dur: 69/);
 });
+test("a real co-product factory's shared reactor capacity limits both fluid outputs together", () => {
+  const target=epichlorohydrin.id, hydrogen="f:GalacticraftMars:hydrogen", route="r~7CR1mklsMhyejhfODug_QQ==";
+  const result=calculateFactory(catalog,{...epiOptions,rateMode:"per_minute",reuseByproducts:true,targets:[{target,amount:3000,unit:"L"},{target:hydrogen,amount:6000,unit:"L"}],machineConfigs:{[route]:{installedMachines:1}}});
+  assert.equal(result.steps.length,1); assert.equal(result.capacityAnalysis.rateFactor,.625);
+  assert.deepEqual(result.capacityAnalysis.targets.map(target=>target.capacity),[31.25,62.5]);
+  assert.equal(result.knownInstalledEut,30); assert.equal(result.knownAverageEut,48);
+  assert.equal(result.reusable.find(row=>row.name==="Programmed Circuit").amount,1);
+});
 test("real data bucket conversion, stable recipe IDs and structured metadata remain exact", () => {
   const result = calculateProduction(catalog, { ...epiOptions, amount: 3, unit: "buckets" });
   assert.equal(result.requested, 3000);

@@ -1,10 +1,11 @@
 import { calculateFactory, recipeMetrics } from "./production-engine.js";
-import { exportPlanYaml, planCsv } from "./recipe-export.js";
+import { exportPlanYaml, planCsv, machinesCsv } from "./recipe-export.js";
 import { defaultPlannerState, normalizePlannerState, serializePlan, importPlan } from "./planner-state.js";
 import { mountPlanTools, installSharedPlanNotice } from "./plan-tools-ui.js";
 import { recipeMetadataRows } from "./recipe-details.js";
 import { machinePerformance } from "./machine-model.js";
 import { machineProfileHtml, initialMachineConfig } from "./machine-profile-ui.js";
+import { factoryCapacityHtml } from "./factory-capacity-ui.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
@@ -112,6 +113,16 @@ export function installPlanner() {
     if (built) calculate(); else error = "";
     render();
   }
+  function setInstalledMachines(id, value) {
+    const recipe = plan?.steps.find(step => step.recipeId === id)?.recipe;
+    if (!recipe) return false;
+    const next = { ...(state.machineConfigs[id] || {}) };
+    if (value === undefined) delete next.installedMachines;
+    else next.installedMachines = value;
+    try { machinePerformance(recipe, next); }
+    catch (failure) { document.querySelector("#plannerStatus").textContent = `${failure.message} Previous count retained.`; return false; }
+    state.machineConfigs[id] = next; save(); calculate(); render(); return true;
+  }
   function routeControl(node) {
     const good = catalog().resolve(node.id);
     if (node.type === "ore") {
@@ -126,6 +137,8 @@ export function installPlanner() {
     if (!plan) return error || "Enter a target and press Build tree.";
     return [`GTNH Atlas — ${dataset().label}`, ...plan.targets.map(target => `${target.name}: ${fmt(target.requested)} ${target.unit}${plan.isRate ? "/s" : ""}`),
       `Known ${plan.isRate ? "average EU/t" : "energy (EU)"}: ${fmt(plan.isRate ? plan.knownAverageEut : plan.knownEnergy)}${plan.hasUnknownPower ? " (partial; unknown machines)" : ""}`,
+      ...(plan.capacityAnalysis ? [`Known-stage capacity ceiling: ${plan.capacityAnalysis.rateFactor === null ? "unknown" : fmt(plan.capacityAnalysis.rateFactor * 100) + "% of requested mix"}`,
+        ...plan.capacityAnalysis.targets.map(target => `${target.name} at ceiling: ${fmt(target.capacity)} ${target.unit}/s`), "Assumes supplied inputs, transport and remaining recipe conditions."] : []),
       "", "Materials:", ...plan.materials.map(row => `${fmt(row.amount)} ${row.unit}${plan.isRate ? "/s" : ""} ${row.name} [${row.id}]`),
       "", "Used from inventory:", ...plan.inventoryUsed.map(row => `${fmt(row.amount)} ${row.unit} ${row.name} [${row.id}]`),
       "", "Reused co-products:", ...plan.byproductsUsed.map(row => `${fmt(row.amount)} ${row.unit}${plan.isRate?"/s":""} ${row.name} [${row.id}]`),
@@ -152,6 +165,9 @@ export function installPlanner() {
     const expandedMachines = new Set([...box.querySelectorAll("details[open][data-machine-id]")].map(node => node.dataset.machineId));
     const active = document.activeElement;
     const restore = focusedTarget !== undefined ? `[data-target-index="${focusedTarget}"][data-target-field="${focusedTargetField}"]` : focusedStock ? `[data-stock-quantity="${CSS.escape(focusedStock)}"]` : active?.dataset.routeGood ? `[data-route-good="${CSS.escape(active.dataset.routeGood)}"]` :
+      active?.dataset.installedMachines ? `[data-installed-machines="${CSS.escape(active.dataset.installedMachines)}"]` :
+      active?.dataset.addMachine ? `[data-add-machine="${CSS.escape(active.dataset.addMachine)}"]` :
+      active?.dataset.defaultMachines ? `[data-installed-machines="${CSS.escape(active.dataset.defaultMachines)}"]` :
       active?.dataset.ore ? `[data-ore="${CSS.escape(active.dataset.ore)}"]` :
       active?.dataset.profileField ? `[data-profile="${CSS.escape(active.closest("[data-profile]").dataset.profile)}"] [data-profile-field="${active.dataset.profileField}"]` : null;
     if (error) box.innerHTML = `<p role="alert" class="plannerError">${esc(error)}</p>`;
@@ -162,6 +178,7 @@ export function installPlanner() {
         ${plan.targets.length > 1 ? `<h4>Factory outputs</h4><div class="plannerTable"><table><thead><tr><th>Output</th><th>Demand${plan.isRate ? "/s" : ""}</th><th>${plan.isRate ? "Installed recipe capacity/s" : "Root time (s)"}</th></tr></thead><tbody>${plan.targets.map(target=>`<tr><td>${esc(target.name)}<small>${esc(target.id)}</small></td><td>${fmt(target.requested)} ${esc(target.unit)}</td><td>${target.root.status === "from-byproduct" ? "From co-products" : fmt(plan.isRate ? target.installedCapacity : target.timeSeconds)}</td></tr>`).join("")}</tbody></table></div>` : ""}
         <p>${plan.targets.length === 1 && plan.capacity !== null ? plan.isRate ? `Installed root recipe capacity (${fmt(plan.targets[0].installedCount)} machines): ${fmt(plan.targets[0].installedCapacity)} ${esc(plan.target.unit)}/s. ` : `Root capacity with ${state.machineCount} machine(s): ${fmt(plan.capacity)} ${esc(plan.target.unit)}/s. ` : ""}${plan.hasUnknownPower ? "Some timing/power values are unknown. Totals cover known machines only." : "Timing and power use the selected recipe profiles; no other multiblock bonuses are assumed."}</p>
         <details ${plan.unresolved.length ? "open" : ""}><summary>Warnings and unresolved routes (${plan.warnings.length})</summary><ul>${plan.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>
+        ${factoryCapacityHtml(plan, state.machineConfigs)}
         <h4>Required materials ${plan.isRate ? "per second" : ""}</h4>${table(plan.materials, "actions")}
         ${plan.inventoryUsed.length ? `<details open><summary>Used from inventory (${plan.inventoryUsed.length})</summary>${table(plan.inventoryUsed)}</details>` : ""}
         ${plan.inventoryRemaining.length ? `<details><summary>Unspent inventory (${plan.inventoryRemaining.length})</summary>${table(plan.inventoryRemaining, "", false)}</details>` : ""}
@@ -212,7 +229,7 @@ export function installPlanner() {
       <details><summary>Supply and expansion settings</summary><div class="gtnhCalcChecks">${Object.entries({waterFree:"Supply water freely",steamFree:"Supply steam freely",cellsReusable:"Expand returned-cell stock details",expandCircuits:"Expand circuit production",expandMachines:"Expand machine production",expandPlatesWires:"Expand plates, wires and cables",reuseByproducts:"Reuse earlier co-products (order affects totals)"}).map(([key,label])=>`<label><input type="checkbox" data-setting="${key}"> ${label}</label>`).join("")}</div><p>Only actually returned containers/tools are reusable; consumed empty cells remain requirements.</p><button id="plannerResetChoices" type="button">Clear route and supply overrides</button></details>
       <div class="gtnhCalcActions"><button id="calcUseSearch" type="button">Use search text</button><button id="calcClear" type="button">Clear</button></div></section>
       <section class="gtnhCalcCol" data-calc-panel="tree"><h3>Production and materials</h3><div id="calcTree"></div></section>
-      <section class="gtnhCalcCol" data-calc-panel="code"><h3>Exports and import</h3><div class="gtnhCodeTabs">${["summary","json","yaml","csv","errors"].map(name=>`<button type="button" data-planner-owned data-planner-code="${name}">${name.toUpperCase()}</button>`).join("")}</div><label id="calcCodeLabel" for="calcCodeOut">Summary</label><textarea id="calcCodeOut" readonly></textarea><div class="gtnhCalcActions"><button id="calcCopyCode" data-planner-owned type="button">Copy</button><button id="calcDownloadJson" data-planner-owned type="button">Download JSON</button><button id="plannerDownloadCsv" data-planner-owned type="button">Download CSV</button><button id="plannerDownloadSvg" data-planner-owned type="button">Download SVG</button><label class="plannerImport">Import plan<input id="plannerImport" type="file" accept=".json,application/json"></label></div><p>JSON plans are tied to their recipe dataset. CSV contains materials; SVG is a standalone dependency diagram. YAML uses base recipe values and requires review before gtnh-flow solving.</p></section></main></section>`;
+      <section class="gtnhCalcCol" data-calc-panel="code"><h3>Exports and import</h3><div class="gtnhCodeTabs">${["summary","json","yaml","csv","errors"].map(name=>`<button type="button" data-planner-owned data-planner-code="${name}">${name.toUpperCase()}</button>`).join("")}</div><label id="calcCodeLabel" for="calcCodeOut">Summary</label><textarea id="calcCodeOut" readonly></textarea><div class="gtnhCalcActions"><button id="calcCopyCode" data-planner-owned type="button">Copy</button><button id="calcDownloadJson" data-planner-owned type="button">Download JSON</button><button id="plannerDownloadCsv" data-planner-owned type="button">Download CSV</button><button id="plannerDownloadMachines" data-planner-owned type="button">Download machines CSV</button><button id="plannerDownloadSvg" data-planner-owned type="button">Download SVG</button><label class="plannerImport">Import plan<input id="plannerImport" type="file" accept=".json,application/json"></label></div><p>JSON plans are tied to their recipe dataset. CSV contains materials; SVG is a standalone dependency diagram. YAML uses base recipe values and requires review before gtnh-flow solving.</p></section></main></section>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", async event => {
       const button = event.target.closest("button"); if (!button) return;
@@ -227,6 +244,11 @@ export function installPlanner() {
       }
       if (button.dataset.stockRemove) { delete state.inventory[button.dataset.stockRemove]; saveInventory(); return; }
       if (button.dataset.targetRemove !== undefined) { state.additionalTargets.splice(Number(button.dataset.targetRemove),1); saveInventory(); return; }
+      if (button.dataset.addMachine) {
+        const id = button.dataset.addMachine, count = plan?.steps.find(step => step.recipeId === id)?.installedCount;
+        setInstalledMachines(id, (count ?? 0) + 1); return;
+      }
+      if (button.dataset.defaultMachines) { setInstalledMachines(button.dataset.defaultMachines, undefined); return; }
       switch (button.id) {
         case "gtnhCalcClose": close(); break;
         case "calcBuild": build(); tab("tree"); break;
@@ -253,6 +275,7 @@ export function installPlanner() {
         case "calcCopyCode": try { await navigator.clipboard.writeText(code()); } catch { error = "Clipboard unavailable. Select and copy the export text."; render(); } break;
         case "calcDownloadJson": download("gtnh-atlas-plan.json", serializePlan(state,dataset()), "application/json"); break;
         case "plannerDownloadCsv": if (plan) download("gtnh-atlas-materials.csv",planCsv(plan),"text/csv"); break;
+        case "plannerDownloadMachines": if (plan) download("gtnh-atlas-machines.csv",machinesCsv(plan),"text/csv"); break;
         case "plannerDownloadSvg": if (plan) download("gtnh-atlas-dependencies.svg",diagram(plan.nodes.length),"image/svg+xml"); break;
       }
     });
@@ -266,6 +289,16 @@ export function installPlanner() {
     });
     overlay.addEventListener("change", async event => {
       const input = event.target;
+      if (input.dataset.installedMachines) {
+        const id = input.dataset.installedMachines;
+        if (!input.checkValidity()) {
+          input.value = state.machineConfigs[id]?.installedMachines ?? "";
+          overlay.querySelector("#plannerStatus").textContent = "Installed machines must be whole numbers from 0 to 1,000,000. Previous count retained.";
+          return;
+        }
+        if (!setInstalledMachines(id, input.value === "" ? undefined : Number(input.value))) input.value = state.machineConfigs[id]?.installedMachines ?? "";
+        return;
+      }
       if (input.dataset.targetField) {
         const entry = state.additionalTargets[Number(input.dataset.targetIndex)], field = input.dataset.targetField;
         if (!entry) return;

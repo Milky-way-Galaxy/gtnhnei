@@ -4,7 +4,7 @@ test("returning visits use checked local data and recover a damaged cache", asyn
   let downloads = 0;
   page.on("request", request => { if (request.url().endsWith("/data/data.bin")) downloads++; });
   await page.goto("./"); await ready(page);
-  expect(await page.evaluate(() => window.GTNH_DATABASE_LOAD)).toEqual({ source: "network", saved: true });
+  expect(await page.evaluate(() => window.GTNH_DATABASE_LOAD)).toMatchObject({ source: "network", saved: true, databaseMs: expect.any(Number), startupMs: expect.any(Number) });
   await page.reload(); await ready(page);
   expect(await page.evaluate(() => window.GTNH_DATABASE_LOAD.source)).toBe("cache");
   expect(downloads).toBe(1);

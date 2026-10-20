@@ -21,6 +21,7 @@ export function toggleFavorite(id) {
 }
 function render() {
   const list = dialog.querySelector("#itemLibraryList"), status = dialog.querySelector("#itemLibraryStatus");
+  const focused = document.activeElement, focusedItem = focused?.closest("[data-library-identity]")?.dataset.libraryIdentity, focusedAction = focused?.dataset.libraryAction;
   dialog.querySelectorAll("[data-library-tab]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.libraryTab === tab)));
   dialog.querySelector("#libraryClearRecent").hidden = tab !== "recent";
   try {
@@ -29,14 +30,15 @@ function render() {
     const entries = data[tab].filter(entry => `${entry.name} ${entry.id || ""}`.toLowerCase().includes(query));
     list.innerHTML = entries.slice(0, visible).map((entry, index) => {
       const good = entry.id ? window.GTNH_CATALOG.resolve(entry.id) : null;
-      return `<article class="libraryRow" data-library-index="${index}"><span class="libraryIcon" aria-hidden="true"></span><div class="libraryGood"><b>${esc(good?.name || entry.name)}</b><small>${esc(entry.id || "Legacy name — choose an exact item below to save it with an ID")}</small>${entry.id && !good ? "<small>Absent from the active dataset; entry retained.</small>" : ""}</div><div class="libraryActions"><button type="button" data-library-action="production" ${good ? "" : "disabled"}>Recipe</button><button type="button" data-library-action="usage" ${good ? "" : "disabled"}>Usage</button><button type="button" data-library-action="plan" ${good ? "" : "disabled"}>Plan</button><button type="button" data-library-action="favorite" ${good ? "" : "disabled"} aria-label="${favorites.has(entry.id) ? "Unfavorite" : "Favorite"} ${esc(entry.name)}" aria-pressed="${favorites.has(entry.id)}">${favorites.has(entry.id) ? "★" : "☆"}</button>${tab === "favorites" ? '<button type="button" data-library-action="remove">Remove</button>' : ""}</div></article>`;
+      return `<article class="libraryRow" data-library-index="${index}" data-library-identity="${esc(entry.id || `legacy:${entry.name}`)}"><span class="libraryIcon" aria-hidden="true"></span><div class="libraryGood"><b>${esc(good?.name || entry.name)}</b><small>${esc(entry.id || "Legacy name — choose an exact item below to save it with an ID")}</small>${entry.id && !good ? "<small>Absent from the active dataset; entry retained.</small>" : ""}</div><div class="libraryActions"><button type="button" data-library-action="production" ${good ? "" : "disabled"}>Recipe</button><button type="button" data-library-action="usage" ${good ? "" : "disabled"}>Usage</button><button type="button" data-library-action="plan" ${good ? "" : "disabled"}>Plan</button><button type="button" data-library-action="favorite" ${good ? "" : "disabled"} aria-label="${favorites.has(entry.id) ? "Unfavorite" : "Favorite"} ${esc(entry.name)}" aria-pressed="${favorites.has(entry.id)}">${favorites.has(entry.id) ? "★" : "☆"}</button><button type="button" data-library-action="copy">Copy name</button>${tab === "favorites" ? '<button type="button" data-library-action="remove">Remove</button>' : ""}</div></article>`;
     }).join("") || `<p class="atlasEmpty">${query ? "No saved items match this filter." : tab === "recent" ? "Open a recipe or usage to start your recent history." : "Save items with the star beside a recipe name, or search for one below."}</p>`;
     list.querySelectorAll(".libraryRow").forEach((row, index) => {
-      const entry = entries[index];
+      const entry = entries[index], good = entry.id ? window.GTNH_CATALOG.resolve(entry.id) : null;
       if (entry.id) window.GTNHNEI_ICON_API?.setIconByName(row.querySelector(".libraryIcon"), entry.id);
-      row.querySelectorAll("[data-library-action]").forEach(button => button.addEventListener("click", () => {
+      row.querySelectorAll("[data-library-action]").forEach(button => button.addEventListener("click", async () => {
         const action = button.dataset.libraryAction;
         if (action === "favorite") { toggleFavorite(entry.id); return; }
+        if (action === "copy") { try { await navigator.clipboard.writeText(good?.name || entry.name); notify("Item name copied."); } catch { notify("Clipboard unavailable. Select the item name and copy it manually."); } return; }
         if (action === "remove") { try { library().remove(entry.id, entry.name); changed(); } catch (error) { status.textContent = error.message; } return; }
         dialog.close();
         if (action === "plan") window.GTNH_CALC?.planItem(entry.id);
@@ -44,6 +46,7 @@ function render() {
       }));
     });
     dialog.querySelector("#libraryMore").hidden = entries.length <= visible;
+    if (focusedItem && focusedAction) (list.querySelector(`[data-library-identity="${CSS.escape(focusedItem)}"] [data-library-action="${focusedAction}"]`) || dialog.querySelector("#libraryFilter")).focus({ preventScroll: true });
     status.textContent = `${window.GTNH_CATALOG.dataset.label} · ${data.favorites.length} favorites · ${data.recent.length} recent items. Stored on this browser.`;
   } catch (error) { list.replaceChildren(); status.textContent = error.message; }
 }
@@ -69,7 +72,7 @@ export function openItemLibrary(initialTab = "favorites") {
     dialog.addEventListener("click", event => {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.libraryTab) { tab = button.dataset.libraryTab; visible = 60; render(); }
-      if (button.dataset.libraryAdd !== undefined) { toggleFavorite(matches[Number(button.dataset.libraryAdd)].id); render(); }
+      if (button.dataset.libraryAdd !== undefined) toggleFavorite(matches[Number(button.dataset.libraryAdd)].id);
       if (button.id === "libraryMore") { visible += 60; render(); }
       if (button.id === "libraryClearRecent") { try { library().clearRecent(); render(); } catch (error) { notify(error.message); } }
       if (button.id === "libraryExport") { try { downloadText("gtnh-atlas-item-library.json", library().rawBackup()); } catch (error) { notify(error.message); } }

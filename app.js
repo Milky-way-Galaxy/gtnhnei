@@ -19,6 +19,14 @@ import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
 import { getPreference, setPreference } from "./preferences.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
+// Debug/integration imports must share the same module identity as the app.
+// The Pages artifact stamps every local module with this content-derived ID.
+window.GTNH_MODULE_URL = path => {
+  const url = new URL(path, document.baseURI), build = document.querySelector('meta[name="atlas-build"]')?.content;
+  if (build && build !== "development") url.searchParams.set("v", build);
+  return url.href;
+};
+
 const search = document.getElementById("search");
 const clear = document.getElementById("clear");
 const navBack = document.getElementById("navBack");
@@ -341,15 +349,17 @@ window.addEventListener("resize", refreshTipPosition);
 async function load() {
   if (loading) return;
   loading = true;
+  const started = performance.now();
   setLoadState("fetch", "Fetching and decompressing recipe database…");
   try {
     const dataset = await loadDatasetSelection();
+    const databaseStarted = performance.now();
     const { buffer, source, saved } = await loadVerifiedDatabase(dataset, ({ received, total }) => {
       const mb = (received / 1000000).toFixed(1);
       const size = total ? ` of ${(total / 1000000).toFixed(1)} MB` : " MB";
       setLoadState("fetch", `Downloading and decompressing: ${mb}${size}…`);
     }, { onStatus: setLoadState });
-    window.GTNH_DATABASE_LOAD = { source, saved };
+    window.GTNH_DATABASE_LOAD = { source, saved, databaseMs: performance.now() - databaseStarted };
     setLoadState("index", "Building the item and recipe index…");
     // Give the browser a paint opportunity before synchronous index construction.
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
@@ -375,6 +385,7 @@ async function load() {
     // Install dependent APIs in registration order before enabling the UI.
     await dataReady;
     renderSearchGrid(false);
+    window.GTNH_DATABASE_LOAD.startupMs = performance.now() - started;
     setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
     const params = new URLSearchParams(location.search), linkedId = params.get("item");
     if (linkedId) {

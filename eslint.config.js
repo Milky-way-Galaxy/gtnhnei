@@ -1,7 +1,7 @@
 import globals from "globals";
 
 export default [
-  { ignores: ["node_modules/**", "disabled_scripts/**", "dist/**", "vendor/**", "test-results/**", "playwright-report/**"] },
+  { ignores: ["node_modules/**", "_site/**", "disabled_scripts/**", "dist/**", "vendor/**", "test-results/**", "playwright-report/**"] },
   { files: ["gtnhflow-pyodide-worker.js", "service-worker.js"], languageOptions: { globals: globals.worker } },
   {
     files: ["*.js", "tests/**/*.js", "tools/**/*.js"],

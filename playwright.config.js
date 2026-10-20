@@ -14,5 +14,5 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile", use: { ...devices["Pixel 7"] } }
   ],
-  webServer: { command: "node tools/serve.js", url: "http://127.0.0.1:4173/gtnhnei/", reuseExistingServer: !process.env.CI }
+  webServer: { command: "node tools/serve.js --staged", url: "http://127.0.0.1:4173/gtnhnei/", reuseExistingServer: !process.env.CI }
 });

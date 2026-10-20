@@ -10,6 +10,9 @@ test("favorites, recent history and library actions retain exact good IDs", asyn
   const dialog = page.locator("#itemLibraryDialog");
   await expect(dialog.locator(".libraryRow")).toHaveCount(1);
   await expect(dialog.locator(".libraryGood")).toContainText(iron);
+  await page.evaluate(() => { navigator.clipboard.writeText = async text => { window.copiedLibraryName = text; }; });
+  await dialog.locator('[data-library-action="copy"]').click();
+  expect(await page.evaluate(() => window.copiedLibraryName)).toBe("Iron Ingot");
   await dialog.locator('[data-library-action="usage"]').click();
   await expect(page.locator("#status")).toContainText("Usage: Iron Ingot");
   await page.locator("#toolFav").click(); await dialog.locator('[data-library-tab="recent"]').click();

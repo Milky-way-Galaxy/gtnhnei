@@ -5,11 +5,11 @@ test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setIte
 test("real cross-version recipes compare on demand without replacing the active repository, with complete JSON export",async({page})=>{
   const errors=[];page.on("pageerror",error=>errors.push(error.message));
   await page.goto(url);await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.evaluate(async()=>{window.testActiveRepository=(await import("./dist/repository.js")).Repository.current;});
+  await page.evaluate(async()=>{window.testActiveRepository=(await import(window.GTNH_MODULE_URL("./dist/repository.js"))).Repository.current;});
   await page.locator("#compareCurrentItem").click();await expect(page.locator("#versionCompareDialog")).toBeVisible();
   await page.locator("#versionCompareRun").click();
   await expect(page.locator("#versionCompareSummary")).toHaveText("11 unchanged · 0 modified · 2 removed · 2 added",{timeout:30000});
-  expect(await page.evaluate(async()=>window.testActiveRepository===(await import("./dist/repository.js")).Repository.current)).toBe(true);
+  expect(await page.evaluate(async()=>window.testActiveRepository===(await import(window.GTNH_MODULE_URL("./dist/repository.js"))).Repository.current)).toBe(true);
   await expect(page.locator("#toolDb")).toContainText("2.8.0");
   await page.locator('[data-compare-kind="added"]').first().locator("summary").click();
   await expect(page.locator('[data-compare-kind="added"]').first()).toContainText("f:gregtech:hydrogen");

@@ -6,7 +6,7 @@ export async function fetchDatabase(onProgress = () => {}, url = "data/data.bin"
 
   let response;
   try {
-    response = await fetch(url, { signal });
+    response = await fetch(url, { signal, cache: "no-cache" });
   } catch (error) {
     throw new Error("Could not download the recipe database. Check your connection and retry.", { cause: error });
   }

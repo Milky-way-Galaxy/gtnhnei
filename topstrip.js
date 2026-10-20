@@ -1,462 +1,57 @@
-/* === GTNH Atlas top strip v3: no redundant Flow button === */
-(() => {
-  "use strict";
+import { openItemLibrary } from "./library-ui.js";
+import { openOfflineManager } from "./offline-ui.js";
+import { createDialog, notify } from "./ui-dialog.js";
+import { checkOfflineUpdate } from "./offline.js";
 
-  if (window.__GTNH_WORKBENCH_TOPSTRIP_V3__) return;
-  window.__GTNH_WORKBENCH_TOPSTRIP_V3__ = true;
-
-  function smallHint(text) {
-    let el = document.getElementById("gtnhSmallHint");
-
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "gtnhSmallHint";
-      el.className = "gtnhSmallHint";
-      document.body.appendChild(el);
+let versionDialog, help;
+function openVersionPicker() {
+  if (!versionDialog) versionDialog = createDialog("gtnhNeiDrop", "Recipe version", "Recipes, icons, saved plans and item libraries stay with their version.");
+  const body = versionDialog.querySelector(".atlasDialogBody"), info = window.GTNH_DATASETS;
+  body.replaceChildren();
+  if (!info) body.textContent = "Recipe datasets are still loading.";
+  else {
+    for (const dataset of info.manifest.datasets) {
+      const button = document.createElement("button"); button.type = "button"; button.className = "atlasVersionOption";
+      button.textContent = `${dataset.id === info.active.id ? "✓ " : ""}${dataset.label}${dataset.available ? "" : " — unavailable"}`;
+      button.disabled = !dataset.available; button.title = dataset.reason || dataset.verification;
+      button.setAttribute("aria-pressed", String(dataset.id === info.active.id));
+      button.addEventListener("click", () => { if (dataset.id !== info.active.id) info.select(dataset.id); versionDialog.close(); });
+      body.appendChild(button);
+      const note = document.createElement("p"); note.className = "atlasMuted"; note.textContent = dataset.reason || dataset.verification; body.appendChild(note);
     }
-
-    el.textContent = text;
-    el.classList.add("show");
-    clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.classList.remove("show"), 2400);
+    const source = document.createElement("a"); source.href = info.active.source; source.textContent = "View the active dataset's pinned upstream source"; body.appendChild(source);
   }
-
-  function openCalculator() {
-    if (window.GTNH_CALC?.open) {
-      window.GTNH_CALC.open();
-    } else {
-      smallHint("Calculator is still loading.");
-    }
+  versionDialog.showModal();
+}
+function showHelp() {
+  if (!help) {
+    help = createDialog("gtnhHelpOverlay", "Use Atlas", "Search recipes, plan a factory, and keep your work with its recipe version.");
+    help.querySelector(".atlasDialogBody").innerHTML = `<div class="atlasHelpGrid"><section><h3>Recipe search</h3><p>Tap an item for recipes. Double tap or right click for usages. Hold to copy its name.</p><p>Search words, <code>@greg</code> for a mod, or an exact item/fluid ID. Search filters select items, fluids, mods and sorting.</p></section><section><h3>Production Planner</h3><p>Build material and machine requirements for one product or a factory with several outputs. Set total quantities or rates, choose routes, record stock, and check power and bottlenecks.</p><p>Open a recipe and choose <b>Plan this</b>, or use <b>Planner</b> in the toolbar. Named plans and shareable links are under Saved plans and sharing.</p></section><section><h3>Calculator and diagrams</h3><p>Calculator offers a simpler material breakdown. Planner includes a dependency tree and SVG download. The gtnh-flow solver is under Code / Export and loads its external runtime when requested.</p></section><section><h3>Keep useful items</h3><p>Star a recipe to favorite its exact item. Library includes favorites, recent history and portable JSON backups. Each GTNH version has its own library.</p></section><section><h3>Keyboard shortcuts</h3><p><kbd>/</kbd> Search · <kbd>P</kbd> Planner · <kbd>L</kbd> Library · <kbd>?</kbd> Help.</p><p>Focus a grid item: arrows move, <kbd>R</kbd> shows recipes, <kbd>U</kbd> shows usages, <kbd>F</kbd> toggles its favorite.</p></section><section><h3>Offline and updates</h3><p>Verified recipe data is cached for faster return visits. Choose Offline to save the app and matching icons for a complete version. Basic search, planning and saved work then run without a connection. The external flow solver still needs a connection.</p></section></div><p class="atlasMuted">Atlas reports assumptions and unresolved inputs in each plan. Machine reference models cover their documented GT5 formulas; check specialized multiblocks and recipe conditions in game.</p>`;
   }
-
-  function openFavorites() {
-    const activeId = window.GTNH_DATASETS?.active?.id;
-    const KEY = !activeId || activeId === "gtnh-2.8.0" ? "gtnhnei_favorites_v2" : `gtnhnei_favorites_v2_${activeId}`;
-
-    function cleanName(s) {
-      return String(s || "").trim();
-    }
-
-    function compact(s) {
-      return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-    }
-
-    function esc(s) {
-      return String(s ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-    }
-
-    function loadFavs() {
-      try {
-        const raw = localStorage.getItem(KEY);
-        const arr = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(arr)) return [];
-
-        return arr
-          .filter(x => cleanName(x?.name || x))
-          .map(x => ({
-            name: cleanName(x?.name || x),
-            addedAt: Number(x?.addedAt || Date.now())
-          }));
-      } catch {
-        return [];
-      }
-    }
-
-    function saveFavs(arr) {
-      const out = [];
-      const seen = new Set();
-
-      for (const x of arr || []) {
-        const name = cleanName(x?.name || x);
-        if (!name) continue;
-
-        const key = compact(name);
-        if (seen.has(key)) continue;
-
-        seen.add(key);
-        out.push({
-          name,
-          addedAt: Number(x?.addedAt || Date.now())
-        });
-      }
-
-      localStorage.setItem(KEY, JSON.stringify(out));
-      return out;
-    }
-
-    function getSearchText() {
-      const el =
-        document.querySelector("#search") ||
-        document.querySelector("input[type='search']") ||
-        document.querySelector("input[placeholder*='Search']");
-
-      return cleanName(el?.value || "");
-    }
-
-    function addFav(name) {
-      name = cleanName(name);
-
-      if (!name) {
-        smallHint("Nothing to favorite.");
-        return;
-      }
-
-      const arr = loadFavs();
-
-      if (!arr.some(x => compact(x.name) === compact(name))) {
-        arr.unshift({ name, addedAt: Date.now() });
-        saveFavs(arr);
-      }
-
-      renderFavs();
-      smallHint("Favorited: " + name);
-    }
-
-    function removeFav(name) {
-      const key = compact(name);
-      saveFavs(loadFavs().filter(x => compact(x.name) !== key));
-      renderFavs();
-      smallHint("Removed: " + name);
-    }
-
-    function closeFavs() {
-      document.getElementById("gtnhFavOverlay")?.classList.remove("show");
-    }
-
-    async function copyName(name) {
-      try {
-        await navigator.clipboard.writeText(name);
-        smallHint("Copied: " + name);
-      } catch {
-        smallHint("Copy failed.");
-      }
-    }
-
-    function openNeiFromFav(name, mode) {
-      closeFavs();
-
-      setTimeout(() => {
-        try {
-          if (mode === "usage") {
-            if (window.GTNHNEI_MAIN_API?.usage?.(name)) return;
-          } else {
-            if (window.GTNHNEI_MAIN_API?.recipe?.(name)) return;
-          }
-        } catch (err) {
-          console.warn("Favorite NEI open failed:", err);
-        }
-
-        const search =
-          document.querySelector("#search") ||
-          document.querySelector("input[type='search']") ||
-          document.querySelector("input[placeholder*='Search']");
-
-        if (search) {
-          search.value = name;
-          search.dispatchEvent(new Event("input", { bubbles: true }));
-          smallHint("Searched: " + name);
-        } else {
-          smallHint("NEI search box not found.");
-        }
-      }, 60);
-    }
-
-    function ensureFavOverlay() {
-      let ov = document.getElementById("gtnhFavOverlay");
-      if (ov) return ov;
-
-      ov = document.createElement("div");
-      ov.id = "gtnhFavOverlay";
-      ov.innerHTML = `
-        <div class="gtnhFavPanel" role="dialog" aria-modal="true" aria-label="Favorites">
-          <div class="gtnhFavHead">
-            <div>
-              <h2>Favorites</h2>
-              <p>Saved GTNH items/fluids. Minimal safe version.</p>
-            </div>
-            <button class="gtnhFavClose" type="button" aria-label="Close favorites">×</button>
-          </div>
-
-          <div class="gtnhFavTools">
-            <input id="gtnhFavInput" placeholder="Item/fluid name, e.g. microprocessor">
-            <button id="gtnhFavAdd" type="button">Add</button>
-            <button id="gtnhFavAddSearch" type="button">Add search text</button>
-            <button id="gtnhFavClear" type="button">Clear</button>
-          </div>
-
-          <div id="gtnhFavList" class="gtnhFavList"></div>
-        </div>
-      `;
-
-      document.body.appendChild(ov);
-
-      ov.querySelector(".gtnhFavClose")?.addEventListener("click", closeFavs);
-
-      ov.addEventListener("click", event => {
-        if (event.target === ov) closeFavs();
-      });
-
-      ov.querySelector("#gtnhFavAdd")?.addEventListener("click", () => {
-        const input = ov.querySelector("#gtnhFavInput");
-        addFav(input.value);
-        input.value = "";
-      });
-
-      ov.querySelector("#gtnhFavInput")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          ov.querySelector("#gtnhFavAdd")?.click();
-        }
-      });
-
-      ov.querySelector("#gtnhFavAddSearch")?.addEventListener("click", () => {
-        addFav(getSearchText());
-      });
-
-      ov.querySelector("#gtnhFavClear")?.addEventListener("click", () => {
-        if (!confirm("Clear all favorites?")) return;
-        saveFavs([]);
-        renderFavs();
-        smallHint("Favorites cleared.");
-      });
-
-      return ov;
-    }
-
-    function renderFavs() {
-      const list = document.getElementById("gtnhFavList");
-      if (!list) return;
-
-      const favs = loadFavs().sort((a, b) => b.addedAt - a.addedAt);
-
-      if (!favs.length) {
-        list.innerHTML = `
-          <div class="gtnhFavEmpty">
-            No favorites yet. Type an item/fluid name or use “Add search text”.
-          </div>
-        `;
-        return;
-      }
-
-      list.innerHTML = favs.map(x => `
-        <div class="gtnhFavRow">
-          <div>
-            <div class="gtnhFavName">★ ${esc(x.name)}</div>
-            <div class="gtnhFavMeta">Saved ${esc(new Date(x.addedAt).toLocaleString())}</div>
-          </div>
-
-          <div class="gtnhFavActions">
-            <button type="button" data-recipe="${esc(x.name)}">Recipe</button>
-            <button type="button" data-usage="${esc(x.name)}">Usage</button>
-            <button type="button" data-copy="${esc(x.name)}">Copy</button>
-            <button type="button" class="danger" data-remove="${esc(x.name)}">Remove</button>
-          </div>
-        </div>
-      `).join("");
-
-      list.querySelectorAll("[data-recipe]").forEach(btn => {
-        btn.addEventListener("click", () => openNeiFromFav(btn.dataset.recipe, "recipe"));
-      });
-
-      list.querySelectorAll("[data-usage]").forEach(btn => {
-        btn.addEventListener("click", () => openNeiFromFav(btn.dataset.usage, "usage"));
-      });
-
-      list.querySelectorAll("[data-copy]").forEach(btn => {
-        btn.addEventListener("click", () => copyName(btn.dataset.copy));
-      });
-
-      list.querySelectorAll("[data-remove]").forEach(btn => {
-        btn.addEventListener("click", () => removeFav(btn.dataset.remove));
-      });
-    }
-
-    const ov = ensureFavOverlay();
-    renderFavs();
-    ov.classList.add("show");
-
-    setTimeout(() => {
-      ov.querySelector("#gtnhFavInput")?.focus?.();
-    }, 80);
-  }
-
-  function createHelpModal() {
-    if (document.getElementById("gtnhHelpOverlay")) return;
-
-    const ov = document.createElement("div");
-    ov.id = "gtnhHelpOverlay";
-    ov.className = "gtnhHelpOverlay";
-
-    ov.innerHTML = `
-      <div class="gtnhHelpPanel" role="dialog" aria-modal="true" aria-label="GTNH Atlas help">
-        <div class="gtnhHelpHead">
-          <div>
-            <h2>GTNH Atlas</h2>
-            <p>NEI search, calculator planning, and gtnh-flow export.</p>
-          </div>
-          <button id="gtnhHelpClose" class="gtnhHelpClose" type="button" aria-label="Close help">×</button>
-        </div>
-
-        <div class="gtnhHelpGrid">
-          <section class="gtnhHelpCard">
-            <h3>NEI</h3>
-            <p><b>Tap / left click</b>: open recipe.</p>
-            <p><b>Double tap / right click</b>: open usage.</p>
-            <p><b>Hold</b>: copy exact item/fluid name.</p>
-          </section>
-
-          <section class="gtnhHelpCard">
-            <h3>Calculator</h3>
-            <p>Pick a target, choose a route, then build the recipe tree.</p>
-            <p>Use route mode when multiple GTNH recipes exist.</p>
-          </section>
-
-          <section class="gtnhHelpCard">
-            <h3>gtnh-flow</h3>
-            <p>Inside Calculator → Code / Export → <b>gtnh-flow</b>.</p>
-            <p>Exports YAML/SVG draft. Test serious lines in local gtnh-flow.</p>
-          </section>
-
-          <section class="gtnhHelpCard">
-            <h3>Database</h3>
-            <p>The database badge shows the active verified GTNH version. Unavailable versions are listed in NEI.</p>
-            <p>Older databases need separate data files before they can work.</p>
-          </section>
-        </div>
-
-        <div class="gtnhHelpFooter">
-          <button id="gtnhHelpStart" type="button">Close</button>
-          <button id="gtnhHelpEveryTime" type="button">Show every visit</button>
-          <button id="gtnhHelpNever" type="button">Don’t auto-open</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(ov);
-
-    function close() {
-      ov.classList.remove("show");
-    }
-
-    document.getElementById("gtnhHelpClose")?.addEventListener("click", close);
-    document.getElementById("gtnhHelpStart")?.addEventListener("click", () => {
-      localStorage.setItem("gtnhnei_help_seen", "1");
-      close();
-    });
-    document.getElementById("gtnhHelpEveryTime")?.addEventListener("click", () => {
-      localStorage.setItem("gtnhnei_help_seen", "always");
-      close();
-      smallHint("Help will auto-open every visit.");
-    });
-    document.getElementById("gtnhHelpNever")?.addEventListener("click", () => {
-      localStorage.setItem("gtnhnei_help_seen", "1");
-      close();
-      smallHint("Use Help to open this guide again.");
-    });
-
-    ov.addEventListener("click", event => {
-      if (event.target === ov) close();
-    });
-  }
-
-  function showHelp() {
-    const updateDataset = () => {
-      const badge = document.getElementById("toolDb"), dataset = window.GTNH_DATASETS?.active;
-      if (badge && dataset) { badge.textContent = "DB: " + dataset.label; badge.title = dataset.verification; }
-    };
-    window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
-    createHelpModal();
-    document.getElementById("gtnhHelpOverlay")?.classList.add("show");
-  }
-
-  function showNeiDropdown(anchor) {
-    let drop = document.getElementById("gtnhNeiDrop");
-    if (!drop) { drop = document.createElement("div"); drop.id = "gtnhNeiDrop"; drop.className = "gtnhDrop"; document.body.appendChild(drop); }
-    drop.replaceChildren();
-    const info = window.GTNH_DATASETS;
-    if (!info) { drop.textContent = "Recipe datasets are still loading."; }
-    else {
-      for (const dataset of info.manifest.datasets) {
-        const button = document.createElement("button"); button.type = "button";
-        button.textContent = `${dataset.id === info.active.id ? "✓ " : ""}${dataset.label}${dataset.available ? "" : " — unavailable"}`;
-        button.disabled = !dataset.available; button.title = dataset.reason || dataset.verification;
-        button.addEventListener("click", () => { if (dataset.id !== info.active.id) info.select(dataset.id); drop.classList.remove("show"); });
-        drop.appendChild(button);
-      }
-      const note = document.createElement("p"); note.textContent = "Each version needs its own verified export. Unavailable versions never use another version's recipes."; drop.appendChild(note);
-    }
-    const rect = anchor.getBoundingClientRect(); drop.style.left = Math.max(8, Math.min(rect.left, innerWidth - 300)) + "px"; drop.style.top = rect.bottom + 6 + "px"; drop.classList.toggle("show");
-  }
-
-  function install() {
-    if (!document.getElementById("gtnhToolStrip")) {
-      const strip = document.createElement("nav");
-      strip.id = "gtnhToolStrip";
-      strip.className = "gtnhToolStrip";
-      strip.setAttribute("aria-label", "GTNH Atlas tools");
-
-      strip.innerHTML = `
-        <button id="toolNei" class="gtnhToolBtn active" type="button">NEI ▾</button>
-        <button id="toolCalc" class="gtnhToolBtn" type="button">Calculator</button>
-        <button id="toolFav" class="gtnhToolBtn" type="button">Favorites</button>
-        <button id="toolHelp" class="gtnhToolBtn" type="button">Help</button>
-        <span id="toolDb" class="gtnhDbBadge" title="Verified recipe database">DB: loading</span>
-      `;
-
-      const header = document.querySelector("header") || document.body.firstElementChild;
-
-      if (header && header.parentNode) {
-        header.parentNode.insertBefore(strip, header.nextSibling);
-      } else {
-        document.body.insertBefore(strip, document.body.firstChild);
-      }
-    }
-
-    document.getElementById("toolNei")?.addEventListener("click", event => showNeiDropdown(event.currentTarget));
-    document.getElementById("toolCalc")?.addEventListener("click", openCalculator);
-    document.getElementById("toolFav")?.addEventListener("click", openFavorites);
-    document.getElementById("toolHelp")?.addEventListener("click", showHelp);
-
-    document.addEventListener("click", event => {
-      const drop = document.getElementById("gtnhNeiDrop");
-      if (!drop) return;
-
-      if (
-        event.target.closest("#gtnhNeiDrop") ||
-        event.target.closest("#toolNei")
-      ) {
-        return;
-      }
-
-      drop.classList.remove("show");
-    }, true);
-
-    const updateDataset = () => {
-      const badge = document.getElementById("toolDb"), dataset = window.GTNH_DATASETS?.active;
-      if (badge && dataset) { badge.textContent = "DB: " + dataset.label; badge.title = dataset.verification; }
-    };
-    window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
-    createHelpModal();
-
-    const seen = localStorage.getItem("gtnhnei_help_seen");
-
-    if (seen === "always") {
-      setTimeout(showHelp, 550);
-    } else if (!seen) {
-      setTimeout(() => {
-        smallHint("Help is in the top bar. gtnh-flow is inside Calculator → Code / Export.");
-      }, 700);
-      localStorage.setItem("gtnhnei_help_seen", "1");
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", install);
-  } else {
-    install();
-  }
-})();
+  help.showModal();
+}
+function install() {
+  const strip = document.createElement("nav"); strip.id = "gtnhToolStrip"; strip.className = "gtnhToolStrip"; strip.setAttribute("aria-label", "GTNH Atlas tools");
+  strip.innerHTML = '<button id="toolNei" type="button" aria-haspopup="dialog">Version ▾</button><button id="toolCalc" class="workspacePrimary" type="button" title="Production Planner (P)">Planner</button><button id="toolMatCalc" type="button">Calculator</button><button id="toolFav" type="button" aria-haspopup="dialog" title="Favorites and recent items (L)">Library</button><button id="toolOffline" type="button" aria-haspopup="dialog">Offline</button><button id="toolHelp" type="button" aria-haspopup="dialog" title="Help (?)">Help</button><span id="toolDb" class="gtnhDbBadge">Loading recipes…</span>';
+  document.querySelector(".app").prepend(strip);
+  document.getElementById("toolNei").addEventListener("click", openVersionPicker);
+  document.getElementById("toolCalc").addEventListener("click", () => { if (window.GTNH_CALC) window.GTNH_CALC.open(); else notify("Planner is loading."); });
+  document.getElementById("toolMatCalc").addEventListener("click", () => { if (window.GTNH_MATCALC) window.GTNH_MATCALC.open(); else notify("Calculator is loading."); });
+  document.getElementById("toolFav").addEventListener("click", () => openItemLibrary());
+  document.getElementById("toolOffline").addEventListener("click", openOfflineManager);
+  document.getElementById("toolHelp").addEventListener("click", showHelp);
+  const updateDataset = () => {
+    const dataset = window.GTNH_DATASETS?.active;
+    if (dataset) { const badge = document.getElementById("toolDb"); badge.textContent = dataset.label; badge.title = dataset.verification; }
+  };
+  window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
+  checkOfflineUpdate(() => { const button = document.getElementById("toolOffline"); button.textContent = "Update ready"; button.classList.add("workspaceUpdate"); }).catch(() => {});
+  document.addEventListener("keydown", event => {
+    if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog]") || document.querySelector("dialog[open], #gtnhCalcOverlay.show, #gtnhMatCalcOverlay.show")) return;
+    const key = event.key.toLowerCase();
+    if (key === "p") { event.preventDefault(); document.getElementById("toolCalc").click(); }
+    if (key === "l") { event.preventDefault(); openItemLibrary(); }
+    if (key === "?") { event.preventDefault(); showHelp(); }
+  });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install); else install();

@@ -1,0 +1,90 @@
+/* One viewport, one scrolling recipe surface. Keep tools visible on phones. */
+html { height: 100%; }
+body { height: 100dvh; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+body > .app { flex: 1 1 0; min-height: 0; height: auto !important; }
+#seoIntro.seoIntro { flex: none; width: 100%; max-width: none; margin: 0; padding: 10px 52px 10px 14px; border-radius: 12px; }
+#seoIntro.seoIntro h1 { font-size: clamp(18px, 2.2vw, 27px); letter-spacing: -.035em; }
+#seoIntro.seoIntro p { font-size: 13px; margin: 4px 0 0; color: #a5bdcf; }
+.seoIntroClose { min-height: 36px; }
+#gtnhToolStrip { display: flex; flex: none; flex-wrap: wrap; gap: 6px; padding: 8px; overflow: visible; border-bottom: 1px solid #2b4158; background: #091725; }
+#gtnhToolStrip > button { flex: 0 0 auto; min-height: 44px; height: auto; padding: 8px 16px; border-radius: 9px; color: #d9e8f3; font-size: 14px; }
+#gtnhToolStrip .workspacePrimary { background: #173d51 !important; border-color: #70d4e5 !important; color: #bcf6ed !important; }
+#gtnhToolStrip .workspaceUpdate { border-color: #e8c572; color: #f6db9a; }
+#toolDb { margin-left: auto; align-self: center; background: #102b32; color: #9de3d4; border: 1px solid #2e625e; padding: 5px 9px; border-radius: 8px; font-size: 12px; }
+.topbar .title { display: none; }
+.topbar { grid-template-columns: 44px 44px minmax(0, 1fr) 44px; gap: 6px; padding: 8px; }
+.topbar #search, .topbar > button { height: 44px; font-size: 16px; }
+#search::placeholder { color: #9bb0c2; }
+#status { flex: none; font-size: 12px; padding: 5px 10px; }
+.atlasGridLimitPanel { flex: none; margin: 0 8px 7px; padding: 7px 9px; border-radius: 9px; }
+.atlasGridLimitText { font-size: 11px; gap: 8px; }
+.atlasGridLimitBtns { gap: 5px; margin-top: 5px; }
+.atlasGridLimitBtns button { min-height: 36px; font-size: 12px; padding: 5px 9px; }
+#breadcrumb { overflow-wrap: anywhere; flex: none; }
+#breadcrumb button, #breadcrumb a { min-height: 36px; height: auto; padding: 7px 9px; margin: 4px 4px 0 0; border: 1px solid #36546d; border-radius: 7px; }
+#breadcrumb a { text-decoration: none; }
+button, a, summary, input, select { touch-action: manipulation; }
+button, summary { cursor: pointer; }
+:focus-visible { outline: 2px solid #7ae1ef; outline-offset: 3px; }
+
+.atlasDialog { color: #e5eff8; background: #0b1a2b; border: 1px solid #385c77; border-radius: 16px; padding: 0; width: min(900px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; box-shadow: 0 22px 90px #0008; }
+.atlasDialog::backdrop { background: #020914dc; backdrop-filter: blur(5px); }
+.atlasDialog[open] { display: block; }
+.atlasDialogHead { display: flex; gap: 18px; justify-content: space-between; align-items: start; padding: 20px; border-bottom: 1px solid #2d465e; background: #0d2135; }
+.atlasDialogHead h2 { font-size: 24px; line-height: 1.15; margin: 0; color: #bce7f4; }
+.atlasDialogHead p { color: #a5bed2; margin: 8px 0 0; line-height: 1.5; }
+.atlasDialogHead [data-dialog-close] { flex: none; width: 44px; height: 44px; font-size: 25px; }
+.atlasDialogBody { padding: 18px 20px; line-height: 1.5; }
+.atlasDialog button { min-height: 44px; height: auto; padding: 8px 12px; }
+.atlasDialog label { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; font-size: 14px; }
+.atlasDialog input { color: #edf5fc; background: #06131f; border: 1px solid #36566e; border-radius: 8px; min-height: 44px; padding: 9px; width: 100%; font-size: 16px; }
+.atlasDialog a { color: #8fdced; overflow-wrap: anywhere; }
+.atlasDialog p { overflow-wrap: anywhere; }
+.atlasDialog [hidden] { display: none !important; }
+.atlasDialogTabs, .atlasDialogActions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; overflow: visible; }
+.atlasDialogTabs button[aria-pressed=true] { color: #b8f7e8 !important; border-color: #68ccba !important; background: #163c3e !important; }
+.atlasDialog .atlasImport { padding: 8px; border: 1px solid #36566e; border-radius: 8px; margin: 0; }
+.atlasImport input { max-width: 240px; }
+.atlasMuted, .atlasEmpty { color: #a6bfd0; }
+.atlasEmpty { border: 1px dashed #39566d; border-radius: 10px; padding: 20px; }
+.atlasVersionOption { display: block; width: 100%; text-align: left; }
+.atlasVersionOption[aria-pressed=true] { color: #a9f0dc; border-color: #62c9b9; }
+.atlasVersionOption + p { margin: 5px 0 18px; font-size: 13px; }
+.atlasHelpGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+.atlasHelpGrid h3 { color: #9adcec; margin-bottom: 4px; }
+.atlasHelpGrid p { color: #bbcddd; }
+.atlasDialog kbd { border: 1px solid #52708c; padding: 1px 5px; border-radius: 4px; color: #c5f1e8; }
+#atlasNotice { position: fixed; z-index: 100000; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 28px); padding: 12px 16px; border: 1px solid #5c9eb1; border-radius: 10px; background: #112e42; color: #e4f9ff; box-shadow: 0 8px 32px #0008; }
+.gtnhSmallHint { position: fixed; z-index: 99990; bottom: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); border: 1px solid #5c9eb1; border-radius: 10px; padding: 12px; background: #112e42; color: #e4f9ff; display: none; }
+.gtnhSmallHint.show { display: block; }
+.libraryRow { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #30485e; }
+.libraryIcon { width: 32px; height: 32px; display: block; }
+.libraryGood small { display: block; color: #9eb5c9; overflow-wrap: anywhere; font-size: 12px; }
+.libraryGood { min-width: 0; overflow-wrap: anywhere; }
+.libraryActions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; max-width: 315px; }
+.librarySearch { margin: 20px 0; padding: 12px; background: #102338; border: 1px solid #34516a; border-radius: 10px; }
+.librarySearch summary { padding: 5px 0; }
+#librarySearchResults { display: grid; gap: 6px; }
+#librarySearchResults button { text-align: left; }
+#librarySearchResults small { display: block; color: #a4bed0; font-weight: 400; overflow-wrap: anywhere; }
+.offlineChecks { list-style: none; padding: 12px; border: 1px solid #3d625f; border-radius: 10px; color: #a5e8d5; }
+.offlineChecks li { margin: 7px 0; }
+@media (max-width: 700px) {
+  body { padding: 4px; gap: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  #seoIntro.seoIntro { padding: 8px 46px 8px 10px; }
+  #seoIntro.seoIntro h1 { font-size: 18px; line-height: 1.2; }
+  #seoIntro.seoIntro p { font-size: 11px; line-height: 1.35; }
+  #gtnhToolStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; padding: 6px; }
+  #gtnhToolStrip > button { padding: 7px 3px; font-size: 12px; width: 100%; }
+  #toolDb { grid-column: 1 / -1; margin: 0; min-height: 0; padding: 1px 8px; border: 0; background: none; font-size: 11px; }
+  .topbar { padding: 6px; gap: 4px; }
+  .atlasGridLimitText span { font-size: 10px; }
+  .atlasGridLimitBtns { display: flex; flex-wrap: wrap; }
+  .atlasGridLimitBtns button { min-height: 36px; flex: 1; }
+  .atlasDialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 12px; }
+  .atlasDialogHead, .atlasDialogBody { padding: 14px; }
+  .atlasHelpGrid { grid-template-columns: 1fr; gap: 0; }
+  .libraryRow { grid-template-columns: 32px minmax(0, 1fr); gap: 9px; }
+  .libraryActions { grid-column: 2; justify-content: flex-start; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

@@ -15,6 +15,7 @@ import { exportRecipeYaml } from "./recipe-export.js";
 import { openVersionComparison } from "./version-compare-ui.js";
 import { appendRecipeDetails } from "./recipe-details.js";
 import { loadVerifiedDatabase } from "./database-cache.js";
+import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
 import { onRetry, setLoadState } from "./loaderguard.js";
 
 const search = document.getElementById("search");
@@ -497,6 +498,7 @@ function renderRecipes(obj, mode, push = true) {
   if (push) pushView({ type: "recipes", obj, mode });
 
   currentView = { type: "recipes", obj, mode };
+  if (/^[if]:/.test(obj.id)) recordVisit(obj.id, mode === "Usage" ? "usage" : "production");
   activeMachine = "All";
   currentRecipes = recipesFor(obj, mode);
 
@@ -523,6 +525,11 @@ function renderRecipes(obj, mode, push = true) {
   plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
   const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
   compare.addEventListener("click", () => openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production")); breadcrumb.appendChild(compare);
+  if (/^[if]:/.test(obj.id)) {
+    const favorite = document.createElement("button"); favorite.id = "favoriteCurrentItem"; favorite.type = "button";
+    const sync = () => { const saved = isFavorite(obj.id); favorite.textContent = saved ? "★ Favorited" : "☆ Favorite"; favorite.setAttribute("aria-pressed", String(saved)); };
+    favorite.addEventListener("click", () => { toggleFavorite(obj.id); sync(); }); sync(); breadcrumb.appendChild(favorite);
+  }
 
   renderMachineTabs();
   renderRecipeList();
@@ -1633,6 +1640,7 @@ machineTabs.addEventListener("pointerdown", () => {
   window.__GTNHNEI_MAIN_NAV_API_V17__ = true;
 
   function findByNameV17(name) {
+    if (/^[ifo]:/.test(String(name || ""))) return window.GTNH_CATALOG?.resolve(name) || null;
     try {
       if (window.GTNHNEI_ICON_API?.findObjectByName) {
         return window.GTNHNEI_ICON_API.findObjectByName(name);
@@ -1987,13 +1995,21 @@ grid.addEventListener("keydown", event => {
   const slot = event.target.closest(".slot"); if (!slot) return;
   const good = window.GTNH_CATALOG?.resolve(slot.dataset.goodsId);
   if (event.key.toLowerCase() === "u" && good) { event.preventDefault(); openUsage(good); return; }
+  if (event.key.toLowerCase() === "r" && good) { event.preventDefault(); openProduction(good); return; }
+  if (event.key.toLowerCase() === "f" && good) { event.preventDefault(); toggleFavorite(good.id); return; }
   const slots = [...grid.querySelectorAll(".slot")], index = slots.indexOf(slot);
   const columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
   const next = { ArrowRight: index + 1, ArrowLeft: index - 1, ArrowDown: index + columns, ArrowUp: index - columns, Home: 0, End: slots.length - 1 }[event.key];
   if (next !== undefined) { event.preventDefault(); slots[Math.max(0, Math.min(slots.length - 1, next))]?.focus(); }
 });
 document.addEventListener("keydown", event => {
-  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], [role=dialog]")) {
+  if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog]") && !document.querySelector("dialog[open]")) {
     event.preventDefault(); search.focus();
   }
+});
+window.addEventListener("gtnh-library-changed", () => {
+  const button = document.getElementById("favoriteCurrentItem");
+  if (!button || currentView.type !== "recipes") return;
+  const saved = isFavorite(currentView.obj.id);
+  button.textContent = saved ? "★ Favorited" : "☆ Favorite"; button.setAttribute("aria-pressed", String(saved));
 });

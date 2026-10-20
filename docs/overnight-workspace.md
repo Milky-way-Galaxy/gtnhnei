@@ -94,6 +94,10 @@ imports can use `window.GTNH_MODULE_URL(path)` to share app module identity.
 Playwright serves this staged artifact at the GitHub Pages subpath. Publish Atlas
 reuses the complete Site checks workflow before deploying through Pages Actions,
 replacing the ambiguous legacy/Jekyll publication path.
+The deployment job selects the Actions source with its scoped `pages: write`
+token; the connected development integration does not have Pages-settings write
+access (its direct setup request returned 403). Actual setup/deployment results
+are recorded in the PR's release status.
 
 ## Local startup measurement
 

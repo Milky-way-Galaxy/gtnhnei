@@ -140,8 +140,9 @@ data retains all plans/favorites. Keyboard shortcuts: `/` search, `P` planner,
 `L` library, `?` help; focused grid items support `R`, `U`, and `F`.
 
 The **Publish Atlas** workflow reuses Site checks before uploading `_site/` and
-deploying to GitHub Pages. Pages must use **GitHub Actions** as its source. A push
-to `main` publishes only after those checks pass. Respect the user's publishing
+deploying to GitHub Pages. Its repository-scoped `pages: write` token selects
+**GitHub Actions** as the Pages source; repository policy must allow that
+permission. A push to `main` publishes only after those checks pass. Respect the user's publishing
 approval before merging. For a local measurement of first/returning visits:
 
 ```sh

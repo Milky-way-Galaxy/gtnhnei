@@ -31,6 +31,10 @@ jobs:
         with:
           node-version: 22
       - run: node tools/stage-site.js
+      - name: Select Actions as Pages source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow --jq '.build_type'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

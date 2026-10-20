@@ -69,6 +69,21 @@ button, summary { cursor: pointer; }
 #librarySearchResults small { display: block; color: #a4bed0; font-weight: 400; overflow-wrap: anywhere; }
 .offlineChecks { list-style: none; padding: 12px; border: 1px solid #3d625f; border-radius: 10px; color: #a5e8d5; }
 .offlineChecks li { margin: 7px 0; }
+.supplyControls { display: flex; gap: 12px; flex-wrap: wrap; }
+.supplyControls label { flex: 1 1 180px; min-width: 0; }
+.supplyControls select { background: #0c2031; color: #eaf3fa; border: 1px solid #395b74; min-height: 44px; border-radius: 8px; font-size: 16px; padding: 8px; width: 100%; }
+.supplySummary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.supplySummary > div { padding: 12px; background: #102c3e; border-radius: 9px; }
+.supplySummary b { display: block; color: #adebda; margin-top: 6px; }
+.atlasDialog .supplyFilter { display: flex; flex-direction: row; align-items: center; gap: 9px; }
+.supplyFilter input, .supplyRow input { width: 22px; min-height: 22px; height: 22px; flex: none; accent-color: #71d6bd; }
+.supplyRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 16px; padding: 12px 0; border-bottom: 1px solid #304d62; break-inside: avoid; }
+.supplyRow label { display: flex; flex-direction: row; align-items: center; margin: 0; gap: 10px; cursor: pointer; }
+.supplyRow small { display: block; font-size: 12px; color: #a6bfd2; overflow-wrap: anywhere; }
+.supplyAmount { text-align: right; }
+.supplyRow.supplyPrepared { opacity: .65; }
+.supplyPrepared label b { text-decoration: line-through; }
+.supplyNotes { color: #b9ccdc; padding-left: 18px; }
 @media (max-width: 700px) {
   body { padding: 4px; gap: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
   #seoIntro.seoIntro { padding: 8px 46px 8px 10px; }
@@ -84,7 +99,18 @@ button, summary { cursor: pointer; }
   .atlasDialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 12px; }
   .atlasDialogHead, .atlasDialogBody { padding: 14px; }
   .atlasHelpGrid { grid-template-columns: 1fr; gap: 0; }
+  .supplySummary { grid-template-columns: 1fr; }
+  .supplyRow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .supplyAmount { text-align: left; padding-left: 32px; }
   .libraryRow { grid-template-columns: 32px minmax(0, 1fr); gap: 9px; }
   .libraryActions { grid-column: 2; justify-content: flex-start; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media print {
+  body.atlasPrintingSupplies { height: auto; overflow: visible; display: block; background: white !important; }
+  body.atlasPrintingSupplies > :not(#supplyDialog) { display: none !important; }
+  body.atlasPrintingSupplies #supplyDialog { position: static; display: block; width: 100%; max-width: none; max-height: none; overflow: visible; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  body.atlasPrintingSupplies #supplyDialog, body.atlasPrintingSupplies #supplyDialog * { background: transparent !important; color: black !important; }
+  body.atlasPrintingSupplies #supplyDialog [data-no-print], body.atlasPrintingSupplies #supplyDialog [data-dialog-close] { display: none !important; }
+  body.atlasPrintingSupplies #supplyDialog::backdrop { background: transparent; }
+}

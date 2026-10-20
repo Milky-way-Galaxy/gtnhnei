@@ -6,6 +6,7 @@ import { recipeMetadataRows } from "./recipe-details.js";
 import { machinePerformance } from "./machine-model.js";
 import { machineProfileHtml, initialMachineConfig } from "./machine-profile-ui.js";
 import { factoryCapacityHtml } from "./factory-capacity-ui.js";
+import { createSupplyTools } from "./supply-ui.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
@@ -15,6 +16,7 @@ export function installPlanner() {
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
+  const supplies = createSupplyTools({ catalog, getPlan: () => plan, getState: () => state, update: values => { Object.assign(state, values); return save(); } });
   const key = () => `gtnh_atlas_planner_v1_${dataset().id}`;
   function load() {
     if (datasetId === dataset().id) return;
@@ -29,8 +31,8 @@ export function installPlanner() {
     } catch { state = structuredClone(defaultPlannerState); }
   }
   function save() {
-    try { localStorage.setItem(key(), JSON.stringify(state)); }
-    catch { error = "Storage is unavailable. Export your plan to preserve it."; }
+    try { localStorage.setItem(key(), JSON.stringify(state)); return true; }
+    catch { error = "Storage is unavailable. Export your plan to preserve it."; return false; }
   }
   function download(name, text, type) {
     const url = URL.createObjectURL(new Blob([text], { type }));
@@ -198,6 +200,7 @@ export function installPlanner() {
     root.querySelector("#calcCodeOut").value = code();
     root.querySelector("#calcCodeLabel").textContent = codeTab === "json" ? "Versioned plan settings (portable JSON)" : codeTab;
     root.querySelector("#plannerStatus").textContent = error || (plan ? `${plan.materials.length} required materials · ${plan.unresolved.length} unresolved dependencies` : "Ready");
+    root.querySelector("#plannerSupplies").disabled = !plan;
   }
   function diagram(limit = 120) {
     const visible = plan.nodes.slice(0, limit), width = 800, height = visible.length * 42 + 24;
@@ -213,7 +216,7 @@ export function installPlanner() {
     const overlay = document.createElement("div"); overlay.id = "gtnhCalcOverlay"; overlay.className = "gtnhCalcOverlay"; overlay.dataset.mobileTab = "planner";
     const select = (key, id, label, choices) => `<label class="gtnhCalcField" for="${id}">${label}<select id="${id}" data-state="${key}">${choices.map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></label>`;
     overlay.innerHTML = `<section class="gtnhCalcPanel" role="dialog" aria-modal="true" aria-label="GTNH production planner"><header class="gtnhCalcHead"><div><h2>Production Planner</h2><p>Materials, production routes, machines and energy from recipe data.</p></div><button id="gtnhCalcClose" aria-label="Close planner" type="button">×</button></header>
-      <nav class="gtnhCalcTabs" aria-label="Planner views"><button data-calc-tab="planner" class="active" type="button">Planner</button><button data-calc-tab="tree" type="button">Tree</button><button data-calc-tab="code" type="button">Code / Export</button><button id="calcBuild" type="button">Build tree</button></nav>
+      <nav class="gtnhCalcTabs" aria-label="Planner views"><button data-calc-tab="planner" class="active" type="button">Planner</button><button data-calc-tab="tree" type="button">Tree</button><button data-calc-tab="code" type="button">Code / Export</button><button id="calcBuild" type="button">Build tree</button><button id="plannerSupplies" type="button" title="Operating supplies and printable build checklist">Supplies</button></nav>
       <p id="plannerStatus" role="status" aria-live="polite"></p><main class="gtnhCalcWorkspace"><section class="gtnhCalcCol" data-calc-panel="planner"><h3>Target and settings</h3>
       <label class="gtnhCalcField" for="calcTarget">Target name or exact ID<input id="calcTarget" data-state="target" list="plannerGoods" autocomplete="off" placeholder="Epichlorohydrin"><datalist id="plannerGoods"></datalist></label>
       <label class="gtnhCalcField" for="calcAmount">Amount<input id="calcAmount" type="number" min="0.000001" step="any" data-state="amount"></label>
@@ -252,6 +255,7 @@ export function installPlanner() {
       switch (button.id) {
         case "gtnhCalcClose": close(); break;
         case "calcBuild": build(); tab("tree"); break;
+        case "plannerSupplies": supplies.open(); break;
         case "calcUseSearch": state.target = document.getElementById("search").value.trim(); sync(); save(); break;
         case "plannerShowMore": displayNodeLimit += 250; render(); break;
         case "calcClear": state = structuredClone(defaultPlannerState); plan = null; built = false; error = ""; sync(); save(); render(); break;

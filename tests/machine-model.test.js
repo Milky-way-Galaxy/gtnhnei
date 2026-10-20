@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { machinePerformance, validateMachineConfig, tierVoltages, ebfRecipeHeat } from "../machine-model.js";
+import { machinePerformance, validateMachineConfig, tierVoltages, ebfRecipeHeat, heatingCoils, heatingCoilsForRuleset, ebfMachineHeat } from "../machine-model.js";
 import { initialMachineConfig } from "../machine-profile-ui.js";
 import { normalizePlannerState, importPlan, serializePlan } from "../planner-state.js";
 const ebf = { durationTicks: 1380, eut: 7680, specialValue: 5400,
@@ -38,6 +38,16 @@ test("EBF heat thresholds apply multiplicative discounts and heat-perfect OCs to
   assert.equal(machinePerformance(ebf, { ...base, machineHeat: 6299 }).heatDiscounts, 0);
   assert.equal(machinePerformance(ebf, { ...base, machineHeat: 6300 }).eut, 29184);
   assert.equal(machinePerformance(ebf, { ...base, machineHeat: 7199 }).durationTicks, 690);
+});
+test("verified heating coils include the EBF voltage bonus and reject physically insufficient coils", () => {
+  const reference = JSON.parse(readFileSync(new URL("./fixtures/gt5-machine-reference.json", import.meta.url),"utf8"));
+  for (const expected of Object.values(reference.coils)) assert.deepEqual(heatingCoils.map(coil => [coil.level, coil.heat]), expected);
+  for (const [ruleset, expected] of Object.entries(reference.coilNames)) assert.deepEqual(heatingCoilsForRuleset(ruleset).map(coil => coil.name), expected);
+  assert.equal(ebfMachineHeat({...base, coilLevel:8}),7601);
+  assert.equal(ebfMachineHeat({...base, coilLevel:8, voltageTier:7}),7701);
+  const physical = machinePerformance(ebf,{...base,coilLevel:8});
+  assert.equal(physical.machineHeat,7601); assert.equal(physical.durationTicks,345); assert.equal(physical.eut,27725);
+  assert.throws(()=>machinePerformance(ebf,{...base,coilLevel:2}),/Insufficient EBF heat/);
 });
 test("ULV, integer voltage tiers, amp OC opt-in, tick floor and explicit OC caps are respected", () => {
   const recipe = { eut: 7, durationTicks: 3 }, cfg = { model: "gt5", voltageTier: 2, machineAmperage: 4 };

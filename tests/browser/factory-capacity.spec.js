@@ -19,7 +19,7 @@ test("real reactor bottleneck controls update capacity, power and stock on deskt
   await expect(analysis).toContainText("160%"); await expect(analysis).toContainText("Over capacity");
   let plan=await page.evaluate(()=>window.GTNH_CALC.getPlan());
   expect(plan.knownInstalledEut).toBe(30); expect(plan.knownAverageEut).toBe(48); expect(plan.reusable[0].amount).toBe(1);
-  await analysis.screenshot({path:testInfo.outputPath("factory-bottleneck.png")});
+  await page.screenshot({path:testInfo.outputPath("factory-bottleneck.png")});
   await input.fill("0"); await input.blur(); await expect(analysis).toContainText("0% of requested output");
   await expect(analysis).toContainText("Stopped");
   plan=await page.evaluate(()=>window.GTNH_CALC.getPlan()); expect(plan.knownInstalledEut).toBe(0); expect(plan.reusable).toEqual([]);

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem("gtnhnei_help_seen", "1")); });
-test("checked EBF model validates real heat/power, retains bad edits and round trips settings", async ({ page }) => {
+test("checked EBF model validates real heat/power, retains bad edits and round trips settings", async ({ page }, testInfo) => {
   const target="i:gregtech:gt.metaitem.01:12393", route="r~--l7UvQdPwieyDfV6NjffQ==";
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
   await page.locator("#toolCalc").click(); await page.locator("#calcTarget").fill(target);
@@ -20,6 +20,25 @@ test("checked EBF model validates real heat/power, retains bad edits and round t
   await profile.locator('[data-profile-field="voltageTier"]').selectOption("4");
   await expect(page.locator("#plannerStatus")).toContainText("Insufficient input power");
   await expect(profile.locator('[data-profile-field="voltageTier"]')).toHaveValue("6");
+  await profile.locator('[data-profile-field="coilLevel"]').selectOption("8");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveValue("7601");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveAttribute("readonly", "");
+  expect(await page.evaluate(() => window.GTNH_CALC.getPlan().knownEnergy)).toBe(9565125);
+  await profile.locator('[data-profile-field="voltageTier"]').selectOption("7");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveValue("7701");
+  await profile.locator('[data-profile-field="voltageTier"]').selectOption("6");
+  await profile.locator('[data-profile-field="coilLevel"]').selectOption("2");
+  await expect(profile.locator('[data-profile-field="coilLevel"]')).toHaveValue("8");
+  await expect(page.locator("#plannerStatus")).toContainText("Insufficient EBF heat");
+  await profile.locator('[data-profile-field="ruleset"]').selectOption("gt5-5.09.54.205");
+  await expect(profile.locator('[data-profile-field="coilLevel"] option[value="11"]')).toContainText("Fluxed Electrum");
+  await profile.locator('[data-profile-field="ruleset"]').selectOption("gt5-5.09.51.470");
+  await expect(profile.locator('[data-profile-field="coilLevel"] option[value="11"]')).toContainText("Electrum Flux");
+  await profile.locator('[data-profile-field="coilLevel"]').selectOption("");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).toHaveValue("7601");
+  await expect(profile.locator('[data-profile-field="machineHeat"]')).not.toHaveAttribute("readonly", "");
+  await profile.locator('[data-profile-field="coilLevel"]').selectOption("8");
+  await page.screenshot({path:testInfo.outputPath("ebf-coil-profile.png")});
   await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
   const json = await page.locator("#calcCodeOut").inputValue();
   expect(JSON.parse(json).settings.machineConfigs[route].ruleset).toBe("gt5-5.09.51.470");

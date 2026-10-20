@@ -83,6 +83,11 @@ reuse. Whole batches and continuous rates, native item stacks, fixed-machine
 capacity/power checks and explicit overclock/parallel profiles are supported.
 Route choices show net yields and energy per output; recipe details expose
 exported machine metadata. The separate Material Calculator shares the engine.
+Opt-in [GT5 reference profiles](docs/machine-models.md) constrain overclocks by
+voltage/power and calculate Electric Blast Furnace heat discounts, coil heat
+and voltage bonuses. Rate factories report shared-stage bottlenecks, utilization
+and the capacity ceiling of the complete output mix. Installed counts can be
+overridden per recipe and exported as a machines CSV.
 
 Named plans are saved per dataset/export on this browser. Versioned JSON, shared
 plan links, material CSVs, dependency SVGs and gtnh-flow YAML/DOT/SVG support
@@ -100,7 +105,13 @@ Additional checks:
 ```sh
 npm run audit:data
 python3 tools/package-flow.py --check
+npm run check:machines
 ```
+
+`check:machines` requires Python 3, JDK 21+ and network access. It independently
+reproduces the committed numerical fixtures with release-pinned original GT5
+Java calculators and heating-coil enums. The normal Node suite uses these
+fixtures without needing Java or external downloads.
 
 The checked-in browser Python source package is reproducible with
 `python3 tools/package-flow.py`. Its source/config/license hashes are validated

@@ -8,6 +8,13 @@ export const machineRulesets = Object.freeze({
   "gt5-5.09.54.205": "GT5 5.09.54.205 · GTNH 2.9.0 RC-2 reference"
 });
 export const defaultRuleset = datasetId => datasetId === "gtnh-2.9.0" ? "gt5-5.09.54.205" : "gt5-5.09.51.470";
+// HeatingCoilLevel ordinals 2–15; identical at both reference pins.
+export const heatingCoils = Object.freeze(["Cupronickel", "Kanthal", "Nichrome", "TPV", "HSS-G", "HSS-S", "Naquadah", "Naquadah Alloy", "Trinium", "Electrum Flux", "Awakened Draconium", "Infinity", "Hypogen", "Eternal"]
+  .map((name, index) => Object.freeze({ name, level: index + 2, heat: 1801 + 900 * index })));
+const modernCoils = Object.freeze(heatingCoils.map(coil => coil.level === 11 ? Object.freeze({...coil, name:"Fluxed Electrum"}) : coil));
+export const heatingCoilsForRuleset = ruleset => ruleset === "gt5-5.09.54.205" ? modernCoils : heatingCoils;
+export const ebfMachineHeat = config => config.coilLevel === undefined ? Number(config.machineHeat) :
+  1 + 900 * Number(config.coilLevel) + 100 * (Number(config.voltageTier) - 2);
 const integer = (value, minimum, maximum, label) => {
   const result = Number(value);
   if (value === "" || value === null || typeof value === "boolean" || !Number.isInteger(result) || result < minimum || result > maximum) throw new Error(`${label} must be a whole number from ${minimum} to ${maximum}.`);
@@ -21,12 +28,13 @@ export function validateMachineConfig(config = {}) {
   if (config.installedMachines !== undefined) integer(config.installedMachines, 0, 1000000, "Installed machines");
   if (!["generic", "gt5", "ebf"].includes(config.model || "generic")) throw new Error("Unknown machine model.");
   if (config.model && config.model !== "generic") integer(config.voltageTier, 0, 14, "Voltage tier");
-  if (config.model === "ebf") integer(config.machineHeat, 0, 100000, "Machine heat (K)");
+  if (config.model === "ebf" && config.coilLevel === undefined) integer(config.machineHeat, 0, 100000, "Machine heat (K)");
   if (config.ruleset !== undefined && !Object.hasOwn(machineRulesets, config.ruleset)) throw new Error("Unknown GT5 calculation reference.");
   if (config.voltageTier !== undefined) integer(config.voltageTier, 0, 14, "Voltage tier");
   if (config.machineAmperage !== undefined) integer(config.machineAmperage, 1, 4096, "Available amps");
   if (config.maxOverclocks !== undefined) integer(config.maxOverclocks, 0, 14, "Overclock limit");
   if (config.machineHeat !== undefined) integer(config.machineHeat, 0, 100000, "Machine heat (K)");
+  if (config.coilLevel !== undefined) integer(config.coilLevel, 2, 15, "Heating coil level");
   if (config.amperageOC !== undefined && typeof config.amperageOC !== "boolean") throw new Error("Amperage overclocking must be enabled or disabled.");
   return config;
 }
@@ -66,7 +74,7 @@ export function machinePerformance(recipe, config = {}) {
   if (isEbf && recipeHeat === null) throw new Error("The EBF model requires a verified Electric Blast Furnace crafter and coil_heat metadata.");
   if (isEbf && parallels !== 1) throw new Error("The standard Electric Blast Furnace model supports one lane. Use a separate generic profile for other blast furnaces.");
   if (isEbf && config.overclockMode === "perfect") throw new Error("EBF perfect overclocks come from excess heat; select the normal OC model.");
-  const machineHeat = isEbf ? integer(config.machineHeat, 0, 100000, "Machine heat (K)") : null;
+  const machineHeat = isEbf ? ebfMachineHeat(config) : null;
   if (isEbf && machineHeat < recipeHeat) throw new Error(`Insufficient EBF heat: recipe needs ${recipeHeat} K; machine has ${machineHeat} K.`);
   const heatDiscounts = isEbf ? Math.floor((machineHeat - recipeHeat) / 900) : 0;
   const heatMultiplier = power(.95, heatDiscounts);

@@ -48,7 +48,11 @@ def cases():
                dict(eut=7680, duration=1380, tier=6, amps=1, parallels=1,
                     perfect=False, ampOC=False, recipeHeat=5400, heat=7200, cap=14),
                dict(eut=30, duration=640, tier=2, amps=1, parallels=1,
-                    perfect=False, ampOC=False, recipeHeat=-1, heat=0, cap=14)]
+                    perfect=False, ampOC=False, recipeHeat=-1, heat=0, cap=14),
+               dict(eut=7, duration=3, tier=14, amps=4096, parallels=1,
+                    perfect=False, ampOC=True, recipeHeat=-1, heat=0, cap=14),
+               dict(eut=30720, duration=1380, tier=14, amps=4096, parallels=4096,
+                    perfect=True, ampOC=False, recipeHeat=-1, heat=0, cap=14)]
     rng = random.Random(314159)
     for _ in range(360):
         heat_mode = rng.choice((True, False))
@@ -67,7 +71,7 @@ def cases():
 
 def generate():
     inputs = cases()
-    output = {"pins": {}, "cases": inputs, "expected": {}}
+    output = {"pins": {}, "cases": inputs, "expected": {}, "coils": {}, "coilNames": {}}
     harness = '''import gregtech.api.util.OverclockCalculator;
 import java.util.Scanner;
 class Reference {
@@ -76,6 +80,7 @@ class Reference {
   while(input.hasNextLine()) {
    String[] v = input.nextLine().split(",");
    long voltage = 8L << (2 * Integer.parseInt(v[2]));
+   if (Integer.parseInt(v[2]) == 14) voltage = Integer.MAX_VALUE - 7L;
    OverclockCalculator c = new OverclockCalculator().setRecipeEUt(Long.parseLong(v[0]))
     .setDuration(Integer.parseInt(v[1])).setEUt(voltage).setAmperage(Long.parseLong(v[3]))
     .setParallel(Integer.parseInt(v[4])).setAmperageOC(Boolean.parseBoolean(v[6]))
@@ -95,10 +100,12 @@ class Reference {
             java_folder = target / "gregtech/api/util"
             java_folder.mkdir(parents=True)
             sources = {}
-            for name in ("OverclockCalculator", "GTUtility"):
-                url = f"https://raw.githubusercontent.com/GTNewHorizons/GT5-Unofficial/{pin}/src/main/java/gregtech/api/util/{name}.java"
+            for name, package in (("OverclockCalculator", "util"), ("GTUtility", "util"), ("HeatingCoilLevel", "enums")):
+                url = f"https://raw.githubusercontent.com/GTNewHorizons/GT5-Unofficial/{pin}/src/main/java/gregtech/api/{package}/{name}.java"
                 with urllib.request.urlopen(url, timeout=60) as response:
                     sources[name] = response.read().decode()
+            with urllib.request.urlopen(f"https://raw.githubusercontent.com/GTNewHorizons/GT5-Unofficial/{pin}/src/main/resources/assets/gregtech/lang/en_US.lang", timeout=60) as response:
+                sources["Language"] = response.read().decode()
             output["pins"][ruleset] = dict(commit=pin, sha256={key: hashlib.sha256(value.encode()).hexdigest() for key, value in sources.items()})
             (java_folder / "OverclockCalculator.java").write_text(sources["OverclockCalculator"])
             # Keep the actual numerical helpers. A small stub supplies clamp;
@@ -112,14 +119,28 @@ class Reference {
             (target / "javax/annotation").mkdir(parents=True)
             (target / "javax/annotation/Nonnull.java").write_text("package javax.annotation; public @interface Nonnull {}")
             (target / "Reference.java").write_text(harness)
+            (target / "gregtech/api/enums").mkdir(parents=True)
+            (target / "gregtech/api/enums/HeatingCoilLevel.java").write_text(sources["HeatingCoilLevel"])
+            (target / "gregtech/api/enums/GTValues.java").write_text("package gregtech.api.enums; public class GTValues { public static final String[] TIER_COLORS=new String[16]; }")
+            (target / "net/minecraft/util").mkdir(parents=True)
+            (target / "net/minecraft/util/StatCollector.java").write_text("package net.minecraft.util; public class StatCollector {public static String translateToLocal(String value) {return value;}}")
+            (target / "CoilReference.java").write_text('''import gregtech.api.enums.HeatingCoilLevel;
+class CoilReference { public static void main(String[] args) {
+ for (HeatingCoilLevel coil : HeatingCoilLevel.values()) if (coil.ordinal() >= 2)
+   System.out.println(coil.ordinal()+","+coil.getHeat());
+}}''')
             subprocess.run(["java", "-m", "jdk.compiler/com.sun.tools.javac.Main", "-d", str(target), *map(str, target.rglob("*.java"))], check=True, capture_output=True)
             lines = "\n".join(",".join(str(v).lower() for v in entry.values()) for entry in inputs)
             result = subprocess.run(["java", "-cp", str(target), "Reference"], input=lines, text=True, capture_output=True, check=True)
             output["expected"][ruleset] = [list(map(int, line.split(","))) for line in result.stdout.splitlines()]
             assert len(output["expected"][ruleset]) == len(inputs)
+            coils = subprocess.run(["java", "-cp", str(target), "CoilReference"], text=True, capture_output=True, check=True)
+            output["coils"][ruleset] = [list(map(int, line.split(","))) for line in coils.stdout.splitlines()]
+            names = dict(line.split("=",1) for line in sources["Language"].splitlines() if line.startswith("GT5U.coil."))
+            output["coilNames"][ruleset] = [names["GT5U.coil." + key] for key in ("LV", "MV", "HV", "EV", "IV", "LuV", "ZPM", "UV", "UHV", "UEV", "UIV", "UMV", "UXV", "MAX")]
     # One vector per line keeps a large numerical fixture reviewable.
     expected = ",\n".join(json.dumps(key) + ": [\n" + ",\n".join(json.dumps(row) for row in rows) + "\n]" for key, rows in output["expected"].items())
-    return "{\n\"pins\": " + json.dumps(output["pins"], indent=2) + ",\n\"cases\": [\n" + ",\n".join(json.dumps(row) for row in inputs) + "\n],\n\"expected\": {\n" + expected + "\n}\n}\n"
+    return "{\n\"pins\": " + json.dumps(output["pins"], indent=2) + ",\n\"cases\": [\n" + ",\n".join(json.dumps(row) for row in inputs) + "\n],\n\"expected\": {\n" + expected + "\n},\n\"coils\":" + json.dumps(output["coils"], indent=2) + ",\n\"coilNames\":" + json.dumps(output["coilNames"], indent=2) + "\n}\n"
 
 
 if __name__ == "__main__":

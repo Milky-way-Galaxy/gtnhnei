@@ -20,6 +20,14 @@ The initial EBF heat equals the recipe requirement, yielding no assumed discount
 These are editable planning assumptions, not detected hardware. Enter available
 power **at the machine**, and the EBF heat shown on its info screen (including the
 machine's voltage heat bonus). Cable/transformer losses are not subtracted again.
+Alternatively select one of the 14 verified heating coils. The EBF computes
+effective heat as base coil heat + `100 × (voltage tier − 2)`, and updates it
+when voltage changes. The displayed field becomes read-only until measured heat
+is selected again; returning to measured mode keeps the current computed value.
+Coil names and ratings are verified from `HeatingCoilLevel.java` and the English
+language file at both pins. No unimplemented ULV coil is offered.
+The newer reference's “Fluxed Electrum” label is kept separate from 2.8.0's
+“Electrum Flux”; their verified coil level and heat rating are unchanged.
 
 ## Pinned sources and version scope
 
@@ -73,11 +81,16 @@ values**, rather than applying these profiles a second time in gtnh-flow.
 ## Independent verification
 
 `npm test` compares against committed results from the **original Java classes**:
-318 input cases for each of the two reference pins, including upstream unit-test
-examples, heat boundaries, low-voltage recipes, power/amp/parallel combinations,
+320 input cases for each of the two reference pins, including upstream unit-test
+examples, heat boundaries, low/MAX-voltage recipes, power/amp/parallel combinations,
 tick truncation and explicit OC limits. It tests the conservative over-budget
 rejection separately. Real recipe integration additionally checks hot Oriharukon
 (1380 ticks, 7680 EU/t, 5400 K) and Epichlorohydrin (640 ticks, 30 EU/t).
+With a Naquadah coil (7201 K) and LuV voltage (+400 K), that Oriharukon scenario
+has 7601 K effective heat, two heat discounts and one heat-perfect OC: 345 ticks,
+27,725 EU/t and 9,565,125 EU per execution. Its item/fluid quantities stay unchanged.
+All 14 implemented coil heat ratings and names are also independently checked
+at each source version, by compiling the original enum and reading translations.
 
 To reproduce all reference results with Python 3, JDK 21+ and network access:
 

@@ -4,14 +4,18 @@
     "commit": "000a4d9b24d77f40a79da7a105bb79ac7efca817",
     "sha256": {
       "OverclockCalculator": "318acde74c764737433eb049e5e4a459e044ce62f34f6c67ed68c26b722e96b8",
-      "GTUtility": "af416661c1f628b48b94487aaa07dfcd9111e652712a759f419ee6f8a11f8940"
+      "GTUtility": "af416661c1f628b48b94487aaa07dfcd9111e652712a759f419ee6f8a11f8940",
+      "HeatingCoilLevel": "f274193aaa62f8d5b3578adb82364fd7e994d11a2f01b0cd67cedef062666363",
+      "Language": "6a3ebdb7a29cf589e8d98921335c1d1b7f5b63ef6623393bbb8a7755636e9e94"
     }
   },
   "gt5-5.09.54.205": {
     "commit": "a3e1e11241a814c9fa0dd0973d5699548428f689",
     "sha256": {
       "OverclockCalculator": "2090ae6a526635113997bb33a9f92d2c17ba0154dd263c7577eafd70690a6dda",
-      "GTUtility": "551643046a448fc4e2d6de73c2bf005b90b673b31a5f760cb827745c33ebdc41"
+      "GTUtility": "551643046a448fc4e2d6de73c2bf005b90b673b31a5f760cb827745c33ebdc41",
+      "HeatingCoilLevel": "f274193aaa62f8d5b3578adb82364fd7e994d11a2f01b0cd67cedef062666363",
+      "Language": "f8a66470ccca2be9198401cf1fb029f2391e53b5fe99bc870d038e4b02b12f33"
     }
   }
 },
@@ -25,6 +29,8 @@
 {"eut": 34, "duration": 1024, "tier": 2, "amps": 1, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": 1800, "heat": 2700, "cap": 14},
 {"eut": 7680, "duration": 1380, "tier": 6, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": 5400, "heat": 7200, "cap": 14},
 {"eut": 30, "duration": 640, "tier": 2, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": -1, "heat": 0, "cap": 14},
+{"eut": 7, "duration": 3, "tier": 14, "amps": 4096, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": -1, "heat": 0, "cap": 14},
+{"eut": 30720, "duration": 1380, "tier": 14, "amps": 4096, "parallels": 4096, "perfect": true, "ampOC": false, "recipeHeat": -1, "heat": 0, "cap": 14},
 {"eut": 120, "duration": 200, "tier": 2, "amps": 1, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": 1800, "heat": 3600, "cap": 2},
 {"eut": 32, "duration": 1, "tier": 4, "amps": 64, "parallels": 1, "perfect": false, "ampOC": true, "recipeHeat": 1800, "heat": 2699, "cap": 2},
 {"eut": 31, "duration": 200, "tier": 6, "amps": 4, "parallels": 1, "perfect": false, "ampOC": false, "recipeHeat": 1800, "heat": 2700, "cap": 14},
@@ -346,6 +352,8 @@
 [512, 130, 1],
 [345, 27725, 1],
 [320, 120, 1],
+[1, 1879048192, 14],
+[1, 8246337208320, 8],
 [200, 109, 0],
 [1, 512, 2],
 [6, 30157, 5],
@@ -666,6 +674,8 @@
 [1024, 33, 0],
 [345, 27725, 1],
 [320, 120, 1],
+[1, 1879048192, 14],
+[1, 8246337208320, 8],
 [200, 109, 0],
 [1, 512, 2],
 [6, 30157, 5],
@@ -976,5 +986,157 @@
 [1, 100087, 2],
 [4096, 8448, 2]
 ]
+},
+"coils":{
+  "gt5-5.09.51.470": [
+    [
+      2,
+      1801
+    ],
+    [
+      3,
+      2701
+    ],
+    [
+      4,
+      3601
+    ],
+    [
+      5,
+      4501
+    ],
+    [
+      6,
+      5401
+    ],
+    [
+      7,
+      6301
+    ],
+    [
+      8,
+      7201
+    ],
+    [
+      9,
+      8101
+    ],
+    [
+      10,
+      9001
+    ],
+    [
+      11,
+      9901
+    ],
+    [
+      12,
+      10801
+    ],
+    [
+      13,
+      11701
+    ],
+    [
+      14,
+      12601
+    ],
+    [
+      15,
+      13501
+    ]
+  ],
+  "gt5-5.09.54.205": [
+    [
+      2,
+      1801
+    ],
+    [
+      3,
+      2701
+    ],
+    [
+      4,
+      3601
+    ],
+    [
+      5,
+      4501
+    ],
+    [
+      6,
+      5401
+    ],
+    [
+      7,
+      6301
+    ],
+    [
+      8,
+      7201
+    ],
+    [
+      9,
+      8101
+    ],
+    [
+      10,
+      9001
+    ],
+    [
+      11,
+      9901
+    ],
+    [
+      12,
+      10801
+    ],
+    [
+      13,
+      11701
+    ],
+    [
+      14,
+      12601
+    ],
+    [
+      15,
+      13501
+    ]
+  ]
+},
+"coilNames":{
+  "gt5-5.09.51.470": [
+    "Cupronickel",
+    "Kanthal",
+    "Nichrome",
+    "TPV",
+    "HSS-G",
+    "HSS-S",
+    "Naquadah",
+    "Naquadah Alloy",
+    "Trinium",
+    "Electrum Flux",
+    "Awakened Draconium",
+    "Infinity",
+    "Hypogen",
+    "Eternal"
+  ],
+  "gt5-5.09.54.205": [
+    "Cupronickel",
+    "Kanthal",
+    "Nichrome",
+    "TPV",
+    "HSS-G",
+    "HSS-S",
+    "Naquadah",
+    "Naquadah Alloy",
+    "Trinium",
+    "Fluxed Electrum",
+    "Awakened Draconium",
+    "Infinity",
+    "Hypogen",
+    "Eternal"
+  ]
 }
 }

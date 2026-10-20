@@ -5,17 +5,17 @@ export function analyzeFactoryCapacity(plan) {
   if (!plan.isRate) return null;
   const rows = plan.steps.map(step => {
     const known = step.performance?.batchesPerSecond > 0 && Number.isFinite(step.equivalents) && step.equivalents > 0 && Number.isFinite(step.installedCount);
-    const factor = known ? step.installedCount / step.equivalents : null;
-    return { recipeId: step.recipeId, machine: step.machine, required: step.count, installed: step.installedCount,
-      equivalents: step.equivalents, countSource: step.installedSource,
+    const factor = step.installedCount === 0 ? 0 : known ? step.installedCount / step.equivalents : null;
+    return { recipeId: step.recipeId, machine: step.machine, outputs: [...new Set(step.recipe.outputs.filter(io => io.amount > 0).map(io => io.name))], required: step.count, installed: step.installedCount,
+      equivalents: step.equivalents, countSource: step.installedSource, timingKnown: known,
       utilization: known && step.installedCount > 0 ? step.equivalents / step.installedCount : null,
       capacityFactor: Number.isFinite(factor) ? factor : null,
-      batchesPerSecond: known ? step.performance.batchesPerSecond * step.installedCount : null };
+      batchesPerSecond: step.installedCount === 0 ? 0 : known ? step.performance.batchesPerSecond * step.installedCount : null };
   });
   const known = rows.filter(row => row.capacityFactor !== null);
   const rateFactor = known.length ? Math.min(...known.map(row => row.capacityFactor)) : null;
   const limitingRecipeIds = known.filter(row => Math.abs(row.capacityFactor - rateFactor) <= 8 * Number.EPSILON * Math.max(1, rateFactor)).map(row => row.recipeId);
-  return { rateFactor, rows, limitingRecipeIds, unknownStages: rows.length - known.length,
+  return { rateFactor, rows, limitingRecipeIds, unknownStages: rows.filter(row => !row.timingKnown).length,
     hasUnresolvedRoutes: plan.unresolved.length > 0 || plan.truncated,
     targets: plan.targets.map(target => ({ id: target.id, name: target.name, unit: target.unit, requested: target.requested,
       capacity: rateFactor === null || !Number.isFinite(target.requested * rateFactor) ? null : target.requested * rateFactor })) };

@@ -58,6 +58,9 @@ test("unknown timing and unresolved routes remain partial; total jobs do not inv
   const result=calculateProduction(c,{target:"first",amount:.2,rateMode:"per_second",depth:"full",machineConfigs:{a:{installedMachines:1}}});
   assert.equal(result.capacityAnalysis.unknownStages,1); assert.equal(result.capacityAnalysis.rateFactor,.5);
   assert.equal(result.capacityAnalysis.rows.find(row=>row.recipeId==="b").capacityFactor,null);
+  const stopped=calculateProduction(c,{target:"first",amount:.2,rateMode:"per_second",depth:"full",machineConfigs:{b:{installedMachines:0}}});
+  assert.equal(stopped.capacityAnalysis.rateFactor,0); assert.equal(stopped.capacityAnalysis.unknownStages,1);
+  assert.equal(stopped.capacityAnalysis.rows.find(row=>row.recipeId==="b").batchesPerSecond,0);
   const unresolved=calculateProduction(c,{target:"first",amount:1,rateMode:"per_second",routeMode:"manual"});
   assert.equal(unresolved.capacityAnalysis.rateFactor,null); assert.equal(unresolved.capacityAnalysis.hasUnresolvedRoutes,true);
   const total=calculateProduction(c,{target:"first",amount:1,machineConfigs:{a:{installedMachines:0}}});

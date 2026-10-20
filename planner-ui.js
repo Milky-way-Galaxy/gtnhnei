@@ -322,11 +322,16 @@ export function installPlanner() {
           if (!input.checkValidity() || input.type === "number" && !input.value) throw new Error("Enter a whole number within the field's limits.");
           const value = input.type === "checkbox" ? input.checked : input.tagName === "SELECT" && field !== "voltageTier" ? input.value : Number(input.value);
           const next = field === "model" ? initialMachineConfig(recipe, previous, value, dataset().id) : { ...previous, [field]: value };
+          if (field === "coilLevel") {
+            // Returning to measured heat keeps the currently calculated value.
+            next.machineHeat = machinePerformance(recipe, previous).machineHeat;
+            if (input.value === "") delete next.coilLevel; else next.coilLevel = Number(input.value);
+          }
           machinePerformance(recipe, next);
           state.machineConfigs[id] = next;
         } catch (failure) {
           if (input.type === "checkbox") input.checked = !!previous[field];
-          else input.value = previous[field] ?? ({parallels:1, model:"generic", overclockMode:"normal"}[field] ?? 0);
+          else input.value = previous[field] ?? ({parallels:1, model:"generic", coilLevel:"", overclockMode:"normal"}[field] ?? 0);
           overlay.querySelector("#plannerStatus").textContent = `${failure.message} Previous profile retained.`;
           return;
         }

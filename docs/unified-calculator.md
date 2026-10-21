@@ -10,6 +10,10 @@ the results pane when selected. At 980px and below, **Settings**, **Results** an
 **Code / Export** show one panel at a time. **Build tree** and **Supplies** remain
 in the bottom action bar while the content scrolls. Recipe cards use available
 desktop columns and keep large crafting grids inside their own scroll areas.
+Short viewports use compact header spacing. Chrome on Android is asked to resize
+the content viewport with its on-screen keyboard, so that layout can respond;
+other browsers may ignore the hint. Automated resizing checks do not establish
+physical-keyboard behavior on every phone.
 
 ## Choose a product without remembering its name
 

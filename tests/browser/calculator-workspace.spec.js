@@ -1,6 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 const target = "f:gregtech:liquid_epichlorhydrin", route = "r~7CR1mklsMhyejhfODug_QQ==";
 async function ready(page, suffix = "") { await page.goto(`./${suffix}`); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); await page.locator("#toolCalc").click(); }
+test("missing production entries export exact versioned coverage details without posting anything", async ({ page }) => {
+  await ready(page);
+  const id = await page.evaluate(() => { const good = window.GTNH_CATALOG.goods.find(g => g.id.startsWith("i:") && g.production.length === 0); window.GTNH_CALC.planItem(good.id); return good.id; });
+  await page.locator(".plannerDiagnostics > details > summary").last().click();
+  const pending = page.waitForEvent("download"); await page.locator(`[data-report-good="${id}"]`).click();
+  const file = await pending, report = JSON.parse(await readFile(await file.path(), "utf8"));
+  expect(report.dataset.id).toBe("gtnh-2.8.0"); expect(report.dataset.sha256).toHaveLength(64);
+  expect(report.good.id).toBe(id); expect(report.productionEntries).toBe(0); expect(report.note).toContain("does not prove");
+});
 test("storage failure keeps calculated results visible and explains how to preserve the plan", async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Storage disabled", "SecurityError"); } }));
   await ready(page); await page.locator("#calcTarget").fill(target); await page.locator("#calcAmount").fill("2000"); await page.locator("#calcBuild").click();

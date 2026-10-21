@@ -9,7 +9,7 @@ export function compareProductionPlans(before, after) {
   return { isRate: before.isRate, materials,
     knownPower: { before: before[powerKey], after: after[powerKey], delta: after[powerKey] - before[powerKey] },
     requiredMachines: { before: before.steps.reduce((n, step) => n + (step.count || 0), 0), after: after.steps.reduce((n, step) => n + (step.count || 0), 0) },
-    partial: before.hasUnknownPower || after.hasUnknownPower || !!before.unresolved.length || !!after.unresolved.length || before.truncated || after.truncated,
+    partial: before.hasUnknownPower || after.hasUnknownPower || !!before.unresolved.length || !!after.unresolved.length || before.truncated || after.truncated || before.balance?.status === "blocked" || after.balance?.status === "blocked",
     unresolvedBefore: before.unresolved.length, unresolvedAfter: after.unresolved.length,
     warnings: after.warnings };
 }

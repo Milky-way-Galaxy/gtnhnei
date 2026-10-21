@@ -9,6 +9,7 @@ test("route previews compare exact material identities and retain partial-result
   const diff = compareProductionPlans(before, after);
   assert.deepEqual(diff.materials.map(row => [row.id, row.before, row.after, row.delta]), [["i:A:0", 2, 0, -2], ["i:B:0", 0, 3, 3]]);
   assert.equal(diff.knownPower.delta, 10); assert.equal(diff.partial, true); assert.equal(before.materials[0].amount, 2);
+  assert.equal(compareProductionPlans(base, { ...base, balance: { status: "blocked" } }).partial, true);
   assert.throws(() => compareProductionPlans(base, { ...base, dataset: { id: "other" } }), /same recipe dataset/);
 });
 test("cycle inspection follows actual ancestors, deduplicates loops and separates supplied boundaries", () => {

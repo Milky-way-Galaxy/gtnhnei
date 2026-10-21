@@ -183,7 +183,7 @@ export function installPlanner() {
   }
   function diagnosticsHtml() {
     const checks = planDiagnostics(plan);
-    const issue = row => `<li><b>${esc(row.name)}</b> — ${esc(row.message)}${row.occurrences > 1 ? ` (${row.occurrences} branches)` : ""}<small>${esc(row.id)}</small><button type="button" data-review-node="${row.nodeKey}">Review dependency</button> <button type="button" data-supply="${esc(row.id)}">Supply externally</button></li>`;
+    const issue = row => `<li><b>${esc(row.name)}</b> — ${esc(row.message)}${row.occurrences > 1 ? ` (${row.occurrences} branches)` : ""}<small>${esc(row.id)}</small><button type="button" data-review-node="${row.nodeKey}">Review dependency</button> <button type="button" data-supply="${esc(row.id)}">Supply externally</button>${row.reason === "no-recipe" ? ` <button type="button" data-report-good="${esc(row.id)}">Save recipe-coverage report</button>` : ""}</li>`;
     return `<section class="plannerDiagnostics"><h4>Plan checks</h4><p>${checks.attention.length ? `${checks.attention.length} route/dependency decision(s) need attention. Their demand is retained as supplied material until resolved.` : "Selected routes are expanded to the configured depth."}</p>${checks.attention.length ? `<ul>${checks.attention.slice(0, 100).map(issue).join("")}</ul>` : ""}${checks.cycles.length ? `<details open class="plannerCycleInspector"><summary>Circular dependencies (${checks.cycles.length})</summary>${checks.cycles.map(loop => `<article><p><b>${loop.goods.map(good => esc(good.name)).join(" → ")}</b></p><p>Recipes: ${loop.recipeIds.map(esc).join(" · ")}</p><p>These routes require a supplied boundary or validated recycling balance. The recursive plan does not credit future output as startup stock.</p><button type="button" data-review-node="${loop.nodeKey}">Review loop boundary</button></article>`).join("")}</details>` : ""}${checks.supplies.length ? `<details><summary>External and depth-boundary supplies (${checks.supplies.length})</summary><p>These are supplied inputs, not automatically mined or manufactured. A missing entry is a dataset coverage limit.</p><ul>${checks.supplies.slice(0, 100).map(issue).join("")}</ul>${checks.supplies.length > 100 ? "<p>First 100 shown; the material export contains all demands.</p>" : ""}</details>` : ""}${checks.unknownMachines.length ? `<p>Timing or power is unknown for ${checks.unknownMachines.length} selected recipe(s): ${checks.unknownMachines.map(row => esc(row.machine)).join(", ")}. Power and machine totals are partial.</p>` : ""}${checks.conditionalRecipes.length ? `<p>${checks.conditionalRecipes.length} recipe(s) have conditions. Review machine metadata before building; unsupported conditions are not assumed satisfied.</p>` : ""}</section>`;
   }
   function balanceHtml() {
@@ -287,6 +287,15 @@ export function installPlanner() {
         tab("tree");
         const details = overlay.querySelector(`[data-node-key="${button.dataset.reviewNode}"]`);
         if (details) { details.open = true; details.querySelector("summary")?.focus(); details.scrollIntoView({ block: "nearest" }); }
+        return;
+      }
+      if (button.dataset.reportGood) {
+        const good = catalog()?.resolve(button.dataset.reportGood);
+        if (!good) return;
+        download("gtnh-atlas-recipe-coverage.json", JSON.stringify({ format: "gtnh-atlas-recipe-coverage", schemaVersion: 1,
+          dataset: { id: dataset().id, sha256: dataset().sha256, source: dataset().source, sourceRevision: dataset().sourceRevision },
+          good: catalog().describe(good), productionEntries: good.production.length, usageEntries: good.consumption.length,
+          note: "No production entry was present in this snapshot. This does not prove the item is unobtainable; gathered resources and unsupported custom recipe handlers may have no entry." }, null, 2), "application/json");
         return;
       }
       if (button.dataset.pickField && catalog()) {

@@ -32,9 +32,12 @@
     if (!el) {
       el = document.createElement("div");
       el.id = "lunaToast";
+      el.setAttribute("role", "status");
       el.className = "lunaToast";
       document.body.appendChild(el);
     }
+    const modal = document.getElementById("lunaEggOverlay");
+    (modal?.open ? modal : document.body).appendChild(el);
     el.textContent = text;
     el.classList.add("show");
     clearTimeout(el._timer);
@@ -69,7 +72,7 @@
 
   function slot(name, amount) {
     return `
-      <button class="lunaSlot" type="button" data-luna-name="${esc(name)}" data-gtnh-icon="${esc(name)}">
+      <button class="lunaSlot" type="button" data-luna-name="${esc(name)}" data-gtnh-icon="${esc(name)}" aria-label="${esc(amount)} × ${esc(name)}" title="${esc(name)}">
         <span class="lunaIcon" aria-hidden="true"></span>
         <span class="lunaAmount">${esc(amount)}</span>
       </button>
@@ -79,17 +82,20 @@
   function createOverlay() {
     if (document.getElementById("lunaEggOverlay")) return;
 
-    const overlay = document.createElement("div");
+    const overlay = document.createElement("dialog");
     overlay.id = "lunaEggOverlay";
+    overlay.setAttribute("aria-labelledby", "lunaTitle");
     overlay.innerHTML = `
-      <section class="lunaPanel" role="dialog" aria-label="lunaloves statue">
-        <button id="lunaClose" class="lunaClose" type="button" aria-label="Close">×</button>
-
+      <section class="lunaPanel">
         <header class="lunaHeader">
-          <h2>lunaloves. Statue</h2>
+          <button id="lunaClose" class="lunaClose" type="button" aria-label="Close Luna Easter egg" autofocus>×</button>
+          <span class="lunaBadge">Secret found · Easter egg</span>
+          <h2 id="lunaTitle">lunaloves. Statue</h2>
           <p>A sacred statue for <span class="lunaPink">lunaloves.</span></p>
         </header>
 
+        <div class="lunaBody">
+        <p class="lunaFiction">A fictional tribute recipe, just for fun. Not available in GTNH or used by the planner.</p>
         <div class="lunaInfo">
           <b>lunaloves.</b>
           <span>Discord&nbsp; @lunaloves.</span>
@@ -115,6 +121,7 @@
           </div>
 
           <div class="lunaSectionTitle">Input</div>
+          <p class="lunaHint">Tap an ingredient for recipes; double-tap or right-click for uses. Hold to copy its name.</p>
           <div class="lunaGrid">
             ${lunaInputs.map(([name, amount]) => slot(name, amount)).join("")}
           </div>
@@ -122,7 +129,7 @@
           <div class="lunaArrow">➜</div>
 
           <div class="lunaSectionTitle">Output</div>
-          <button class="lunaOutput" type="button" data-luna-name="${esc(LUNA_ITEM)}">
+          <button class="lunaOutput" type="button" aria-label="lunaloves. Statue" data-luna-name="${esc(LUNA_ITEM)}">
             <span class="lunaAvatarWrap">
               <img id="lunaAvatarImg" src="assets/easter/luna.png" alt="lunaloves. avatar">
             </span>
@@ -132,7 +139,11 @@
           <h3 class="lunaOutputName">lunaloves. Statue</h3>
           <p class="lunaDesc">A sacred statue for <span class="lunaPink">lunaloves.</span></p>
 
-          <button id="lunaCopyRecipe" class="lunaCopy" type="button">Copy recipe</button>
+          <button id="lunaAssemble" class="lunaCopy lunaAssemble" type="button">Assemble statue ♡</button>
+          <p id="lunaAssemblyStatus" class="lunaDesc" role="status">All imaginary ingredients supplied. Ready when you are.</p>
+          <div class="lunaActions"><button id="lunaCopyRecipe" class="lunaCopy" type="button">Copy joke recipe</button>
+          <button id="lunaShare" class="lunaCopy" type="button">Copy secret link</button></div>
+        </div>
         </div>
       </section>
     `;
@@ -140,13 +151,36 @@
     document.body.appendChild(overlay);
 
     document.getElementById("lunaClose")?.addEventListener("click", closeLuna);
+    overlay.addEventListener("keydown", event => {
+      if (event.key !== "Tab") return;
+      const buttons = [...overlay.querySelectorAll("button:not(:disabled)")];
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
     overlay.addEventListener("click", event => {
-      if (event.target === overlay) closeLuna();
+      const r = overlay.getBoundingClientRect();
+      if (event.target === overlay && (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom)) closeLuna();
+    });
+
+    document.getElementById("lunaAssemble").addEventListener("click", event => {
+      const assembled = overlay.classList.toggle("assembled");
+      event.currentTarget.textContent = assembled ? "Reset assembly" : "Assemble statue ♡";
+      document.getElementById("lunaAssemblyStatus").textContent = assembled
+        ? "Statue assembled! (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄) No real EU or materials consumed."
+        : "All imaginary ingredients supplied. Ready when you are.";
+    });
+    document.getElementById("lunaShare").addEventListener("click", async () => {
+      const url = new URL(location.href);
+      url.search = ""; url.hash = ""; url.searchParams.set("lunaloves", "1");
+      try { await navigator.clipboard.writeText(url.href); toast("Secret link copied ♡"); }
+      catch { toast("Copy failed. Open this page with ?lunaloves=1 to share."); }
     });
 
     document.getElementById("lunaCopyRecipe")?.addEventListener("click", async () => {
       const text =
-`lunaloves. Statue
+`FICTIONAL EASTER EGG — not a GTNH recipe
+lunaloves. Statue
 Machine: Assembler
 Tier: UXV
 EU/t: 2,147,483,647
@@ -193,12 +227,12 @@ Output:
   function openLuna() {
     createOverlay();
     const ov = document.getElementById("lunaEggOverlay");
-    ov.classList.add("show");
+    if (!ov.open) ov.showModal();
     hydrateAllIcons(ov);
   }
 
   function closeLuna() {
-    document.getElementById("lunaEggOverlay")?.classList.remove("show");
+    document.getElementById("lunaEggOverlay")?.close();
   }
 
   function getLunaName(target) {
@@ -252,7 +286,12 @@ Output:
     let tapTimer = null;
     let lastName = "";
 
+    root.addEventListener("close", () => {
+      clearTimeout(holdTimer); clearTimeout(tapTimer); tapCount = 0; held = false;
+    });
+
     root.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
       const name = getLunaName(event.target);
       if (!name) return;
 

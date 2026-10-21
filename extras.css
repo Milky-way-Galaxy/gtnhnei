@@ -404,3 +404,47 @@
     height: 66px;
   }
 }
+
+/* Luna is a native modal: focus, Escape and background interaction stay contained. */
+#lunaEggOverlay {
+  inset: 0;
+  width: min(650px, calc(100vw - 24px));
+  max-width: none;
+  height: fit-content;
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid #a85e91;
+  border-radius: 22px;
+  background: #100e20;
+  color: #eef5ff;
+  overflow: auto;
+}
+#lunaEggOverlay[open] { display: block; }
+#lunaEggOverlay::backdrop { background: #030712d9; backdrop-filter: blur(7px); }
+.lunaPanel { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; overflow: visible; }
+.lunaHeader { position: sticky; top: 0; z-index: 2; padding: 18px 74px 18px 20px; background: #1b122dee; border-bottom: 1px solid #fb8ccf33; }
+.lunaHeader h2 { font-size: clamp(19px, 5vw, 25px); }
+.lunaHeader p { font-size: 13px; }
+.lunaBadge { display: block; color: #f5a8d8; font-size: 12px; margin-bottom: 7px; letter-spacing: .04em; }
+.lunaBody { padding: 0 20px 20px; }
+.lunaFiction, .lunaHint { font-size: 13px; color: #c3b9d2; line-height: 1.5; }
+.lunaInfo { font-size: 14px; overflow-wrap: anywhere; }
+.lunaGrid { grid-template-columns: repeat(3, minmax(0, 74px)); width: 100%; }
+.lunaSlot { width: 100%; }
+.lunaActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.lunaCopy { min-height: 44px; margin: 12px 0 0; cursor: pointer; }
+.lunaAssemble { margin: 18px auto 12px; background: #683553; border-color: #f5a8d8; }
+#lunaEggOverlay button:focus-visible { outline: 3px solid #fb8ccf; outline-offset: 3px; }
+#lunaAssemblyStatus { min-height: 3em; font-size: 14px; }
+.assembled .lunaOutput { box-shadow: 0 0 28px #fb8ccf88; border-color: #fb8ccf; animation: lunaBloom .5s ease-out; }
+@keyframes lunaBloom { 50% { transform: scale(1.12) rotate(5deg); } }
+@media (prefers-reduced-motion: reduce) { .assembled .lunaOutput { animation: none; } }
+@media (max-width: 430px) {
+  .lunaBody { padding: 0 12px 16px; }
+  .lunaMachine { padding: 12px; }
+  .lunaMachineTop { grid-template-columns: 48px 1fr; gap: 10px; }
+  .lunaMachineIconBox { width: 44px; height: 44px; }
+  .lunaMachineTop h3 { font-size: 20px; }
+  .lunaGrid { grid-template-columns: repeat(3, minmax(0, 66px)); padding: 8px; }
+}

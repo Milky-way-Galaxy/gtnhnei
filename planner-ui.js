@@ -10,6 +10,7 @@ import { createSupplyTools } from "./supply-ui.js";
 import { openRouteChoices } from "./route-choice-ui.js";
 import { readMaterialDraft, factorySettingsSummary } from "./calculator-workspace.js";
 import { openItemPicker } from "./item-picker.js";
+import { filterPlanMaterials, filterPlanNodes } from "./plan-result-filters.js";
 import { recipePlanState } from "./recipe-plan.js";
 import { planDiagnostics } from "./plan-diagnostics.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
@@ -19,6 +20,7 @@ const fmt = number => number === null || number === undefined ? "unknown" : quan
 export function installPlanner() {
   let previousFocus = null, displayNodeLimit = 250, planTools, legacyDraft, workspaceBackup = null, migrationNotes = [], storageWarning = "";
   let recipeDraftBackup = null;
+  const resultView = { materialQuery: "", materialType: "all", nodeQuery: "", attentionOnly: false }, nodeOpen = new Map();
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
@@ -28,6 +30,7 @@ export function installPlanner() {
     if (!catalog()) return;
     if (datasetId === dataset().id) return;
     datasetId = dataset().id; recipeDraftBackup = null;
+    Object.assign(resultView, { materialQuery: "", materialType: "all", nodeQuery: "", attentionOnly: false }); nodeOpen.clear();
     try {
       recipeDraftBackup = localStorage.getItem(`gtnh_atlas_before_recipe_plan_${datasetId}`);
       const saved = localStorage.getItem(key()) || (datasetId === "gtnh-2.8.0" || datasetId === "legacy" ? localStorage.getItem("gtnhnei_calc_state") : null);
@@ -138,7 +141,38 @@ export function installPlanner() {
   }
   function table(rows, extra = "", isRate = plan.isRate) {
     if (!rows.length) return '<p class="plannerEmpty">None.</p>';
-    return `<div class="plannerTable"><table><thead><tr><th>Material</th><th>Quantity${isRate ? "/s" : ""}</th><th>Unit</th>${extra ? "<th>Action</th>" : ""}</tr></thead><tbody>${rows.map(row => `<tr><td>${esc(row.name)}<small title="${esc(row.id)}">${esc((row.reason || row.type || "").replaceAll("-", " "))}${catalog().matches(row.name).length > 1 ? " · " + esc(row.id) : ""}</small></td><td>${fmt(row.amount)}</td><td>${esc(row.unit)}</td>${extra ? `<td><div class="plannerMaterialActions"><button type="button" data-supply="${esc(row.id)}">Supply externally</button>${row.type === "ore" ? "" : `<button type="button" data-stock="${esc(row.id)}">Use stock</button>`}</div></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="plannerTable"><table><thead><tr><th>Material</th><th>Quantity${isRate ? "/s" : ""}</th><th>Unit</th>${extra ? "<th>Action</th>" : ""}</tr></thead><tbody>${rows.map(row => `<tr><td><span class="plannerMaterialIdentity"><span class="plannerGoodIcon" data-plan-icon="${esc(row.id)}" aria-hidden="true"></span><span>${esc(row.name)}<small title="${esc(row.id)}">${esc((row.reason || row.type || "").replaceAll("-", " "))}${catalog().matches(row.name).length > 1 ? " · " + esc(row.id) : ""}</small></span></span></td><td>${fmt(row.amount)}</td><td>${esc(row.unit)}</td>${extra ? `<td><div class="plannerMaterialActions"><button type="button" data-supply="${esc(row.id)}">Supply externally</button>${row.type === "ore" ? "" : `<button type="button" data-stock="${esc(row.id)}">Use stock</button>`}</div></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  }
+  function focusResult(target) {
+    if (!target) return;
+    const scroller = document.querySelector(matchMedia("(max-width: 980px)").matches ? ".gtnhCalcWorkspace" : '[data-calc-panel="tree"]');
+    const navHeight = document.querySelector(".plannerResultNav")?.getBoundingClientRect().height || 0;
+    target.focus({ preventScroll: true });
+    scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - navHeight - 12;
+  }
+  function captureNodes() {
+    document.querySelectorAll("#calcTree details[data-node-key]").forEach(node => nodeOpen.set(`${node.dataset.nodeKey}|${node.dataset.nodeId}`, node.open));
+  }
+  function visibleNodes() { return plan ? filterPlanNodes(plan.nodes, { query: resultView.nodeQuery, attentionOnly: resultView.attentionOnly }) : []; }
+  function nodeRows() {
+    return visibleNodes().slice(0, displayNodeLimit).map(node => `<details class="plannerNode" data-node-key="${node.key}" data-node-id="${esc(node.id)}" ${(nodeOpen.get(`${node.key}|${node.id}`) ?? (node.depth < 2)) ? "open" : ""}><summary><b>${esc(node.name)}</b> · ${fmt(node.amount)} ${esc(node.unit)}${plan.isRate ? "/s" : ""} · ${esc(node.status.replaceAll("-", " "))}</summary><small>${esc(node.id)} · depth ${node.depth}</small>${node.inventoryUsed ? `<p>${fmt(node.inventoryUsed)} ${esc(node.unit)} supplied from inventory; ${fmt(node.productionAmount)} remaining demand.</p>` : ""}${node.byproductUsed ? `<p>${fmt(node.byproductUsed)} ${esc(node.unit)} supplied from earlier co-products.</p>` : ""}${node.recipeId ? `<p>${esc(node.machine)} · ${fmt(node.batches)} batches${plan.isRate ? "/s" : ""}</p>` : ""}${node.depth === 0 ? routeControl(node) : `<div data-route-slot="${node.key}"></div>`}<button data-supply="${esc(node.id)}" type="button">Supply externally</button></details>`).join("") || '<p class="plannerEmpty">No dependencies match. Clear the search or attention filter to see the complete tree.</p>';
+  }
+  function hydrateMaterials(root) { root.querySelectorAll("[data-plan-icon]").forEach(icon => window.GTNHNEI_ICON_API?.setIconByName(icon, icon.dataset.planIcon)); }
+  function updateMaterialList() {
+    if (!plan) return;
+    const root = document.getElementById("calcTree"), rows = filterPlanMaterials(plan.materials, { query: resultView.materialQuery, type: resultView.materialType });
+    root.querySelector("#plannerMaterialRows").innerHTML = rows.length ? table(rows, "actions") : '<p class="plannerEmpty">No materials match this view. The complete calculation and exports are unchanged.</p>';
+    root.querySelector("#plannerMaterialMatches").textContent = `${rows.length} of ${plan.materials.length} required materials · ${plan.isRate ? "quantities per second" : "total craft quantities"}`;
+    hydrateMaterials(root.querySelector("#plannerMaterialRows"));
+  }
+  function updateNodeList() {
+    if (!plan) return;
+    captureNodes();
+    const root = document.getElementById("calcTree"), rows = visibleNodes();
+    root.querySelector(".plannerNodes").innerHTML = nodeRows();
+    root.querySelector("#plannerNodeMatches").textContent = `${rows.length} of ${plan.nodes.length} dependencies match · ${Math.min(rows.length, displayNodeLimit)} shown. Filtering does not change calculations or exports.`;
+    const more = root.querySelector("#plannerShowMore"); more.hidden = rows.length <= displayNodeLimit;
+    more.textContent = `Show ${Math.min(250, Math.max(0, rows.length - displayNodeLimit))} more dependency nodes`;
   }
   function renderInventory(root) {
     root.querySelector("#plannerInventoryList").innerHTML = Object.entries(state.inventory).map(([id, amount]) => {
@@ -216,7 +250,7 @@ export function installPlanner() {
     renderTargets(root);
     const box = root.querySelector("#calcTree");
     const workspace = root.querySelector(".gtnhCalcWorkspace"), scroll = workspace.scrollTop;
-    const expanded = new Set([...box.querySelectorAll("details[open][data-node-id]")].map(node => node.dataset.nodeId));
+    captureNodes();
     const expandedMachines = new Set([...box.querySelectorAll("details[open][data-machine-id]")].map(node => node.dataset.machineId));
     const active = document.activeElement;
     const restore = focusedTarget !== undefined ? `[data-target-index="${focusedTarget}"][data-target-field="${focusedTargetField}"]` : focusedStock ? `[data-stock-quantity="${CSS.escape(focusedStock)}"]` : active?.dataset.routeGood ? `[data-route-good="${CSS.escape(active.dataset.routeGood)}"]` :
@@ -229,25 +263,30 @@ export function installPlanner() {
     if (error) box.innerHTML = `<p role="alert" class="plannerError">${esc(error)}</p>`;
     else if (!built || !plan) box.innerHTML = '<div class="calculatorEmpty"><span aria-hidden="true">+</span><h4>Your production plan starts here</h4><p>Choose a product from NEI, set an amount or rate, then select <b>Build tree</b>.</p><p>Materials, machine requirements and power will appear here. Unresolved routes stay visible for you to choose.</p></div>';
     else {
-      box.innerHTML = `<p class="plannerDataset">${esc(dataset().label)} · ${plan.targets.length > 1 ? `Factory: ${plan.targets.length} outputs` : `${esc(plan.target.name)} · ${fmt(plan.requested)} ${esc(plan.target.unit)}${plan.isRate ? "/s" : ""}`}</p>
+      box.innerHTML = `<div id="plannerOverview" class="plannerResultHero" tabindex="-1"><span class="plannerEyebrow">Production plan</span><p class="plannerDataset">${esc(dataset().label)} · ${plan.targets.length > 1 ? `Factory: ${plan.targets.length} outputs` : `${esc(plan.target.name)} · ${fmt(plan.requested)} ${esc(plan.target.unit)}${plan.isRate ? "/s" : ""}`}</p><h4>${plan.targets.length > 1 ? "Your factory at a glance" : esc(plan.target.name)}</h4><div class="plannerResultCounts"><span><b>${plan.materials.length}</b> material entries</span><span><b>${plan.steps.length}</b> selected recipes</span><span><b>${plan.unresolved.length}</b> unresolved dependencies</span><span><b>${plan.reusable.length}</b> startup entries</span></div></div>
+        <nav class="plannerResultNav" data-planner-owned aria-label="Plan result sections"><button type="button" data-result-jump="plannerOverview">Overview</button><button type="button" data-result-jump="plannerMaterialsSection">Materials</button><button type="button" data-result-jump="plannerRoutesSection">Routes</button><button type="button" data-result-jump="plannerMachinesSection">Machines</button><button type="button" data-result-jump="plannerDiagramSection">Diagram</button></nav>
         <div class="plannerMetrics"><div>${plan.isRate ? "Known average EU/t" : "Known energy"}<b>${fmt(plan.isRate ? plan.knownAverageEut : plan.knownEnergy)}${plan.isRate ? "" : " EU"}</b></div><div>${plan.isRate ? "Installed EU/t" : plan.targets.length > 1 ? "Processing times" : "Root processing time"}<b>${plan.isRate ? fmt(plan.knownInstalledEut) : plan.targets.length > 1 ? "Per output below" : fmt(plan.rootTimeSeconds) + " s"}</b></div></div>
         ${plan.targets.length > 1 ? `<h4>Factory outputs</h4><div class="plannerTable"><table><thead><tr><th>Output</th><th>Demand${plan.isRate ? "/s" : ""}</th><th>${plan.isRate ? "Installed recipe capacity/s" : "Root time (s)"}</th></tr></thead><tbody>${plan.targets.map(target=>`<tr><td>${esc(target.name)}<small>${esc(target.id)}</small></td><td>${fmt(target.requested)} ${esc(target.unit)}</td><td>${target.root.status === "from-byproduct" ? "From co-products" : fmt(plan.isRate ? target.installedCapacity : target.timeSeconds)}</td></tr>`).join("")}</tbody></table></div>` : ""}
         <p>${plan.targets.length === 1 && plan.capacity !== null ? plan.isRate ? `Installed root recipe capacity (${fmt(plan.targets[0].installedCount)} machines): ${fmt(plan.targets[0].installedCapacity)} ${esc(plan.target.unit)}/s. ` : `Root capacity with ${state.machineCount} machine(s): ${fmt(plan.capacity)} ${esc(plan.target.unit)}/s. ` : ""}${plan.hasUnknownPower ? "Some timing/power values are unknown. Totals cover known machines only." : "Timing and power use the selected recipe profiles; no other multiblock bonuses are assumed."}</p>
         <details ${plan.unresolved.length ? "open" : ""}><summary>Warnings and unresolved routes (${plan.warnings.length})</summary><ul>${plan.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>
         ${balanceHtml()}${diagnosticsHtml()}${factoryCapacityHtml(plan, state.machineConfigs)}
-        <h4>Required materials ${plan.isRate ? "per second" : ""}</h4>${table(plan.materials, "actions")}
+        <h4 id="plannerMaterialsSection" class="plannerSectionTitle" tabindex="-1">Required materials ${plan.isRate ? "per second" : ""}</h4><div class="plannerListControls"><label>Find material<input id="plannerMaterialFind" type="search" placeholder="Name or exact ID" value="${esc(resultView.materialQuery)}"></label><label>Type<select id="plannerMaterialType"><option value="all">All materials</option><option value="item">Items</option><option value="fluid">Fluids</option><option value="ore">OreDict ingredients</option></select></label><button id="plannerMaterialReset" type="button">Reset list</button></div><p id="plannerMaterialMatches" class="plannerHint" role="status" aria-live="polite"></p><div id="plannerMaterialRows"></div>
         ${plan.inventoryUsed.length ? `<details open><summary>Used from inventory (${plan.inventoryUsed.length})</summary>${table(plan.inventoryUsed)}</details>` : ""}
         ${plan.inventoryRemaining.length ? `<details><summary>Unspent inventory (${plan.inventoryRemaining.length})</summary>${table(plan.inventoryRemaining, "", false)}</details>` : ""}
         <details ${state.settings.cellsReusable ? "open" : ""}><summary>Reusable startup stock (${plan.reusable.length})</summary>${table(plan.reusable, "", false)}</details>
         <details><summary>Byproducts and surplus (${plan.byproducts.length})</summary>${table(plan.byproducts)}</details>
         ${plan.byproductsUsed.length ? `<details open><summary>Reused co-products (${plan.byproductsUsed.length})</summary>${table(plan.byproductsUsed)}</details>` : ""}
-        <h4>Dependency tree</h4><p>${plan.nodes.length} nodes. ${plan.truncated ? "Node limit reached; boundary materials retained." : ""}</p>
-        <div class="plannerNodes">${plan.nodes.slice(0, displayNodeLimit).map(node => `<details class="plannerNode" data-node-key="${node.key}" data-node-id="${esc(node.id)}" ${node.depth < 2 || expanded.has(node.id) ? "open" : ""}><summary><b>${esc(node.name)}</b> · ${fmt(node.amount)} ${esc(node.unit)}${plan.isRate ? "/s" : ""} · ${esc(node.status.replaceAll("-", " "))}</summary><small>${esc(node.id)} · depth ${node.depth}</small>${node.inventoryUsed ? `<p>${fmt(node.inventoryUsed)} ${esc(node.unit)} supplied from inventory; ${fmt(node.productionAmount)} remaining demand.</p>` : ""}${node.byproductUsed ? `<p>${fmt(node.byproductUsed)} ${esc(node.unit)} supplied from earlier co-products.</p>` : ""}${node.recipeId ? `<p>${esc(node.machine)} · ${fmt(node.batches)} batches${plan.isRate ? "/s" : ""}</p>` : ""}${node.depth === 0 ? routeControl(node) : `<div data-route-slot="${node.key}"></div>`}<button data-supply="${esc(node.id)}" type="button">Supply externally</button></details>`).join("")}</div>
-        ${plan.nodes.length > displayNodeLimit ? `<button type="button" id="plannerShowMore">Show ${Math.min(250, plan.nodes.length-displayNodeLimit)} more dependency nodes</button>` : ""}
-        <h4>Machine requirements</h4><p>Choose a generic assumption or a named GT5 reference. Machine-specific conditions still require verification.</p>
+        <h4 id="plannerRoutesSection" class="plannerSectionTitle" tabindex="-1">Dependency tree</h4><p>${plan.nodes.length} nodes. ${plan.truncated ? "Node limit reached; boundary materials retained." : ""}</p>
+        <div class="plannerListControls"><label>Find dependency<input id="plannerNodeFind" type="search" placeholder="Name, ID, machine or status" value="${esc(resultView.nodeQuery)}"></label><label class="plannerFilterCheck"><input id="plannerNodeAttention" type="checkbox" ${resultView.attentionOnly ? "checked" : ""}> Decisions needed only</label><button id="plannerNodeReset" type="button">Reset tree view</button></div><div class="plannerNodeActions"><button type="button" data-node-expansion="open">Expand shown</button><button type="button" data-node-expansion="closed">Collapse shown</button></div><p id="plannerNodeMatches" class="plannerHint" role="status" aria-live="polite"></p><div class="plannerNodes"></div>
+        <button type="button" id="plannerShowMore" hidden>Show more dependency nodes</button>
+        <h4 id="plannerMachinesSection" class="plannerSectionTitle" tabindex="-1">Machine requirements</h4><p>Choose a generic assumption or a named GT5 reference. Machine-specific conditions still require verification.</p>
         ${plan.steps.map(step => { const cfg = state.machineConfigs[step.recipeId] || {}, metadata = recipeMetadataRows(step.recipe), p = step.performance; return `<details class="plannerNode" data-machine-id="${esc(step.recipeId)}" ${expandedMachines.has(step.recipeId) ? "open" : ""}><summary>${esc(step.machine)} · ${plan.isRate ? fmt(step.count) + " required machines (" + fmt(step.equivalents) + " equivalent)" : fmt(step.batches) + " batches"}</summary><p>${p ? fmt(p.durationTicks) + " ticks/batch · " + fmt(p.eut) + " EU/t at full load" + (plan.isRate && step.installedCount !== step.count ? ` · ${fmt(step.installedCount)} configured machines` : "") : "Timing/power unknown"}</p><p>${plan.isRate ? `Average: ${fmt(step.averageEut)} EU/t · installed: ${fmt(step.installedEut)} EU/t` : `Known step energy: ${fmt(step.energy)} EU`}</p>${p?.model ? `<p class="plannerMachineResult">Applied ${p.overclocks} overclocks · ${p.heatOverclocks} heat-perfect · ${p.heatDiscounts} heat discounts · ${fmt(p.availableEut)} EU/t supply${p.tickLimited ? " · one-tick floor reached" : ""}</p>` : ""}${metadata.length ? `<details class="plannerRecipeMetadata"><summary>Recipe metadata</summary><dl>${metadata.map(row => `<dt>${esc(row.key)}</dt><dd>${esc(row.value)}</dd>`).join("")}</dl><p>${p?.model === "ebf" ? "coil_heat is evaluated against the configured machine heat. Other conditions still require verification." : "These exported conditions are not evaluated by this OC/parallel profile."}</p></details>` : ""}
           ${machineProfileHtml(step, cfg, dataset().id)}</details>`; }).join("")}
-        <h4>Dependency diagram</h4><div class="plannerDiagram" role="img" aria-label="Recipe dependency diagram">${diagram()}</div>`;
+        <h4 id="plannerDiagramSection" class="plannerSectionTitle" tabindex="-1">Dependency diagram</h4><div class="plannerDiagram" role="img" aria-label="Recipe dependency diagram">${diagram()}</div>`;
+    }
+    if (plan && !error) {
+      root.querySelector("#plannerMaterialType").value = resultView.materialType;
+      updateMaterialList(); updateNodeList(); hydrateMaterials(box);
     }
     if (restore) root.querySelector(restore)?.focus({ preventScroll: true });
     workspace.scrollTop = scroll;
@@ -292,9 +331,13 @@ export function installPlanner() {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.calculatorMode) { setMode(button.dataset.calculatorMode); return; }
       if (button.dataset.reviewNode !== undefined) {
+        resultView.nodeQuery = ""; resultView.attentionOnly = false;
         tab("tree");
+        const index = plan?.nodes.findIndex(node => node.key === Number(button.dataset.reviewNode)) ?? -1;
+        displayNodeLimit = Math.max(displayNodeLimit, index + 1);
+        overlay.querySelector("#plannerNodeFind").value = ""; overlay.querySelector("#plannerNodeAttention").checked = false; updateNodeList();
         const details = overlay.querySelector(`[data-node-key="${button.dataset.reviewNode}"]`);
-        if (details) { details.open = true; details.querySelector("summary")?.focus(); details.scrollIntoView({ block: "nearest" }); }
+        if (details) { details.open = true; focusResult(details.querySelector("summary")); }
         return;
       }
       if (button.dataset.reportGood) {
@@ -306,6 +349,15 @@ export function installPlanner() {
           note: "No production entry was present in this snapshot. This does not prove the item is unobtainable; gathered resources and unsupported custom recipe handlers may have no entry." }, null, 2), "application/json");
         return;
       }
+      if (button.dataset.resultJump) {
+        tab("tree"); const target = overlay.querySelector(`#${button.dataset.resultJump}`);
+        focusResult(target); return;
+      }
+      if (button.dataset.nodeExpansion) {
+        overlay.querySelectorAll(".plannerNodes details").forEach(node => { node.open = button.dataset.nodeExpansion === "open"; }); captureNodes(); return;
+      }
+      if (button.id === "plannerMaterialReset") { resultView.materialQuery = ""; resultView.materialType = "all"; overlay.querySelector("#plannerMaterialFind").value = ""; overlay.querySelector("#plannerMaterialType").value = "all"; updateMaterialList(); return; }
+      if (button.id === "plannerNodeReset") { resultView.nodeQuery = ""; resultView.attentionOnly = false; overlay.querySelector("#plannerNodeFind").value = ""; overlay.querySelector("#plannerNodeAttention").checked = false; updateNodeList(); return; }
       if (button.dataset.pickField && catalog()) {
         const field = button.dataset.pickField, input = overlay.querySelector(`#${field}`);
         openItemPicker(catalog(), good => {
@@ -366,7 +418,7 @@ export function installPlanner() {
           if (good) select(good); else if (catalog()) openItemPicker(catalog(), select, { query });
           break;
         }
-        case "plannerShowMore": displayNodeLimit += 250; render(); break;
+        case "plannerShowMore": displayNodeLimit += 250; updateNodeList(); break;
         case "calcClear": state = { ...structuredClone(defaultPlannerState), uiMode: state.uiMode }; plan = null; built = false; error = ""; sync(); save(); render(); break;
         case "plannerResetChoices": state.routeChoices = {}; state.machineConfigs = {}; state.rawOverrides = []; state.oreChoices = {}; state.lockedRoutes = {}; save(); calculate(); render(); break;
         case "plannerAddStock": {
@@ -393,6 +445,8 @@ export function installPlanner() {
       }
     });
     overlay.addEventListener("input", event => {
+      if (event.target.id === "plannerMaterialFind") { resultView.materialQuery = event.target.value; updateMaterialList(); return; }
+      if (event.target.id === "plannerNodeFind") { resultView.nodeQuery = event.target.value; displayNodeLimit = 250; updateNodeList(); return; }
       if (["calcTarget", "plannerStockGood", "plannerFactoryGood"].includes(event.target.id)) {
         const query = event.target.value.toLowerCase();
         const matches = catalog()?.goods.filter(good => (good.name || "").toLowerCase().includes(query) || good.id.toLowerCase().includes(query)).slice(0,25) || [];
@@ -410,6 +464,8 @@ export function installPlanner() {
     });
     overlay.addEventListener("change", async event => {
       const input = event.target;
+      if (input.id === "plannerMaterialType") { resultView.materialType = input.value; updateMaterialList(); return; }
+      if (input.id === "plannerNodeAttention") { resultView.attentionOnly = input.checked; displayNodeLimit = 250; updateNodeList(); return; }
       if (input.dataset.loopSeed) {
         const quantity = Number(input.value);
         if (!input.checkValidity() || !Number.isFinite(quantity) || quantity < 0) { overlay.querySelector("#plannerStatus").textContent = "Circulating stock must be nonnegative; items require whole counts. Previous value retained."; input.value = state.loopSeeds[input.dataset.loopSeed] ?? ""; return; }

@@ -1,9 +1,9 @@
 // Browsing compares exported base recipe batches, never upstream production costs.
 export const defaultRecipeFilters = { query: "", maxVoltage: null, noChance: false, sort: "default" };
 export function filterRecipeEntries(entries, filters = {}) {
-  const { query, maxVoltage, noChance, sort } = { ...defaultRecipeFilters, ...filters };
+  const { query, maxVoltage, noChance, sort, exactRecipeId } = { ...defaultRecipeFilters, ...filters };
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = entries.filter(({ recipe, search }) => words.every(word => search.includes(word)) &&
+  const rows = entries.filter(({ recipe, search }) => (!exactRecipeId || recipe.id === exactRecipeId) && words.every(word => search.includes(word)) &&
     (maxVoltage === null || Number.isFinite(recipe.voltage) && recipe.voltage >= 0 && recipe.voltage <= maxVoltage) &&
     (!noChance || recipe.outputs.every(io => io.probability === 1)));
   const known = value => Number.isFinite(value) && value >= 0 ? value : Infinity;

@@ -13,6 +13,7 @@ import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
 import { openVersionComparison } from "./version-compare-ui.js";
+import { recipePermalink } from "./recipe-links.js";
 import { defaultRecipeFilters, filterRecipeEntries, recipeBrowseEntry } from "./recipe-browse.js";
 import { mountRecipeWorkbench } from "./recipe-workbench.js";
 import { recipeMetrics } from "./production-engine.js";
@@ -396,7 +397,7 @@ async function load() {
     if (linkedId) {
       const linked = window.GTNH_CATALOG.resolve(linkedId);
       if (linked && !(linked instanceof OreDict)) {
-        if (params.get("view") === "usage") openUsage(linked); else openProduction(linked);
+        if (params.get("view") === "usage") openUsage(linked, params.get("recipe")); else openProduction(linked, params.get("recipe"));
       } else status.textContent = "Linked good was not found in the selected dataset.";
     }
   } finally {
@@ -512,7 +513,7 @@ function recipesFor(obj, mode) {
   return out;
 }
 
-function renderRecipes(obj, mode, push = true) {
+function renderRecipes(obj, mode, push = true, linkedRecipeId = null) {
   if (push) pushView({ type: "recipes", obj, mode });
 
   currentView = { type: "recipes", obj, mode };
@@ -521,7 +522,7 @@ function renderRecipes(obj, mode, push = true) {
   activeMachine = "All";
   currentRecipes = recipesFor(obj, mode);
   recipeBrowseEntries = null; recipeFilters = { ...defaultRecipeFilters };
-  recipeWorkbench ||= mountRecipeWorkbench(machineTabs, filters => { recipeFilters = filters; renderRecipeList(); });
+  recipeWorkbench ||= mountRecipeWorkbench(machineTabs, filters => { recipeFilters = filters; document.querySelector(".recipeLinkNotice")?.remove(); renderRecipeList(); });
   recipeWorkbench.reset(false);
 
   currentRecipeGroups = new Map();
@@ -540,9 +541,7 @@ function renderRecipes(obj, mode, push = true) {
 
   breadcrumb.textContent = `${mode} → ${nameOf(obj)}`;
   const link = document.createElement("a"); link.id = "itemPermalink"; link.textContent = "Permalink";
-  const url = new URL(location.href); url.searchParams.set("dataset", window.GTNH_CATALOG.dataset.id);
-  url.searchParams.set("item", obj.id); url.searchParams.set("view", mode === "Usage" ? "usage" : "production");
-  link.href = url.href; breadcrumb.appendChild(link);
+  link.href = recipePermalink(location.href, { datasetId: window.GTNH_CATALOG.dataset.id, goodId: obj.id, mode }); breadcrumb.appendChild(link);
   const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
   plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
   const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
@@ -556,6 +555,17 @@ function renderRecipes(obj, mode, push = true) {
   const switchView = document.createElement("button"); switchView.type = "button"; switchView.id = "toggleRecipeView";
   switchView.textContent = mode === "Production" ? "Show usages" : "Show recipes";
   switchView.addEventListener("click", () => renderRecipes(obj, mode === "Production" ? "Usage" : "Production")); breadcrumb.appendChild(switchView);
+  if (linkedRecipeId) {
+    const found = currentRecipes.some(recipe => recipe.id === linkedRecipeId);
+    if (found) { recipeFilters.exactRecipeId = linkedRecipeId; recipeFilters.query = linkedRecipeId; recipeWorkbench.setQuery(linkedRecipeId); }
+    const notice = document.createElement("span"); notice.className = "recipeLinkNotice"; notice.setAttribute("role", "status");
+    notice.textContent = found ? "Showing the linked recipe. " : "Linked recipe is absent for this item and version. Showing all recipes. ";
+    if (found) {
+      const all = document.createElement("button"); all.type = "button"; all.id = "showAllLinkedRecipes"; all.textContent = "Show all recipes";
+      all.addEventListener("click", () => { recipeWorkbench.reset(); notice.remove(); }); notice.appendChild(all);
+    }
+    breadcrumb.appendChild(notice);
+  }
   renderMachineTabs();
   renderRecipeList();
   updateNav();
@@ -972,7 +982,7 @@ function appendRecipeCards() {
   const end = Math.min(renderedRecipeCount + RECIPE_PAGE_SIZE, currentRecipeList.length);
 
   for (let i = renderedRecipeCount; i < end; i++) {
-    frag.appendChild(recipeCardNei(currentRecipeList[i]));
+    frag.appendChild(recipeCardNei(currentRecipeList[i], currentView));
   }
 
   renderedRecipeCount = end;
@@ -990,22 +1000,22 @@ function appendRecipeCards() {
   recipePage.appendChild(frag);
 }
 
-function openProduction(obj) {
+function openProduction(obj, linkedRecipeId = null) {
   recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
   breadcrumb.style.display = "block";
   recipePage.innerHTML = '<div class="empty">Loading recipe...</div>';
-  requestAnimationFrame(() => renderRecipes(obj, "Production", true));
+  requestAnimationFrame(() => renderRecipes(obj, "Production", true, linkedRecipeId));
 }
 
-function openUsage(obj) {
+function openUsage(obj, linkedRecipeId = null) {
   recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
   breadcrumb.style.display = "block";
   recipePage.innerHTML = '<div class="empty">Loading usage...</div>';
-  requestAnimationFrame(() => renderRecipes(obj, "Usage", true));
+  requestAnimationFrame(() => renderRecipes(obj, "Usage", true, linkedRecipeId));
 }
 
 async function copyExactName(obj, x, y, anchor = null) {
@@ -1352,7 +1362,7 @@ function addBadges(recipe, badges) {
   return { tierText, euText, ampText, timeText };
 }
 
-function recipeCardNei(recipe) {
+function recipeCardNei(recipe, navigationContext = null) {
   const dims = recipe.recipeType?.dimensions;
   const inputItemX = Number(dims?.[0] ?? 0);
   const inputItemY = Number(dims?.[1] ?? 0);
@@ -1438,13 +1448,18 @@ function recipeCardNei(recipe) {
 
   card.appendChild(body);
   appendRecipeDetails(card, recipe);
-  if (currentView.mode === "Production" && recipeMetrics(window.GTNH_CATALOG.recipe(recipe), currentView.obj).output > 0) {
-    const actions = document.createElement("div"); actions.className = "recipeActions";
+  if (navigationContext?.type !== "recipes") return card;
+  const actions = document.createElement("div"); actions.className = "recipeActions";
+  const permalink = document.createElement("a"); permalink.dataset.recipeLink = recipe.id; permalink.textContent = "Recipe permalink";
+  permalink.href = recipePermalink(location.href, { datasetId: window.GTNH_CATALOG.dataset.id, goodId: navigationContext.obj.id, mode: navigationContext.mode, recipeId: recipe.id });
+  actions.appendChild(permalink);
+  if (navigationContext.mode === "Production" && recipeMetrics(window.GTNH_CATALOG.recipe(recipe), navigationContext.obj).output > 0) {
     const button = document.createElement("button"); button.type = "button"; button.dataset.planRecipe = recipe.id; button.textContent = "Plan with this recipe";
-    const targetId = currentView.obj.id;
+    const targetId = navigationContext.obj.id;
     button.addEventListener("click", () => { if (!window.GTNH_CALC?.planRecipe?.(targetId, recipe.id)) notify("Could not start this recipe plan. Check the calculator message or wait for it to load."); });
-    actions.appendChild(button); card.appendChild(actions);
+    actions.appendChild(button);
   }
+  card.appendChild(actions);
   return card;
 }
 

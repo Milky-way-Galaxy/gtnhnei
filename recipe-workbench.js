@@ -19,5 +19,5 @@ export function mountRecipeWorkbench(before, onChange) {
     if (notify) onChange({ ...defaultRecipeFilters });
   }
   field("recipeFilterReset").addEventListener("click", () => reset());
-  return { reset };
+  return { reset, setQuery(query) { field("recipeFind").value = query; field("recipeFilterBadge").textContent = "1 active"; } };
 }

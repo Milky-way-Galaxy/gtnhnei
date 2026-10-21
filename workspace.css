@@ -196,3 +196,6 @@ button, summary { cursor: pointer; }
  .recipeFilterFields label { flex-basis: 120px; }
  .recipeFilterFields label:first-child { flex-basis: 100%; }
 }
+.recipeActions { flex-wrap: wrap; align-items: center; gap: 8px; }
+.recipeActions a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid #3e5569; border-radius: 9px; color: #b6d4df; text-decoration: none; font-size: 13px; }
+.recipeLinkNotice { display: block; color: #b3d5cf; font-size: 12px; margin-top: 8px; }

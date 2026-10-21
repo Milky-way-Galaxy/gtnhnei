@@ -1,5 +1,13 @@
 import { recipeBalance } from "./production-engine.js";
 const scalar = value => JSON.stringify(value);
+// gtnh-flow's voltage table begins at LV. Its tier is a supplied machine
+// voltage, so use LV for ULV recipes without changing their native EU/t/time.
+// Disable its automatic machine bonuses for every base-value export.
+const flowSettings = recipe => [
+  ...(recipe.tier === "ULV" ? ["# Native recipe tier: ULV; gtnh-flow uses LV supply with overclocking disabled."] : []),
+  `  tier: ${scalar(recipe.tier === "ULV" ? "LV" : recipe.tier || "LV")}`,
+  "  do_not_overclock: true",
+];
 const mapYaml = (key, entries, label = io => io.name) => {
   const grouped = new Map();
   for (const entry of entries) {
@@ -25,7 +33,7 @@ export function exportRecipeYaml(catalog, query, index = 0) {
     yaml: `# Recipe ${recipe.id}: timing/power unknown. No executable solver entry was invented.\n` };
   const yaml = [`# GTNH Atlas recipe: ${recipe.id}`, `# Dataset: ${catalog.dataset.id}`, "# Base recipe values; chance outputs are expected values.",
     ...balance.reusable.map(io => `# Reusable startup stock: ${io.amount} ${io.name}`),
-    `- m: ${scalar(recipe.machine.toLowerCase())}`, `  tier: ${scalar(recipe.tier || "LV")}`,
+    `- m: ${scalar(recipe.machine.toLowerCase())}`, ...flowSettings(recipe),
     mapYaml("I", balance.inputs, label), mapYaml("O", balance.outputs, label), `  eut: ${recipe.eut ?? 0}`, `  dur: ${recipe.durationTicks === null ? 1 : recipe.durationTicks / 20}`, "  number: 1",
     ...(recipe.durationTicks === null ? ["# WARNING: duration/EU unavailable. Timing above is a solver placeholder, not measured game data."] : [])].join("\n") + "\n";
   return { ok: true, target: object.name || object.id, routeIndex: Number(index), recipeId: recipe.id, machine: recipe.machine,
@@ -64,7 +72,7 @@ export function exportPlanYaml(plan) {
   for (const step of plan.steps) {
     const recipe = step.recipe, balance = recipeBalance(recipe);
     if (recipe.durationTicks === null || recipe.eut === null) { lines.push(`# OMITTED ${recipe.id}: timing unknown (${recipe.machine})`); continue; }
-    lines.push(`# Recipe ${recipe.id}`, `- m: ${scalar(recipe.machine.toLowerCase())}`, `  tier: ${scalar(recipe.tier)}`,
+    lines.push(`# Recipe ${recipe.id}`, `- m: ${scalar(recipe.machine.toLowerCase())}`, ...flowSettings(recipe),
       mapYaml("I", balance.inputs, label), mapYaml("O", balance.outputs, label), `  eut: ${recipe.eut}`, `  dur: ${recipe.durationTicks / 20}`,
       `  number: ${plan.isRate ? step.batches * recipe.durationTicks / 20 : 1}`);
   }

@@ -95,6 +95,10 @@ and keep their recursive numerical behavior; they cannot claim steady-state
 semantics. JSON/sharing/named plans preserve mode, routes and circulating stock.
 Materials, machine and supply CSVs label balance status. Balanced YAML retains
 base recipe values, without applying machine-profile overclocks a second time.
+All executable YAML entries disable gtnh-flow's automatic overclocking and machine
+bonuses, preserving those base values. Its voltage table starts at LV, so an ULV
+recipe explicitly uses LV supply with its original EU/t and duration unchanged;
+the export records its native ULV tier in a comment.
 
 ## Verification and remaining coverage
 
@@ -103,6 +107,10 @@ desktop/mobile browser tests against the exact staged Pages artifact. Firefox
 print checks separate real screen activation from emulated print-layout checks.
 Physical phones, physical printing and Safari are not established by these tests.
 Current release results are recorded in [PR #14](https://github.com/Milky-way-Galaxy/gtnhnei/pull/14).
+The opt-in real Python/Viz check also covers returned cells using
+`ATLAS_SMOKE_SCENARIO=cell-loop ATLAS_SMOKE_DATASET=gtnh-2.8.0 npm run smoke:flow`
+(or `gtnh-2.9.0`). It downloads external runtime packages; the default smoke
+scenario retains the two-output/byproduct factory regression.
 
 No recipe binaries or icon atlases were changed. GTNH 2.8.4 still lacks a verified
 export; NASA Workbench construction remains missing from both installed snapshots.

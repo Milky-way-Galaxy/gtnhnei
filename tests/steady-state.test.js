@@ -7,7 +7,7 @@ import { RecipeCatalog } from "../recipe-data.js";
 import { calculateProduction } from "../production-engine.js";
 import { solveUniqueBalance } from "../steady-state.js";
 import { defaultPlannerState, importPlan, serializePlan } from "../planner-state.js";
-import { exportPlanYaml, planCsv, machinesCsv } from "../recipe-export.js";
+import { exportRecipeYaml, exportPlanYaml, planCsv, machinesCsv } from "../recipe-export.js";
 import { buildSupplyPlan, supplyCsv } from "../supply-plan.js";
 
 test("unique rectangular balances satisfy redundant equations and preserve tiny demands", () => {
@@ -43,6 +43,19 @@ test("real guaranteed cell loop consumes feedstock and power, never recurring em
   assert.equal(supply.startup.find(row => row.id === empty).amount, 2);
   assert.equal(supply.consumption.find(row => row.name === "Ethenone").amount, 7200000);
   for (const text of [planCsv(plan), machinesCsv(plan), supplyCsv(supply)]) { assert.match(text, /Balance status/); assert.match(text, /steady_state/); }
+});
+test("flow exports preserve low-power recipe values without automatic machine bonuses", () => {
+  const plan = calculateProduction(catalog, options), yaml = exportPlanYaml(plan);
+  assert.equal((yaml.match(/do_not_overclock: true/g) || []).length, 2);
+  assert.match(yaml, /Native recipe tier: ULV/);
+  assert.match(yaml, /tier: "LV"\n  do_not_overclock: true/);
+  assert.match(yaml, /eut: 1\n  dur: 0\.8\n  number: 0\.8/);
+  const filler = catalog.recipes(catalog.resolve(filled)).findIndex(recipe => recipe.id === canner);
+  const single = exportRecipeYaml(catalog, filled, filler);
+  assert.equal(single.tier, "ULV");
+  assert.match(single.yaml, /do_not_overclock: true/);
+  assert.match(single.yaml, /eut: 1\n  dur: 0\.8/);
+  assert.equal(plan.steps.find(step => step.recipeId === canner).recipe.tier, "ULV");
 });
 test("missing seed, chance recipes, total jobs and incomplete routes remain visibly blocked", () => {
   const missingSeed = calculateProduction(catalog, { ...options, loopSeeds: {} });

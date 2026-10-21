@@ -1,4 +1,7 @@
 #gtnhCalcOverlay { z-index: 99980; }
+#gtnhCalcOverlay .gtnhCalcPanel { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+#gtnhCalcOverlay .gtnhCalcPanel > :not(.gtnhCalcWorkspace) { flex-shrink: 0; }
+#gtnhCalcOverlay .gtnhCalcWorkspace { flex: 1 1 auto; min-height: 0; min-width: 0; }
 #gtnhCalcOverlay label { display: flex; flex-direction: column; gap: 6px; }
 #gtnhCalcOverlay input, #gtnhCalcOverlay select { width: 100%; min-width: 0; padding: 9px; color: #eaf2ff; background: #111f30; border: 1px solid #3a536b; border-radius: 8px; font-size: 16px; }
 #gtnhCalcOverlay .gtnhCalcChecks label { flex-direction: row; align-items: center; }
@@ -72,7 +75,7 @@
  #gtnhCalcOverlay[data-mobile-tab=planner] [data-calc-panel=planner], #gtnhCalcOverlay[data-mobile-tab=tree] [data-calc-panel=tree], #gtnhCalcOverlay[data-mobile-tab=code] [data-calc-panel=code] { display: block !important; }
  #gtnhCalcOverlay .gtnhCalcPanel { display: flex; flex-direction: column; }
  #gtnhCalcOverlay .gtnhCalcWorkspace { overflow-y: auto; min-height: 0; }
- #gtnhCalcOverlay .gtnhCalcCol { overflow: visible; max-height: none; }
+ #gtnhCalcOverlay .gtnhCalcCol { overflow: visible; max-height: none; height: auto; }
  #gtnhCalcOverlay .gtnhCalcTabs { flex-shrink: 0; }
  .plannerTable td:first-child { min-width: 145px; }
 }

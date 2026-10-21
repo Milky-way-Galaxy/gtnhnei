@@ -423,7 +423,7 @@
 #lunaEggOverlay[open] { display: block; }
 #lunaEggOverlay::backdrop { background: #030712d9; backdrop-filter: blur(7px); }
 .lunaPanel { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; overflow: visible; }
-.lunaHeader { position: sticky; top: 0; z-index: 2; padding: 18px 74px 18px 20px; background: #1b122dee; border-bottom: 1px solid #fb8ccf33; }
+.lunaHeader { position: sticky; top: 0; z-index: 2; padding: 18px 74px 18px 20px; background: #1b122d; border-bottom: 1px solid #fb8ccf33; }
 .lunaHeader h2 { font-size: clamp(19px, 5vw, 25px); }
 .lunaHeader p { font-size: 13px; }
 .lunaBadge { display: block; color: #f5a8d8; font-size: 12px; margin-bottom: 7px; letter-spacing: .04em; }

@@ -52,7 +52,8 @@ test("narrow and short layouts keep close reachable and all content inside the m
   await expect(page.locator("#lunaEggOverlay")).toBeHidden();
 });
 
-test("secret links open directly and copied recipe is explicitly fictional", async ({ page, context }) => {
+test("secret links open directly and copied recipe is explicitly fictional", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "Clipboard read/write permission grants are Chromium-specific.");
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("./?lunaloves=1&ref=not-shared#not-shared");
   await expect(page.locator("#lunaEggOverlay")).toBeVisible();

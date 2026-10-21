@@ -141,3 +141,46 @@
 .recipeDetails { margin-top: 12px; padding: 10px; background: #0c2133; border: 1px solid #38506b; border-radius: 8px; overflow-wrap: anywhere; }
 .recipeDetails summary { cursor: pointer; min-height: 32px; }
 .recipeDetails p { color: #b7c9dc; font-size: 13px; }
+.calculatorRecipeBackup { padding: 12px; margin: 10px 0 16px; border: 1px solid #816d47; border-radius: 10px; background: #29251d; color: #eed9ac; font-size: 13px; }
+.calculatorRecipeBackup p { margin: 0 0 8px; }
+
+/* Result workbench: a readable overview with navigation through long plans. */
+.plannerResultHero { padding: 18px; margin-bottom: 12px; border: 1px solid #3f665f; border-radius: 14px; background: linear-gradient(135deg, #1c3737, #152330); }
+.plannerEyebrow { color: #a0d7c9; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+.plannerResultHero .plannerDataset { background: none; color: #acc3cf; padding: 0; margin: 7px 0; font-size: 12px; }
+.plannerResultHero h4 { margin: 8px 0 16px; color: #eff8f6; font-size: clamp(22px, 3vw, 30px); font-weight: 650; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.plannerResultCounts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.plannerResultCounts span { font-size: 11px; color: #b1c6cf; }
+.plannerResultCounts b { display: block; font-size: 23px; color: #d6f4e9; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.plannerResultNav { position: sticky; top: 0; z-index: 3; display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 0; background: #111c29; border-bottom: 1px solid #355065; }
+#gtnhCalcOverlay .plannerResultNav button { flex: 1; min-height: 40px; padding: 7px; font-size: 12px; }
+.plannerSectionTitle { scroll-margin-top: 110px; border-top: 1px solid #344757; margin-top: 26px; padding-top: 18px; color: #cee8e5; font-size: 18px; }
+#plannerOverview { scroll-margin-top: 70px; }
+.plannerListControls { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.plannerListControls label { flex: 1 1 150px; min-width: 0; color: #adc2d0; font-size: 12px; }
+.plannerListControls label:first-child { flex-grow: 2; }
+.plannerListControls button { min-height: 44px; }
+#gtnhCalcOverlay .plannerListControls .plannerFilterCheck { flex-direction: row; align-items: center; min-height: 44px; }
+.plannerNodeActions { display: flex; gap: 8px; flex-wrap: wrap; }
+.plannerNodeActions button { min-height: 40px; }
+.plannerMaterialIdentity { display: flex; align-items: center; gap: 10px; }
+.plannerMaterialIdentity > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.plannerGoodIcon { display: block; width: 32px !important; height: 32px !important; min-width: 32px; flex: none; background-repeat: no-repeat; image-rendering: pixelated; }
+.plannerTable td { font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) {
+ .plannerResultHero { padding: 14px; }
+ .plannerResultCounts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ #gtnhCalcOverlay .plannerResultNav button { flex: 1 1 65px; }
+ #plannerMaterialRows .plannerTable { overflow: visible; }
+ #plannerMaterialRows table, #plannerMaterialRows tbody { display: block; width: 100%; }
+ #plannerMaterialRows thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ #plannerMaterialRows tbody { display: grid; gap: 10px; }
+ #plannerMaterialRows tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 12px; border: 1px solid #354d60; border-radius: 10px; background: #112333; }
+ #plannerMaterialRows td { border: 0; padding: 6px 0; min-width: 0; }
+ #plannerMaterialRows td:first-child, #plannerMaterialRows td:nth-child(4) { grid-column: 1 / -1; min-width: 0; }
+ #plannerMaterialRows td:nth-child(2)::before { content: "Required: "; font-size: 12px; color: #a7bfcc; }
+ #plannerMaterialRows .plannerMaterialActions { flex-direction: row; flex-wrap: wrap; }
+ #plannerMaterialRows .plannerMaterialActions button { flex: 1 1 120px; min-height: 44px; }
+}
+/* Hidden overflow still permits scrollIntoView to move the whole dialog. */
+#gtnhCalcOverlay.gtnhCalcOverlay, #gtnhCalcOverlay .gtnhCalcPanel { overflow: clip !important; }

@@ -291,6 +291,7 @@
     if (!ov) return;
 
     [...ov.querySelectorAll("button, a")].forEach(el => {
+      if (el.closest("[data-planner-owned]")) return;
       const t = String(el.textContent || "").trim().toLowerCase();
       const href = String(el.getAttribute?.("href") || "");
 

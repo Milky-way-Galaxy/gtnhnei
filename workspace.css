@@ -176,3 +176,26 @@ button, summary { cursor: pointer; }
   body.atlasPrintingSupplies #supplyDialog [data-no-print], body.atlasPrintingSupplies #supplyDialog [data-dialog-close] { display: none !important; }
   body.atlasPrintingSupplies #supplyDialog::backdrop { background: transparent; }
 }
+
+/* Recipe workbench: browsing controls stay outside the lazy card scroll area. */
+.app:not([data-view=recipes]) #recipeWorkbench { display: none; }
+#recipeWorkbench { flex: none; margin: 4px 10px; border: 1px solid var(--atlas-border); border-radius: 10px; background: #101d29; }
+#recipeWorkbench summary { min-height: 40px; padding: 10px 12px; color: #d5e7ee; font-size: 13px; }
+#recipeFilterBadge { float: right; color: var(--atlas-accent); font-size: 12px; }
+.recipeFilterFields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding: 0 12px 10px; }
+.recipeFilterFields label { display: flex; flex-direction: column; flex: 1 1 170px; min-width: 0; gap: 6px; color: var(--atlas-muted); font-size: 12px; }
+.recipeFilterFields input[type=search], .recipeFilterFields select { min-height: 44px; width: 100%; border: 1px solid #3e5569; border-radius: 8px; background: #0a1520; color: #edf5fc; padding: 8px; font-size: 16px; }
+.recipeFilterFields .recipeFilterCheck { flex-direction: row; align-items: center; min-height: 44px; }
+.recipeFilterCheck input { width: 20px; height: 20px; }
+.recipeFilterFields button { min-height: 44px; }
+#recipeWorkbench > p { margin: 0 12px 12px; color: var(--atlas-muted); font-size: 12px; line-height: 1.4; }
+.recipeActions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.recipeActions button { min-height: 44px; background: #21453f; border-color: #649c91; color: #bff4e4; }
+@media (max-width: 700px) {
+ #recipeWorkbench[open] { max-height: 35dvh; overflow: auto; }
+ .recipeFilterFields label { flex-basis: 120px; }
+ .recipeFilterFields label:first-child { flex-basis: 100%; }
+}
+.recipeActions { flex-wrap: wrap; align-items: center; gap: 8px; }
+.recipeActions a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid #3e5569; border-radius: 9px; color: #b6d4df; text-decoration: none; font-size: 13px; }
+.recipeLinkNotice { display: block; color: #b3d5cf; font-size: 12px; margin-top: 8px; }

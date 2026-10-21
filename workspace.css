@@ -1,14 +1,28 @@
-/* One viewport, one scrolling recipe surface. Keep tools visible on phones. */
+/* Shared workspace surfaces. Keep native controls, pixel icons and one recipe scroll surface. */
+:root { color-scheme: dark; --atlas-surface: #111a25; --atlas-surface-raised: #172330; --atlas-border: #2b3b4e; --atlas-muted: #a7b6c8; --atlas-accent: #79dfce; }
+button { font-weight: 600; }
+button:not(:disabled):hover { border-color: #6f8b9e !important; }
+input, select, textarea { font-family: inherit; }
+input::placeholder { color: #8e9fb2; opacity: 1; }
+input[type=checkbox] { accent-color: var(--atlas-accent); }
+.app[data-view=recipes] #atlasGridLimitPanel { display: none; }
+#recipePage { grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr)); align-content: start; align-items: start; gap: 14px; padding: 16px; }
+#recipePage > .empty, #recipePage > .loadMore { grid-column: 1 / -1; }
+.recipeHead { flex-wrap: wrap; gap: 10px; }
+.recipeTitle { font-weight: 650 !important; }
+.recipeDetails { background: #0e1823; border-color: var(--atlas-border); }
+
 html { height: 100%; }
 body { height: 100dvh; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
 body > .app { flex: 1 1 0; min-height: 0; height: auto !important; }
 #seoIntro.seoIntro { flex: none; width: 100%; max-width: none; margin: 0; padding: 10px 52px 10px 14px; border-radius: 12px; }
-#seoIntro.seoIntro h1 { font-size: clamp(18px, 2.2vw, 27px); letter-spacing: -.035em; }
+#seoIntro.seoIntro h1 { font-size: 23px; letter-spacing: -.04em; color: #eef5fc; }
+#seoIntro.seoIntro h1::before { content: "A"; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 9px; border-radius: 8px; background: #79dfce; color: #0c2425; font-size: 19px; letter-spacing: -.04em; vertical-align: 1px; }
 #seoIntro.seoIntro p { font-size: 13px; margin: 4px 0 0; color: #a5bdcf; }
 .seoIntroClose { min-height: 36px; }
-#gtnhToolStrip { display: flex; flex: none; flex-wrap: wrap; gap: 6px; padding: 8px; overflow: visible; border-bottom: 1px solid #2b4158; background: #091725; }
+#gtnhToolStrip { display: flex; flex: none; flex-wrap: wrap; gap: 6px; padding: 8px; overflow: visible; border-bottom: 1px solid var(--atlas-border); background: #101a26; }
 #gtnhToolStrip > button { flex: 0 0 auto; min-height: 44px; height: auto; padding: 8px 16px; border-radius: 9px; color: #d9e8f3; font-size: 14px; }
-#gtnhToolStrip .workspacePrimary { background: #173d51 !important; border-color: #70d4e5 !important; color: #bcf6ed !important; }
+#gtnhToolStrip .workspacePrimary { background: #24443f !important; border-color: #639e94 !important; color: #c1f5e8 !important; }
 #gtnhToolStrip .workspaceUpdate { border-color: #e8c572; color: #f6db9a; }
 #toolDb { margin-left: auto; align-self: center; background: #102b32; color: #9de3d4; border: 1px solid #2e625e; padding: 5px 9px; border-radius: 8px; font-size: 12px; }
 .topbar .title { display: none; }
@@ -16,10 +30,10 @@ body > .app { flex: 1 1 0; min-height: 0; height: auto !important; }
 .topbar #search, .topbar > button { height: 44px; font-size: 16px; }
 #search::placeholder { color: #9bb0c2; }
 #status { flex: none; font-size: 12px; padding: 5px 10px; }
-.atlasGridLimitPanel { flex: none; margin: 0 8px 7px; padding: 7px 9px; border-radius: 9px; }
+.atlasGridLimitPanel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; flex: none; margin: 0 8px 7px; padding: 6px 9px; border-radius: 8px; }
 .atlasGridLimitText { font-size: 11px; gap: 8px; }
-.atlasGridLimitBtns { gap: 5px; margin-top: 5px; }
-.atlasGridLimitBtns button { min-height: 36px; font-size: 12px; padding: 5px 9px; }
+.atlasGridLimitBtns { gap: 5px; margin-top: 0; }
+.atlasGridLimitBtns button { white-space: nowrap; min-height: 36px; font-size: 12px; padding: 5px 9px; }
 #breadcrumb { overflow-wrap: anywhere; flex: none; }
 #breadcrumb button, #breadcrumb a { min-height: 36px; height: auto; padding: 7px 9px; margin: 4px 4px 0 0; border: 1px solid #36546d; border-radius: 7px; }
 #breadcrumb a { text-decoration: none; }
@@ -27,16 +41,16 @@ button, a, summary, input, select { touch-action: manipulation; }
 button, summary { cursor: pointer; }
 :focus-visible { outline: 2px solid #7ae1ef; outline-offset: 3px; }
 
-.atlasDialog { color: #e5eff8; background: #0b1a2b; border: 1px solid #385c77; border-radius: 16px; padding: 0; width: min(900px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; box-shadow: 0 22px 90px #0008; }
+.atlasDialog { color: #e5eff8; background: var(--atlas-surface); border: 1px solid #3a4c60; border-radius: 16px; padding: 0; width: min(900px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: hidden; box-shadow: 0 22px 90px #0008; }
 .atlasDialog::backdrop { background: #020914dc; backdrop-filter: blur(5px); }
-.atlasDialog[open] { display: block; }
-.atlasDialogHead { display: flex; gap: 18px; justify-content: space-between; align-items: start; padding: 20px; border-bottom: 1px solid #2d465e; background: #0d2135; }
-.atlasDialogHead h2 { font-size: 24px; line-height: 1.15; margin: 0; color: #bce7f4; }
-.atlasDialogHead p { color: #a5bed2; margin: 8px 0 0; line-height: 1.5; }
+.atlasDialog[open] { display: flex; flex-direction: column; }
+.atlasDialogHead { display: flex; gap: 18px; justify-content: space-between; align-items: start; padding: 16px 20px; border-bottom: 1px solid var(--atlas-border); background: #15212e; flex-shrink: 0; }
+.atlasDialogHead h2 { font-size: 20px; line-height: 1.15; margin: 0; color: #eef5fc; }
+.atlasDialogHead p { color: var(--atlas-muted); margin: 6px 0 0; line-height: 1.4; font-size: 13px; }
 .atlasDialogHead [data-dialog-close] { flex: none; width: 44px; height: 44px; font-size: 25px; }
-.atlasDialogBody { padding: 18px 20px; line-height: 1.5; }
+.atlasDialogBody { padding: 16px 20px; line-height: 1.5; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .atlasDialog button { min-height: 44px; height: auto; padding: 8px 12px; }
-.atlasDialog label { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; font-size: 14px; }
+.atlasDialog label { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; font-size: 13px; color: #b9c8d9; }
 .atlasDialog input { color: #edf5fc; background: #06131f; border: 1px solid #36566e; border-radius: 8px; min-height: 44px; padding: 9px; width: 100%; font-size: 16px; }
 .atlasDialog a { color: #8fdced; overflow-wrap: anywhere; }
 .atlasDialog p { overflow-wrap: anywhere; }
@@ -63,24 +77,24 @@ button, summary { cursor: pointer; }
 .libraryIcon { width: 32px; height: 32px; display: block; }
 .pickerIcon { width: 32px; height: 32px; display: block; flex-shrink: 0; image-rendering: pixelated; }
 #itemPickerDialog { width: min(1050px, calc(100vw - 20px)); }
-.pickerSearchBar { display: flex; align-items: end; gap: 10px; }
+.pickerSearchBar { display: flex; align-items: end; gap: 10px; position: sticky; top: -1px; background: var(--atlas-surface); z-index: 2; padding: 2px 0 8px; }
 .pickerSearchBar label { flex: 1; min-width: 0; }
-.pickerSearchBar > button { margin-bottom: 12px; }
+.pickerSearchBar > button { margin-bottom: 8px; }
 .pickerFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.pickerFilters label { flex: 1 1 150px; margin: 4px 0; }
+.pickerFilters label { flex: 1 1 120px; margin: 4px 0; }
 .pickerFilters select { padding: 8px; min-height: 44px; width: 100%; background: #10273b; color: #edf5fc; border: 1px solid #456079; border-radius: 8px; font-size: 16px; }
-.pickerFilters .pickerCheck { flex-direction: row; align-items: center; }
+.pickerFilters .pickerCheck { flex-direction: row; align-items: center; flex: 0 0 auto; min-height: 44px; }
 .pickerCheck input { width: 22px; height: 22px; min-height: 22px; }
 .pickerGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.pickerGrid .pickerGood { display: flex; align-items: center; text-align: left; gap: 10px; padding: 10px; min-width: 0; min-height: 88px; }
+.pickerGrid .pickerGood { display: flex; align-items: center; text-align: left; gap: 10px; padding: 10px; min-width: 0; min-height: 76px; }
 .pickerGood > span:last-child { min-width: 0; }
-.pickerGood b { display: block; overflow-wrap: anywhere; font-size: 14px; }
+.pickerGood b { display: block; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; line-height: 1.35; }
 .pickerGood small { display: block; color: #abc4d4; font-size: 11px; overflow-wrap: anywhere; }
 .pickerGood .pickerIdentity { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #839eaf; }
 .pickerGrid .atlasEmpty { grid-column: 1 / -1; }
 .routePlanPreview { padding: 14px; margin: 12px 0; border: 1px solid #74b8ac; border-radius: 10px; background: #0b2a34; }
 .routePlanPreview small { display: block; overflow-wrap: anywhere; color: #a5c1cd; }
-@media (max-width: 700px) { .pickerGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pickerGrid .pickerGood { flex-direction: column; align-items: flex-start; min-height: 110px; } }
+@media (max-width: 700px) { .pickerGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pickerGrid .pickerGood { flex-direction: column; align-items: flex-start; min-height: 88px; gap: 8px; } }
 .libraryGood small { display: block; color: #9eb5c9; overflow-wrap: anywhere; font-size: 12px; }
 .libraryGood { min-width: 0; overflow-wrap: anywhere; }
 .libraryActions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; max-width: 315px; }
@@ -126,15 +140,20 @@ button, summary { cursor: pointer; }
 @media (max-width: 700px) {
   body { padding: 4px; gap: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
   #seoIntro.seoIntro { padding: 8px 46px 8px 10px; }
-  #seoIntro.seoIntro h1 { font-size: 18px; line-height: 1.2; }
+  #seoIntro.seoIntro h1 { font-size: 20px; line-height: 1.2; }
+  #seoIntro.seoIntro p span { display: none; }
   #seoIntro.seoIntro p { font-size: 11px; line-height: 1.35; }
-  #gtnhToolStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; padding: 6px; }
+  #gtnhToolStrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 6px; }
   #gtnhToolStrip > button { padding: 7px 3px; font-size: 12px; width: 100%; }
   #toolDb { grid-column: 1 / -1; margin: 0; min-height: 0; padding: 1px 8px; border: 0; background: none; font-size: 11px; }
+  #gtnhToolStrip:has(#seoIntroShow) #toolDb { grid-column: 1 / 3; grid-row: 3; }
+  #gtnhToolStrip #seoIntroShow { grid-column: 3; grid-row: 3; }
   .topbar { padding: 6px; gap: 4px; }
+  .atlasGridLimitText { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
   .atlasGridLimitText span { font-size: 10px; }
+  #recipePage { padding: 10px; gap: 10px; }
   .atlasGridLimitBtns { display: flex; flex-wrap: wrap; }
-  .atlasGridLimitBtns button { min-height: 36px; flex: 1; }
+  .atlasGridLimitBtns button { white-space: nowrap; min-height: 36px; flex: 1; }
   .atlasDialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 12px; }
   .atlasDialogHead, .atlasDialogBody { padding: 14px; }
   .atlasHelpGrid { grid-template-columns: 1fr; gap: 0; }
@@ -148,12 +167,6 @@ button, summary { cursor: pointer; }
   .libraryActions { grid-column: 2; justify-content: flex-start; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-@media (max-width: 780px) {
-  #gtnhCalcOverlay .gtnhCalcTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: visible; gap: 6px; padding: 8px; }
-  #gtnhCalcOverlay .gtnhCalcTabs button { grid-column: span 2; padding: 7px 4px; font-size: 13px; width: 100%; }
-  #gtnhCalcOverlay .gtnhCalcTabs #calcBuild, #gtnhCalcOverlay .gtnhCalcTabs #plannerSupplies { grid-column: span 3; }
-  #gtnhCalcOverlay .gtnhCalcTabs #calcBuild { background: #173d51 !important; border-color: #70d4e5 !important; color: #bcf6ed !important; }
-}
 @media print {
   html.atlasPrintingSupplies { height: auto !important; overflow: visible !important; }
   body.atlasPrintingSupplies { height: auto; overflow: visible; display: block; background: white !important; }

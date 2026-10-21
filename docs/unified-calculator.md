@@ -5,12 +5,26 @@ modes. Both use the same calculation engine and the same current draft. Mode
 changes retain outputs, routes, stock, profiles and exports. Basic mode shows a
 notice when additional factory settings still contribute to the results.
 
+The desktop workspace has settings beside results, with **Code / Export** replacing
+the results pane when selected. At 980px and below, **Settings**, **Results** and
+**Code / Export** show one panel at a time. **Build tree** and **Supplies** remain
+in the bottom action bar while the content scrolls. Recipe cards use available
+desktop columns and keep large crafting grids inside their own scroll areas.
+Short viewports use compact header spacing. Chrome on Android is asked to resize
+the content viewport with its on-screen keyboard, so that layout can respond;
+other browsers may ignore the hint. Automated resizing checks do not establish
+physical-keyboard behavior on every phone.
+
 ## Choose a product without remembering its name
 
 Choose **item / fluid from NEI** to browse the active version's icons. Search
 partial words, use `@mod`, filter items/fluids and mods, or choose Favorites or
 Recent. Only 60 results render per page. Arrow keys move between icons and Enter
 selects one. Escape returns to the calculator without replacing its target.
+The dialog header stays visible during browsing and the search sticks above its
+scrolling results. Cards show exact IDs for duplicate names; every selection
+still fills its exact ID in the calculator. Escape also closes directly from a
+nonempty search field instead of first clearing the search.
 
 Selection fills the exact item/fluid ID, displays its name and icon, and selects
 native item units or litres. The same picker fills inventory and additional

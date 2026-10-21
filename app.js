@@ -132,7 +132,7 @@ function mountGridLimitControls(status, total) {
       <span>up to ${limit} of ${total ?? "?"} matches</span>
     </div>
     <div class="atlasGridLimitBtns">
-      <button type="button" data-grid-limit="more">Load now</button>
+      <button type="button" data-grid-limit="more" aria-label="Load more matching items">More</button>
       <button type="button" data-grid-limit="1000">1000</button>
       <button type="button" data-grid-limit="2500">2500</button>
       <button type="button" data-grid-limit="5000">5000</button>
@@ -427,6 +427,7 @@ function renderSearchGrid(push = true) {
   if (!repo) return;
   if (push) pushView({ type: "grid" });
   currentView = { type: "grid" };
+  document.querySelector(".app").dataset.view = "grid";
 
   grid.style.display = "grid";
   recipePage.style.display = "none";
@@ -510,6 +511,7 @@ function renderRecipes(obj, mode, push = true) {
   if (push) pushView({ type: "recipes", obj, mode });
 
   currentView = { type: "recipes", obj, mode };
+  document.querySelector(".app").dataset.view = "recipes";
   if (/^[if]:/.test(obj.id)) recordVisit(obj.id, mode === "Usage" ? "usage" : "production");
   activeMachine = "All";
   currentRecipes = recipesFor(obj, mode);
@@ -524,7 +526,7 @@ function renderRecipes(obj, mode, push = true) {
   }
 
   grid.style.display = "none";
-  recipePage.style.display = "block";
+  recipePage.style.display = "grid";
   machineTabs.style.display = "flex";
   breadcrumb.style.display = "block";
 
@@ -972,7 +974,7 @@ function appendRecipeCards() {
 }
 
 function openProduction(obj) {
-  recipePage.style.display = "block";
+  recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
   breadcrumb.style.display = "block";
@@ -981,7 +983,7 @@ function openProduction(obj) {
 }
 
 function openUsage(obj) {
-  recipePage.style.display = "block";
+  recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
   breadcrumb.style.display = "block";

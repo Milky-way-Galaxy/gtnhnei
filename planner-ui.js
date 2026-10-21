@@ -10,6 +10,7 @@ import { createSupplyTools } from "./supply-ui.js";
 import { openRouteChoices } from "./route-choice-ui.js";
 import { readMaterialDraft, factorySettingsSummary } from "./calculator-workspace.js";
 import { openItemPicker } from "./item-picker.js";
+import { recipePlanState } from "./recipe-plan.js";
 import { planDiagnostics } from "./plan-diagnostics.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
@@ -17,6 +18,7 @@ const fmt = number => number === null || number === undefined ? "unknown" : quan
 
 export function installPlanner() {
   let previousFocus = null, displayNodeLimit = 250, planTools, legacyDraft, workspaceBackup = null, migrationNotes = [], storageWarning = "";
+  let recipeDraftBackup = null;
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
@@ -25,8 +27,9 @@ export function installPlanner() {
   function load() {
     if (!catalog()) return;
     if (datasetId === dataset().id) return;
-    datasetId = dataset().id;
+    datasetId = dataset().id; recipeDraftBackup = null;
     try {
+      recipeDraftBackup = localStorage.getItem(`gtnh_atlas_before_recipe_plan_${datasetId}`);
       const saved = localStorage.getItem(key()) || (datasetId === "gtnh-2.8.0" || datasetId === "legacy" ? localStorage.getItem("gtnhnei_calc_state") : null);
       const restored = saved ? JSON.parse(saved) : null;
       // A zero/blank amount was a valid unfinished draft in the old shell. Keep
@@ -49,6 +52,7 @@ export function installPlanner() {
   }
   function renderWorkspace(root) {
     root.dataset.calculatorMode = state.uiMode;
+    root.querySelector("#calculatorRecipeBackup").hidden = !recipeDraftBackup;
     root.querySelectorAll("[data-calculator-mode]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.calculatorMode === state.uiMode)));
     const active = factorySettingsSummary(state), notice = root.querySelector("#calculatorActiveSettings");
     notice.hidden = state.uiMode !== "basic" || !active.length;
@@ -268,7 +272,7 @@ export function installPlanner() {
     overlay.innerHTML = `<section class="gtnhCalcPanel" role="dialog" aria-modal="true" aria-label="GTNH production planner"><header class="gtnhCalcHead"><div><h2>Production Calculator</h2><p>Plan materials, machines and power.</p></div><button id="gtnhCalcClose" aria-label="Close planner" type="button">×</button></header>
       <div class="calculatorModes" role="group" aria-label="Calculator mode"><button id="calculatorModeBasic" data-calculator-mode="basic" type="button">Basic</button><button id="calculatorModeFactory" data-calculator-mode="factory" type="button">Factory</button><p id="calculatorModeHint"></p></div><div id="calculatorActiveSettings" class="calculatorActiveSettings" hidden><span></span><button data-calculator-mode="factory" type="button">Review in Factory</button></div><nav class="gtnhCalcTabs" aria-label="Calculator views"><button data-calc-tab="planner" class="active" type="button">Settings</button><button data-calc-tab="tree" type="button">Results</button><button data-calc-tab="code" type="button">Code / Export</button></nav>
       <p id="plannerStatus" role="status" aria-live="polite"></p><main class="gtnhCalcWorkspace"><section class="gtnhCalcCol" data-calc-panel="planner"><h3>Target and settings</h3><details id="calculatorMigration" hidden><summary>Previous Calculator draft and backups</summary><p id="calculatorMigrationNotes"></p><div class="gtnhCalcActions"><button type="button" id="calculatorImportLegacy">Load previous Calculator draft</button><button type="button" id="calculatorRestoreDraft" hidden>Restore workspace before import</button><button type="button" id="calculatorBackupLegacy">Download untouched legacy backup</button></div></details>
-      <label class="gtnhCalcField" for="calcTarget">Product<input id="calcTarget" data-state="target" list="plannerGoods" autocomplete="off" placeholder="Choose from NEI, or enter a name / ID"><datalist id="plannerGoods"></datalist></label><button id="calculatorChooseGood" class="calculatorChooseGood" data-pick-field="calcTarget" type="button" aria-haspopup="dialog">Choose item / fluid from NEI</button><div id="calculatorSelectedGood" class="calculatorSelectedGood" hidden><span class="pickerIcon" aria-hidden="true"></span><span><b></b><small></small></span></div>
+      <aside id="calculatorRecipeBackup" class="calculatorRecipeBackup" hidden><p>A draft was saved before starting a recipe plan. Restore it to replace this draft.</p><button id="calculatorRestoreRecipeDraft" type="button">Restore previous draft</button></aside><label class="gtnhCalcField" for="calcTarget">Product<input id="calcTarget" data-state="target" list="plannerGoods" autocomplete="off" placeholder="Choose from NEI, or enter a name / ID"><datalist id="plannerGoods"></datalist></label><button id="calculatorChooseGood" class="calculatorChooseGood" data-pick-field="calcTarget" type="button" aria-haspopup="dialog">Choose item / fluid from NEI</button><div id="calculatorSelectedGood" class="calculatorSelectedGood" hidden><span class="pickerIcon" aria-hidden="true"></span><span><b></b><small></small></span></div>
       <div class="calculatorFieldRow"><label class="gtnhCalcField" for="calcAmount">Amount<input id="calcAmount" type="number" min="0.000001" step="any" data-state="amount"></label>
       ${select("unit", "calcUnit", "Quantity unit", [["items","items"],["stacks","stacks (dataset's native item size)"],["L","L (GT fluid units)"],["buckets","buckets (1000 L)"],["batches","recipe batches"]])}</div>
       ${select("rateMode", "calcRateMode", "Amount mode", [["total","total craft"],["per_second","per second"],["per_minute","per minute"],["per_hour","per hour"]])}
@@ -349,6 +353,10 @@ export function installPlanner() {
           if (workspaceBackup) { state = importPlan(workspaceBackup, dataset()); built = true; calculate(); sync(); save(); render(); }
           break;
         case "calculatorBackupLegacy": download("gtnh-atlas-legacy-calculator-backup.json", JSON.stringify({ dataset: dataset().id, originals: legacyDraft?.originals || {} }, null, 2), "application/json"); break;
+        case "calculatorRestoreRecipeDraft":
+          try { if (recipeDraftBackup) applySavedState(importPlan(recipeDraftBackup, dataset())); }
+          catch (failure) { error = `Previous draft could not be restored: ${failure.message}`; render(); }
+          break;
         case "gtnhCalcClose": close(); break;
         case "calcBuild": build(); tab("tree"); break;
         case "plannerSupplies": supplies.open(); break;
@@ -493,6 +501,20 @@ export function installPlanner() {
   function applySavedState(next) { load(); state = normalizePlannerState(next); built = true; calculate(); save(); open(); tab("tree"); const tree = document.getElementById("calcTree"); tree.tabIndex = -1; tree.focus({ preventScroll: true }); }
   installSharedPlanNotice({ dataset: () => catalog()?.dataset, apply: applySavedState, download });
   window.GTNH_CALC = { open, close, build, setMode,
+    planRecipe(id, recipeId) {
+      load();
+      try {
+        const next = recipePlanState(state, catalog(), id, recipeId);
+        if (state.target) {
+          // A malformed current draft must never be silently overwritten.
+          recipeDraftBackup = serializePlan(state, dataset());
+          try { localStorage.setItem(`gtnh_atlas_before_recipe_plan_${dataset().id}`, recipeDraftBackup); }
+          catch { storageWarning = "Previous draft is backed up for this tab only. Export JSON before leaving."; }
+        }
+        state = next; built = true; calculate(); save(); open(); tab("tree");
+        const tree = document.getElementById("calcTree"); tree.tabIndex = -1; tree.focus({ preventScroll: true }); return true;
+      } catch (failure) { error = failure.message; open(); return false; }
+    },
     planItem(id) {
       load(); const good = catalog()?.resolve(id); if (!good) return false;
       state.target = id; state.unit = catalog().describe(good).unit; state.amount = 1; state.additionalTargets = [];

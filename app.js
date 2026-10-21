@@ -13,6 +13,10 @@ import { loadRepository, yieldToBrowser } from "./repository-loader.js";
 import { RecipeCatalog } from "./recipe-data.js";
 import { exportRecipeYaml } from "./recipe-export.js";
 import { openVersionComparison } from "./version-compare-ui.js";
+import { defaultRecipeFilters, filterRecipeEntries, recipeBrowseEntry } from "./recipe-browse.js";
+import { mountRecipeWorkbench } from "./recipe-workbench.js";
+import { recipeMetrics } from "./production-engine.js";
+import { notify } from "./ui-dialog.js";
 import { appendRecipeDetails } from "./recipe-details.js";
 import { loadVerifiedDatabase } from "./database-cache.js";
 import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
@@ -57,6 +61,7 @@ let currentView = { type: "grid" };
 
 let activeMachine = "All";
 let currentRecipes = [];
+let recipeFilters = { ...defaultRecipeFilters }, recipeWorkbench, recipeBrowseEntries;
 let currentRecipeGroups = new Map();
 
 const GRID_PAGE_SIZE = 180;
@@ -515,6 +520,9 @@ function renderRecipes(obj, mode, push = true) {
   if (/^[if]:/.test(obj.id)) recordVisit(obj.id, mode === "Usage" ? "usage" : "production");
   activeMachine = "All";
   currentRecipes = recipesFor(obj, mode);
+  recipeBrowseEntries = null; recipeFilters = { ...defaultRecipeFilters };
+  recipeWorkbench ||= mountRecipeWorkbench(machineTabs, filters => { recipeFilters = filters; renderRecipeList(); });
+  recipeWorkbench.reset(false);
 
   currentRecipeGroups = new Map();
   currentRecipeGroups.set("All", currentRecipes);
@@ -545,6 +553,9 @@ function renderRecipes(obj, mode, push = true) {
     favorite.addEventListener("click", () => { toggleFavorite(obj.id); sync(); }); sync(); breadcrumb.appendChild(favorite);
   }
 
+  const switchView = document.createElement("button"); switchView.type = "button"; switchView.id = "toggleRecipeView";
+  switchView.textContent = mode === "Production" ? "Show usages" : "Show recipes";
+  switchView.addEventListener("click", () => renderRecipes(obj, mode === "Production" ? "Usage" : "Production")); breadcrumb.appendChild(switchView);
   renderMachineTabs();
   renderRecipeList();
   updateNav();
@@ -889,6 +900,7 @@ function renderMachineTabs() {
   for (const [name, count] of counts.entries()) {
     const b = document.createElement("button");
     b.className = "tab" + (name === activeMachine ? " active" : "");
+    b.setAttribute("aria-pressed", String(name === activeMachine));
 
     const sampleRecipe = name === "All"
           ? null
@@ -913,10 +925,10 @@ function renderMachineTabs() {
       activeMachine = name;
 
       for (const tab of machineTabs.querySelectorAll(".tab")) {
-        tab.classList.remove("active");
+        tab.classList.remove("active"); tab.setAttribute("aria-pressed", "false");
       }
 
-      b.classList.add("active");
+      b.classList.add("active"); b.setAttribute("aria-pressed", "true");
 
       recipePage.innerHTML = '<div class="empty">Loading recipes...</div>';
 
@@ -935,13 +947,18 @@ function renderRecipeList() {
   recipePage.innerHTML = "";
 
   currentRecipeList = currentRecipeGroups.get(activeMachine) ?? [];
+  if (recipeFilters.query.trim() || recipeFilters.maxVoltage !== null || recipeFilters.noChance || recipeFilters.sort !== "default") {
+    recipeBrowseEntries ||= currentRecipes.map((raw, index) => recipeBrowseEntry(window.GTNH_CATALOG.recipe(raw), index));
+    currentRecipeList = filterRecipeEntries(recipeBrowseEntries.filter(row => activeMachine === "All" || row.recipe.machine === activeMachine), recipeFilters).map(row => currentRecipes[row.index]);
+  }
+  recipePage.scrollTop = 0;
 
   renderedRecipeCount = 0;
 
   status.textContent = `${currentView.mode}: ${nameOf(currentView.obj)} — ${currentRecipeList.length}/${currentRecipes.length} recipe(s)`;
 
   if (currentRecipeList.length === 0) {
-    recipePage.innerHTML = `<div class="empty">No recipes in this machine tab.</div>`;
+    recipePage.innerHTML = `<div class="empty">No recipes match this machine and these filters. Reset recipe filters or choose All machines.</div>`;
     return;
   }
 
@@ -1421,6 +1438,13 @@ function recipeCardNei(recipe) {
 
   card.appendChild(body);
   appendRecipeDetails(card, recipe);
+  if (currentView.mode === "Production" && recipeMetrics(window.GTNH_CATALOG.recipe(recipe), currentView.obj).output > 0) {
+    const actions = document.createElement("div"); actions.className = "recipeActions";
+    const button = document.createElement("button"); button.type = "button"; button.dataset.planRecipe = recipe.id; button.textContent = "Plan with this recipe";
+    const targetId = currentView.obj.id;
+    button.addEventListener("click", () => { if (!window.GTNH_CALC?.planRecipe?.(targetId, recipe.id)) notify("Could not start this recipe plan. Check the calculator message or wait for it to load."); });
+    actions.appendChild(button); card.appendChild(actions);
+  }
   return card;
 }
 

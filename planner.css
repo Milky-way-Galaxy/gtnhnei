@@ -141,3 +141,5 @@
 .recipeDetails { margin-top: 12px; padding: 10px; background: #0c2133; border: 1px solid #38506b; border-radius: 8px; overflow-wrap: anywhere; }
 .recipeDetails summary { cursor: pointer; min-height: 32px; }
 .recipeDetails p { color: #b7c9dc; font-size: 13px; }
+.calculatorRecipeBackup { padding: 12px; margin: 10px 0 16px; border: 1px solid #816d47; border-radius: 10px; background: #29251d; color: #eed9ac; font-size: 13px; }
+.calculatorRecipeBackup p { margin: 0 0 8px; }

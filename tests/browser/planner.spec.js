@@ -106,7 +106,8 @@ test("a version checksum mismatch is visible and can recover on retry", async ({
 test("planner traps keyboard focus and Escape returns to its opener", async ({ page }) => {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
   await page.locator("#toolCalc").click();
-  await expect(page.locator("#calcTarget")).toBeFocused();
+  const touch = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
+  await expect(page.locator(touch ? "#calculatorChooseGood" : "#calcTarget")).toBeFocused();
   await page.locator("#gtnhCalcClose").focus();
   await page.keyboard.press("Shift+Tab");
   expect(await page.evaluate(() => !!document.activeElement.closest("#gtnhCalcOverlay"))).toBe(true);

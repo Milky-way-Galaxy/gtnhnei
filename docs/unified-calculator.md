@@ -30,6 +30,9 @@ Selection fills the exact item/fluid ID, displays its name and icon, and selects
 native item units or litres. The same picker fills inventory and additional
 factory outputs. Exact duplicate names remain distinct IDs; a missing recipe
 does not make an item disappear unless **Has recipes** is selected.
+Opening the calculator on a device with a coarse pointer focuses the NEI chooser
+to avoid requesting a software keyboard. Desktop typing still starts in the
+product field. Reopening a view whose settings are hidden focuses Close instead.
 
 The text field remains available for names and IDs. An exact fluid entered there
 automatically replaces incompatible item units with litres. Importing the NEI

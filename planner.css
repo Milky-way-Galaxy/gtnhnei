@@ -115,6 +115,14 @@
  #gtnhCalcOverlay .gtnhCalcTabs { flex-shrink: 0; }
  .plannerTable td:first-child { min-width: 145px; }
 }
+/* Leave room for complete form controls on landscape or keyboard-sized views. */
+@media (max-height: 480px) {
+ #gtnhCalcOverlay .gtnhCalcHead { padding: 8px 14px; }
+ #gtnhCalcOverlay .gtnhCalcHead p, .calculatorModes p { display: none; }
+ .calculatorModes { padding-top: 4px; padding-bottom: 4px; }
+ #gtnhCalcOverlay .gtnhCalcTabs { padding-top: 4px; padding-bottom: 4px; }
+ .calculatorActions { padding-top: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
 #gtnhCalcOverlay .gtnhCalcPanel { background: #0c131e; }
 .matRouteLabel { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 #matRouteChoice { width: 100%; min-height: 44px; padding: 8px; color: #eaf2ff; background: #12283b; border: 1px solid #39576b; border-radius: 8px; font-size: 16px; }

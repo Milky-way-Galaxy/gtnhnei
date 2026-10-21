@@ -20,7 +20,7 @@ function render() {
     productionOnly: dialog.querySelector("#pickerProduction").checked }, saved);
   page = Math.min(page, Math.max(0, Math.ceil(matches.length / PAGE_SIZE) - 1));
   const start = page * PAGE_SIZE, rows = matches.slice(start, start + PAGE_SIZE), grid = dialog.querySelector("#pickerGrid");
-  grid.innerHTML = rows.map(good => `<button type="button" class="pickerGood" data-pick-good="${esc(good.id)}" title="${esc(good.name)} · ${esc(good.id)}"><span class="pickerIcon" aria-hidden="true"></span><span><b>${esc(good.name)}</b><small>${esc(good.mod || "Unknown mod")} · ${good.id.startsWith("f:") ? "Fluid" : "Item"}</small><small class="pickerIdentity">${esc(good.id)}</small></span></button>`).join("") || `<p class="atlasEmpty">${source === "favorites" ? "No matching favorites. Star useful items on their recipe page, or choose All items." : source === "recent" ? "No matching recent items. Choose All items to browse the recipe database." : "No matches in this GTNH version. Try fewer words or reset the filters."}</p>`;
+  grid.innerHTML = rows.map(good => `<button type="button" class="pickerGood" data-pick-good="${esc(good.id)}" title="${esc(good.name)} · ${esc(good.id)}"><span class="pickerIcon" aria-hidden="true"></span><span><b>${esc(good.name)}</b><small>${esc(good.mod || "Unknown mod")} · ${good.id.startsWith("f:") ? "Fluid" : "Item"}</small>${activeCatalog.matches(good.name).length > 1 ? `<small class="pickerIdentity">${esc(good.id)}</small>` : ""}</span></button>`).join("") || `<p class="atlasEmpty">${source === "favorites" ? "No matching favorites. Star useful items on their recipe page, or choose All items." : source === "recent" ? "No matching recent items. Choose All items to browse the recipe database." : "No matches in this GTNH version. Try fewer words or reset the filters."}</p>`;
   grid.querySelectorAll("[data-pick-good]").forEach(button => activeCatalog && window.GTNHNEI_ICON_API?.setIconByName(button.querySelector(".pickerIcon"), button.dataset.pickGood));
   dialog.querySelectorAll("[data-picker-source]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.pickerSource === source)));
   dialog.querySelector("#pickerPrevious").disabled = page === 0; dialog.querySelector("#pickerNext").disabled = start + PAGE_SIZE >= matches.length;
@@ -51,6 +51,9 @@ function ensure() {
     if (button.id === "pickerReset") { dialog.querySelector("#pickerSearch").value = ""; dialog.querySelector("#pickerType").value = "all"; dialog.querySelector("#pickerMod").value = ""; dialog.querySelector("#pickerProduction").checked = false; page = 0; source = "all"; render(); }
   });
   dialog.addEventListener("keydown", event => {
+    // Search inputs consume the first Escape to clear their text in Chromium.
+    // Keep the picker dismissal consistent whether search or an icon has focus.
+    if (event.key === "Escape") { event.preventDefault(); dialog.close(); return; }
     const buttons = [...dialog.querySelectorAll("[data-pick-good]")], current = buttons.indexOf(event.target);
     if (event.target.id === "pickerSearch" && event.key === "ArrowDown") { event.preventDefault(); buttons[0]?.focus(); return; }
     if (current < 0 || !["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;

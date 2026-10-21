@@ -33,7 +33,7 @@ html, body {
   background:
     radial-gradient(circle at 50% 0%, #152033 0%, #0b1018 46%, #080b10 100%);
   color: var(--text);
-  font-family: system-ui, monospace, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   image-rendering: pixelated;
   overflow: hidden;
 }
@@ -81,7 +81,7 @@ button {
   background: var(--panel3);
   color: var(--text);
   font-family: inherit;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 button:active {
@@ -1322,13 +1322,13 @@ button:disabled {
 /* ===== Safe UI polish v1: does not touch recipe logic ===== */
 
 :root {
-  --ui-bg: #070b12;
-  --ui-panel: #0c1421;
-  --ui-panel-2: #111d2d;
-  --ui-panel-3: #17263a;
-  --ui-line: #26384f;
+  --ui-bg: #0b1018;
+  --ui-panel: #111a25;
+  --ui-panel-2: #15202d;
+  --ui-panel-3: #1b2a3b;
+  --ui-line: #2b3b4e;
   --ui-line-soft: rgba(76, 201, 240, 0.18);
-  --ui-accent: #4cc9f0;
+  --ui-accent: #79dfce;
   --ui-accent-2: #7dd3fc;
   --ui-text: #edf5ff;
   --ui-muted: #91a4bb;
@@ -1363,7 +1363,7 @@ button {
 }
 
 button:active {
-  background: #182840 !important;
+  background: #22354a !important;
   transform: translateY(1px);
 }
 
@@ -1420,11 +1420,11 @@ button:disabled {
 
 /* Recipe cards */
 .recipe {
-  background: linear-gradient(180deg, #101b2b 0%, #0b1523 100%) !important;
+  background: var(--ui-panel) !important;
   border: 1px solid #26384f !important;
-  border-radius: 16px !important;
-  padding: 12px !important;
-  margin: 10px 8px 12px 8px !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin: 0 !important;
 }
 
 /* Recipe title */
@@ -1532,7 +1532,7 @@ button:disabled {
   }
 
   .recipe {
-    margin: 8px 6px 10px 6px !important;
+    margin: 0 !important;
     padding: 10px !important;
     border-radius: 14px !important;
   }
@@ -1715,7 +1715,7 @@ button:disabled {
 .atlasGridLimitText span {
   color: #94a3b8;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .atlasGridLimitBtns {

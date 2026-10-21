@@ -172,7 +172,7 @@ nav button {
 
   #gtnhCalcOverlay button {
     min-height: 44px;
-    border-radius: 14px !important;
+    border-radius: 10px !important;
   }
 
   /* Planner tab row: single horizontal strip, not a huge block. */

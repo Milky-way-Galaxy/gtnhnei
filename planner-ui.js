@@ -483,7 +483,12 @@ export function installPlanner() {
     planTools = mountPlanTools(overlay, { dataset, snapshot: () => { read(); return state; }, apply: applySavedState, download });
     sync(); render();
   }
-  function open(options = {}) { load(); if (["basic", "factory"].includes(options.mode)) state.uiMode = options.mode; ensure(); sync(); render(); planTools.refresh(); const overlay = document.getElementById("gtnhCalcOverlay"); if (!overlay.classList.contains("show")) previousFocus = document.activeElement; overlay.classList.add("show"); document.getElementById("calcTarget").focus({ preventScroll: true }); }
+  function open(options = {}) { load(); if (["basic", "factory"].includes(options.mode)) state.uiMode = options.mode; ensure(); sync(); render(); planTools.refresh(); const overlay = document.getElementById("gtnhCalcOverlay"); if (!overlay.classList.contains("show")) previousFocus = document.activeElement; overlay.classList.add("show");
+    // A text field summons the software keyboard before touch users can browse.
+    const preferred = document.getElementById(matchMedia("(pointer: coarse)").matches ? "calculatorChooseGood" : "calcTarget");
+    const focusTarget = preferred.getClientRects().length ? preferred : document.getElementById("gtnhCalcClose");
+    focusTarget.focus({ preventScroll: true });
+  }
   function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); (previousFocus?.isConnected ? previousFocus : document.getElementById("toolCalc"))?.focus(); }
   function applySavedState(next) { load(); state = normalizePlannerState(next); built = true; calculate(); save(); open(); tab("tree"); const tree = document.getElementById("calcTree"); tree.tabIndex = -1; tree.focus({ preventScroll: true }); }
   installSharedPlanNotice({ dataset: () => catalog()?.dataset, apply: applySavedState, download });

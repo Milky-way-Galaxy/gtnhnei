@@ -1,6 +1,6 @@
 import { validateMachineConfig, defaultRuleset } from "./machine-model.js";
 export const defaultPlannerState = {
-  uiMode: "factory", nodeLimit: 2500,
+  uiMode: "factory", nodeLimit: 2500, balanceMode: "recursive", loopSeeds: {},
   target: "", amount: 1, unit: "items", rateMode: "total", depth: "1", routeMode: "ask", machineMode: "auto", machineCount: 1,
   rounding: "whole", routeChoices: {}, oreChoices: {}, machineConfigs: {}, lockedRoutes: {}, rawOverrides: [], ignored: [], inventory: {}, additionalTargets: [],
   operatingSeconds: 3600, operatingBasis: "requested", checklist: {},
@@ -10,6 +10,9 @@ export function normalizePlannerState(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid plan settings.");
   const state = { ...structuredClone(defaultPlannerState), ...raw, settings: { ...defaultPlannerState.settings, ...raw.settings } };
   if (!["basic", "factory"].includes(state.uiMode)) throw new Error("Invalid calculator mode.");
+  if (!["recursive", "steady_state"].includes(state.balanceMode)) throw new Error("Invalid production balance mode.");
+  if (!state.loopSeeds || typeof state.loopSeeds !== "object" || Array.isArray(state.loopSeeds) || Object.keys(state.loopSeeds).length > 1000 || Object.entries(state.loopSeeds).some(([id, amount]) => !/^[if]:/.test(id) || typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || id.startsWith("i:") && !Number.isInteger(amount))) throw new Error("Invalid circulating startup stock.");
+  state.loopSeeds = { ...state.loopSeeds };
   if (!Number.isInteger(Number(state.nodeLimit)) || Number(state.nodeLimit) < 10 || Number(state.nodeLimit) > 20000) throw new Error("Invalid dependency node limit.");
   state.nodeLimit = Number(state.nodeLimit);
   if (!Number.isFinite(Number(state.amount)) || Number(state.amount) <= 0) throw new Error("Amount must be finite and greater than zero.");
@@ -61,19 +64,20 @@ export function serializePlan(state, dataset) {
   const requiresMachineModels = Object.values(settings.machineConfigs).some(config => checked(config) || config.installedMachines !== undefined);
   // Old clients must reject, rather than silently ignore, numeric semantics
   // which they cannot evaluate. Existing single/factory plans keep v1/v2.
-  const schemaVersion = requiresMachineModels ? 3 : settings.additionalTargets.length ? 2 : 1;
+  const schemaVersion = settings.balanceMode === "steady_state" ? 4 : requiresMachineModels ? 3 : settings.additionalTargets.length ? 2 : 1;
   return JSON.stringify({ format: "gtnh-atlas-plan", schemaVersion, dataset: { id: dataset.id, sha256: dataset.sha256 || null }, settings }, null, 2);
 }
 export function importPlan(text, dataset) {
   if (text.length > 2000000) throw new Error("Plan exceeds the 2 MB import limit.");
   const data = JSON.parse(text);
   if (data.format) {
-    if (data.format !== "gtnh-atlas-plan" || ![1, 2, 3].includes(data.schemaVersion) || data.schemaVersion === 1 && data.settings?.additionalTargets?.length) throw new Error("Unsupported plan format/version.");
+    if (data.format !== "gtnh-atlas-plan" || ![1, 2, 3, 4].includes(data.schemaVersion) || data.schemaVersion === 1 && data.settings?.additionalTargets?.length || data.schemaVersion < 4 && data.settings?.balanceMode === "steady_state") throw new Error("Unsupported plan format/version.");
     if (data.dataset?.id !== dataset.id || (data.dataset.sha256 && data.dataset.sha256 !== dataset.sha256)) throw new Error("This plan belongs to a different recipe dataset. Switch to that dataset before importing.");
     return normalizePlannerState(data.settings);
   }
   // Older Atlas exports contained settings only. Preserve them as legacy imports;
   // their route indexes should be reviewed against the active database.
   if (dataset.id !== "gtnh-2.8.0") throw new Error("Legacy plans have no dataset identity and can only be imported into the original bundled 2.8.0 dataset.");
+  if (data.balanceMode === "steady_state") throw new Error("Steady-state plans require versioned format 4 with a dataset identity.");
   return normalizePlannerState(data);
 }

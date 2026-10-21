@@ -60,6 +60,11 @@
 .plannerDiagnostics li { margin: 12px 0; overflow-wrap: anywhere; }
 .plannerDiagnostics small { display: block; color: #a8c6d3; overflow-wrap: anywhere; }
 .plannerCycleInspector article { margin: 10px 0; padding: 10px; background: #342b20; border-left: 3px solid #d3b37b; overflow-wrap: anywhere; }
+.plannerBalanceNotice { padding: 12px; margin: 12px 0; border: 1px solid #6cbda7; border-radius: 10px; background: #123d39; }
+.plannerBalanceNotice[data-balance-status=blocked] { border-color: #d3a678; background: #3c2c20; color: #ffe1b7; }
+#plannerBalanceSettings { margin: 12px 0; padding: 10px; border: 1px solid #516d7e; border-radius: 9px; }
+#plannerLoopSeeds fieldset { margin: 12px 0; border: 1px solid #7c9a9b; min-width: 0; padding: 10px; }
+#plannerLoopSeeds legend, #plannerLoopSeeds p, #plannerLoopSeeds small { overflow-wrap: anywhere; }
 @media (max-width: 780px) { .calculatorModes p { flex-basis: 100%; font-size: 12px; } .calculatorActiveSettings { max-height: 120px; overflow: auto; flex-shrink: 0; } }
 @media (max-width: 780px) {
  #gtnhCalcOverlay .gtnhCalcWorkspace { display: block; }

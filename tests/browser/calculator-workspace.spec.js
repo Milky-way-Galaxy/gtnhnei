@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 const target = "f:gregtech:liquid_epichlorhydrin", route = "r~7CR1mklsMhyejhfODug_QQ==";
 async function ready(page, suffix = "") { await page.goto(`./${suffix}`); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached(); await page.locator("#toolCalc").click(); }
+test("storage failure keeps calculated results visible and explains how to preserve the plan", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Storage disabled", "SecurityError"); } }));
+  await ready(page); await page.locator("#calcTarget").fill(target); await page.locator("#calcAmount").fill("2000"); await page.locator("#calcBuild").click();
+  await page.locator(`select[data-route-good="${target}"]`).first().selectOption(route);
+  await expect(page.locator("#plannerStatus")).toContainText("Export JSON");
+  await expect(page.locator("#calcTree")).toContainText("38,400 EU"); expect(await page.evaluate(() => window.GTNH_CALC.getPlan().knownEnergy)).toBe(38400);
+});
 test("one calculator preserves factory settings, numerical results and exports when changing modes", async ({ page }, info) => {
   await ready(page); await expect(page.locator("#toolMatCalc")).toHaveCount(0);
   await expect(page.locator("#calculatorModeBasic")).toHaveAttribute("aria-pressed", "true");

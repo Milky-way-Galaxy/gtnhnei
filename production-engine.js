@@ -1,3 +1,4 @@
+import { buildSteadyStateGraph, SteadyStateError } from "./steady-state.js";
 import { machinePerformance } from "./machine-model.js";
 import { analyzeFactoryCapacity } from "./factory-capacity.js";
 export { machinePerformance } from "./machine-model.js";
@@ -129,8 +130,22 @@ export function calculateFactory(catalog, options) {
     } else demandsById.set(demand.targetGood.id, demand);
   }
   const demands = [...demandsById.values()];
-  const { targetGood, requested, isRate, rateMode } = demands[0];
+  const { isRate } = demands[0];
   if (demands.some(demand => demand.isRate !== isRate)) throw new Error("Total jobs and continuous rates cannot be mixed in one factory.");
+  if (options.balanceMode && !["recursive", "steady_state"].includes(options.balanceMode)) throw new Error("Unknown production balance mode.");
+  if (options.balanceMode === "steady_state") {
+    try {
+      if (!isRate) throw new SteadyStateError("Steady-state balancing requires a continuous rate. Total jobs retain recursive batch calculations.");
+      return finalizeFactory(catalog, options, demands, buildSteadyStateGraph(catalog, demands, options, { recipeBalance, selectRecipe, machinePerformance, add }));
+    } catch (error) {
+      if (!(error instanceof SteadyStateError)) throw error;
+      const fallback = calculateFactory(catalog, { ...options, balanceMode: "recursive" });
+      fallback.balance = { mode: "steady_state", status: "blocked", reason: error.message, loops: error.loops || [] };
+      fallback.warnings.unshift(`Steady-state balance is blocked: ${error.message} Displayed quantities are recursive boundary estimates, not a solved recycling plan.`);
+      if (fallback.capacityAnalysis) fallback.capacityAnalysis.hasUnresolvedRoutes = true;
+      return fallback;
+    }
+  }
   const maxDepth = options.depth === "full" ? 64 : Math.max(1, Math.min(64, Number(options.depth) || 1));
   const nodeLimit = Math.max(10, Math.min(20000, Number(options.nodeLimit) || 2500));
   const materials = new Map(), byproducts = new Map(), reusable = new Map(), steps = new Map(), inventoryUsed = new Map(), byproductsUsed = new Map();
@@ -240,6 +255,13 @@ export function calculateFactory(catalog, options) {
     return node;
   }
   const roots = demands.map(demand => expand(demand.targetGood, demand.requested, 0, new Set()));
+  return finalizeFactory(catalog, options, demands, { roots, nodes, materials, byproducts, reusable, steps, inventoryUsed, byproductsUsed, inventory, warnings, unresolved, visits, nodeLimit });
+}
+
+function finalizeFactory(catalog, options, demands, graph) {
+  const { targetGood, requested, isRate, rateMode } = demands[0];
+  const machineConfigs = options.machineConfigs || {};
+  const { roots, nodes, materials, byproducts, reusable, steps, inventoryUsed, byproductsUsed, inventory, warnings, unresolved, visits, nodeLimit, balance, seedRows = [] } = graph;
   const root = roots[0], rootMachines = new Map();
   for (const [index, node] of roots.entries()) if (node.recipeId) rootMachines.set(node.recipeId, (rootMachines.get(node.recipeId) || 0) + demands[index].fixedMachines);
   if (demands.length > 1) warnings.add("Factory outputs share inventory and recipe machine requirements. Total-job times cover each output's root processing, not a factory schedule.");
@@ -260,6 +282,7 @@ export function calculateFactory(catalog, options) {
     const count = isRate ? step?.installedCount ?? 1 : rootMachines.get(entry.recipeId) || 1;
     add(reusableTotals, entry, entry.amount * count * (entry.reason === "non-consumed tool/circuit" ? 1 : step?.performance?.parallels || 1));
   }
+  for (const row of seedRows) add(reusableTotals, row, row.amount, { reason: "declared circulating stock (additional)" });
   const total = key => machineRows.reduce((sum, step) => sum + (step[key] || 0), 0);
   const targets = demands.map((demand, index) => {
     const node = roots[index], performance = node.performance;
@@ -276,8 +299,8 @@ export function calculateFactory(catalog, options) {
     if (step.equivalents !== null && step.equivalents > step.installedCount + EPS) warnings.add(`${step.machine}: requested production exceeds configured capacity; combined demand needs ${step.equivalents.toPrecision(6)} machine equivalents; only ${step.installedCount} are configured. Power/material rates describe requested demand.`);
   }
   const capacity = targets[0].capacity;
-  if (options.reuseByproducts) warnings.add("Earlier co-products are reused once after their input expansion. Output/branch order can affect totals; future production and closed recycling loops are not credited.");
-  else if (byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
+  if (!balance && options.reuseByproducts) warnings.add("Earlier co-products are reused once after their input expansion. Output/branch order can affect totals; future production and closed recycling loops are not credited.");
+  else if (!balance && byproducts.size) warnings.add("Byproducts/surplus are listed separately. Cross-recipe recycling is not automatically credited.");
   if (reusableTotals.size) warnings.add("Reusable quantities provision startup stock for the configured root machine count and full parallel capacity, not recurring consumption.");
   const result = { schemaVersion: 1, dataset: catalog.dataset, target: targetGood, requested, isRate, rateMode,
     root, roots, targets, nodes, materials: [...materials.values()], byproducts: [...byproducts.values()].filter(row => row.amount > 0), byproductsUsed: [...byproductsUsed.values()], reusable: [...reusableTotals.values()],
@@ -287,6 +310,7 @@ export function calculateFactory(catalog, options) {
     knownInstalledEut: isRate ? total("installedEut") : null,
     hasUnknownPower: machineRows.some(step => !step.performance), capacity,
     rootTimeSeconds: targets.length === 1 ? targets[0].timeSeconds : null };
+  if (balance) result.balance = balance;
   result.capacityAnalysis = analyzeFactoryCapacity(result);
   return result;
 }

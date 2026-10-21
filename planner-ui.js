@@ -16,7 +16,7 @@ const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
 
 export function installPlanner() {
-  let previousFocus = null, displayNodeLimit = 250, planTools, legacyDraft, workspaceBackup = null, migrationNotes = [];
+  let previousFocus = null, displayNodeLimit = 250, planTools, legacyDraft, workspaceBackup = null, migrationNotes = [], storageWarning = "";
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
   const dataset = () => catalog()?.dataset || { id: "gtnh-2.8.0", label: "GTNH 2.8.0" };
@@ -37,11 +37,11 @@ export function installPlanner() {
       migrationNotes = legacyDraft.issues;
       if (!saved && legacyDraft.state) { state = legacyDraft.state; migrationNotes = ["Your previous Calculator draft was opened in Basic mode. Its original storage is unchanged.", ...migrationNotes]; }
       try { workspaceBackup = localStorage.getItem(`gtnh_atlas_before_material_import_${datasetId}`); } catch { /* Session-only backup remains available below. */ }
-    } catch { state = structuredClone(defaultPlannerState); }
+    } catch { state = { ...structuredClone(defaultPlannerState), uiMode: "basic" }; storageWarning = "Browser storage is unavailable. Export JSON to preserve this session's plan."; }
   }
   function save() {
     try { localStorage.setItem(key(), JSON.stringify(state)); return true; }
-    catch { error = "Storage is unavailable. Export your plan to preserve it."; return false; }
+    catch { storageWarning = "Storage is unavailable. Export JSON to preserve your plan."; return false; }
   }
   function setMode(mode) {
     if (!["basic", "factory"].includes(mode)) return;
@@ -55,7 +55,7 @@ export function installPlanner() {
     notice.querySelector("span").textContent = `Still included in these results: ${active.join(" · ")}. Switching modes preserves every setting.`;
     root.querySelector("#calculatorModeHint").textContent = state.uiMode === "basic" ? "One product, its materials and production rate. Factory adds outputs, stock and machine profiles." : "A shared factory plan with output mixes, stock, machine profiles and production limits.";
     const migration = root.querySelector("#calculatorMigration");
-    migration.hidden = !legacyDraft?.raw && !Object.keys(legacyDraft?.originals || {}).length && !migrationNotes.length;
+    migration.hidden = !legacyDraft?.raw && !migrationNotes.length && !workspaceBackup;
     root.querySelector("#calculatorMigrationNotes").textContent = migrationNotes.join(" ");
     root.querySelector("#calculatorImportLegacy").disabled = !legacyDraft?.state;
     root.querySelector("#calculatorRestoreDraft").hidden = !workspaceBackup;
@@ -65,6 +65,8 @@ export function installPlanner() {
       selected.querySelector("b").textContent = good.name; selected.querySelector("small").textContent = `${good.id} · ${catalog().describe(good).unit === "L" ? "Fluid · 1000 L = 1 bucket" : "Item"}`;
       window.GTNHNEI_ICON_API?.setIconByName(selected.querySelector(".pickerIcon"), good.id);
     }
+    const loops = plan?.balance?.loops || [], seedBox = root.querySelector("#plannerLoopSeeds");
+    seedBox.innerHTML = loops.length ? loops.map((loop, i) => `<fieldset><legend>Loop ${i + 1}: circulating startup stock</legend><p>Declare actual stock in at least one of these forms. This is additional to per-machine reusable reserves; sufficiency and the startup sequence need in-game verification.</p>${loop.map(good => `<label>${esc(good.name)} (${esc(good.unit)})<input type="number" min="0" step="${good.type === "item" ? "1" : "any"}" data-loop-seed="${esc(good.id)}" value="${state.loopSeeds[good.id] ?? ""}" aria-label="Circulating stock: ${esc(good.name)}"><small>${esc(good.id)}</small></label>`).join("")}</fieldset>`).join("") : '<p class="plannerHint">Build a rate plan to identify selected-recipe loops. Keep external feedstocks explicitly supplied.</p>';
   }
   function download(name, text, type) {
     const url = URL.createObjectURL(new Blob([text], { type }));
@@ -110,7 +112,7 @@ export function installPlanner() {
   function read() {
     const root = document.getElementById("gtnhCalcOverlay");
     if (!root) return;
-    for (const id of ["target", "amount", "unit", "rateMode", "depth", "routeMode", "machineMode", "machineCount", "rounding"]) {
+    for (const id of ["target", "amount", "unit", "rateMode", "depth", "routeMode", "machineMode", "machineCount", "rounding", "balanceMode"]) {
       const input = root.querySelector(`[data-state="${id}"]`);
       if (input) state[id] = ["amount", "machineCount"].includes(id) ? Number(input.value) : input.value;
     }
@@ -184,6 +186,11 @@ export function installPlanner() {
     const issue = row => `<li><b>${esc(row.name)}</b> — ${esc(row.message)}${row.occurrences > 1 ? ` (${row.occurrences} branches)` : ""}<small>${esc(row.id)}</small><button type="button" data-review-node="${row.nodeKey}">Review dependency</button> <button type="button" data-supply="${esc(row.id)}">Supply externally</button></li>`;
     return `<section class="plannerDiagnostics"><h4>Plan checks</h4><p>${checks.attention.length ? `${checks.attention.length} route/dependency decision(s) need attention. Their demand is retained as supplied material until resolved.` : "Selected routes are expanded to the configured depth."}</p>${checks.attention.length ? `<ul>${checks.attention.slice(0, 100).map(issue).join("")}</ul>` : ""}${checks.cycles.length ? `<details open class="plannerCycleInspector"><summary>Circular dependencies (${checks.cycles.length})</summary>${checks.cycles.map(loop => `<article><p><b>${loop.goods.map(good => esc(good.name)).join(" → ")}</b></p><p>Recipes: ${loop.recipeIds.map(esc).join(" · ")}</p><p>These routes require a supplied boundary or validated recycling balance. The recursive plan does not credit future output as startup stock.</p><button type="button" data-review-node="${loop.nodeKey}">Review loop boundary</button></article>`).join("")}</details>` : ""}${checks.supplies.length ? `<details><summary>External and depth-boundary supplies (${checks.supplies.length})</summary><p>These are supplied inputs, not automatically mined or manufactured. A missing entry is a dataset coverage limit.</p><ul>${checks.supplies.slice(0, 100).map(issue).join("")}</ul>${checks.supplies.length > 100 ? "<p>First 100 shown; the material export contains all demands.</p>" : ""}</details>` : ""}${checks.unknownMachines.length ? `<p>Timing or power is unknown for ${checks.unknownMachines.length} selected recipe(s): ${checks.unknownMachines.map(row => esc(row.machine)).join(", ")}. Power and machine totals are partial.</p>` : ""}${checks.conditionalRecipes.length ? `<p>${checks.conditionalRecipes.length} recipe(s) have conditions. Review machine metadata before building; unsupported conditions are not assumed satisfied.</p>` : ""}</section>`;
   }
+  function balanceHtml() {
+    if (!plan.balance) return "";
+    const balance = plan.balance;
+    return `<section class="plannerBalanceNotice" data-balance-status="${balance.status}" ${balance.status === "blocked" ? 'role="alert"' : ""}><h4>${balance.status === "balanced" ? "Steady-state material balance checked" : "Steady-state balance blocked"}</h4><p>${balance.status === "balanced" ? "Guaranteed selected recipes and supplied boundaries balance at the requested rates. Machine rows count each recipe once." : `${esc(balance.reason)} Displayed quantities are recursive boundary estimates; recycling has not been solved.`}</p>${balance.loops?.length ? `<p>${balance.loops.length} closed loop(s): ${balance.loops.map(loop => loop.map(good => esc(good.name)).join(" ↔ ")).join("; ")}. Circulating stock is user-declared and never generated by the calculation. Startup order and adequacy require verification.</p><button type="button" id="plannerEditLoopStock">Review circulating stock in Factory</button>` : ""}</section>`;
+  }
   function code() {
     if (codeTab === "json") return serializePlan(state, dataset());
     if (codeTab === "yaml") return plan ? exportPlanYaml(plan) : "# Build a plan first.\n";
@@ -219,7 +226,7 @@ export function installPlanner() {
         ${plan.targets.length > 1 ? `<h4>Factory outputs</h4><div class="plannerTable"><table><thead><tr><th>Output</th><th>Demand${plan.isRate ? "/s" : ""}</th><th>${plan.isRate ? "Installed recipe capacity/s" : "Root time (s)"}</th></tr></thead><tbody>${plan.targets.map(target=>`<tr><td>${esc(target.name)}<small>${esc(target.id)}</small></td><td>${fmt(target.requested)} ${esc(target.unit)}</td><td>${target.root.status === "from-byproduct" ? "From co-products" : fmt(plan.isRate ? target.installedCapacity : target.timeSeconds)}</td></tr>`).join("")}</tbody></table></div>` : ""}
         <p>${plan.targets.length === 1 && plan.capacity !== null ? plan.isRate ? `Installed root recipe capacity (${fmt(plan.targets[0].installedCount)} machines): ${fmt(plan.targets[0].installedCapacity)} ${esc(plan.target.unit)}/s. ` : `Root capacity with ${state.machineCount} machine(s): ${fmt(plan.capacity)} ${esc(plan.target.unit)}/s. ` : ""}${plan.hasUnknownPower ? "Some timing/power values are unknown. Totals cover known machines only." : "Timing and power use the selected recipe profiles; no other multiblock bonuses are assumed."}</p>
         <details ${plan.unresolved.length ? "open" : ""}><summary>Warnings and unresolved routes (${plan.warnings.length})</summary><ul>${plan.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>
-        ${diagnosticsHtml()}${factoryCapacityHtml(plan, state.machineConfigs)}
+        ${balanceHtml()}${diagnosticsHtml()}${factoryCapacityHtml(plan, state.machineConfigs)}
         <h4>Required materials ${plan.isRate ? "per second" : ""}</h4>${table(plan.materials, "actions")}
         ${plan.inventoryUsed.length ? `<details open><summary>Used from inventory (${plan.inventoryUsed.length})</summary>${table(plan.inventoryUsed)}</details>` : ""}
         ${plan.inventoryRemaining.length ? `<details><summary>Unspent inventory (${plan.inventoryRemaining.length})</summary>${table(plan.inventoryRemaining, "", false)}</details>` : ""}
@@ -238,7 +245,7 @@ export function installPlanner() {
     workspace.scrollTop = scroll;
     root.querySelector("#calcCodeOut").value = code();
     root.querySelector("#calcCodeLabel").textContent = codeTab === "json" ? "Versioned plan settings (portable JSON)" : codeTab;
-    root.querySelector("#plannerStatus").textContent = error || (plan ? `${plan.materials.length} required materials · ${plan.unresolved.length} unresolved dependencies` : "Ready");
+    root.querySelector("#plannerStatus").textContent = [error || (plan ? `${plan.materials.length} required materials · ${plan.unresolved.length} unresolved dependencies` : "Ready"), storageWarning].filter(Boolean).join(" · ");
     root.querySelector("#plannerSupplies").disabled = !plan;
   }
   function diagram(limit = 120) {
@@ -255,7 +262,7 @@ export function installPlanner() {
     const overlay = document.createElement("div"); overlay.id = "gtnhCalcOverlay"; overlay.className = "gtnhCalcOverlay"; overlay.dataset.mobileTab = "planner";
     const select = (key, id, label, choices) => `<label class="gtnhCalcField" for="${id}">${label}<select id="${id}" data-state="${key}">${choices.map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></label>`;
     overlay.innerHTML = `<section class="gtnhCalcPanel" role="dialog" aria-modal="true" aria-label="GTNH production planner"><header class="gtnhCalcHead"><div><h2>Production Calculator</h2><p>Materials, production routes, machines and energy from recipe data.</p></div><button id="gtnhCalcClose" aria-label="Close planner" type="button">×</button></header>
-      <div class="calculatorModes" role="group" aria-label="Calculator mode"><button id="calculatorModeBasic" data-calculator-mode="basic" type="button">Basic</button><button id="calculatorModeFactory" data-calculator-mode="factory" type="button">Factory</button><p id="calculatorModeHint"></p></div><div id="calculatorActiveSettings" class="calculatorActiveSettings" hidden><span></span><button data-calculator-mode="factory" type="button">Review in Factory</button></div><nav class="gtnhCalcTabs" aria-label="Calculator views"><button data-calc-tab="planner" class="active" type="button">Planner</button><button data-calc-tab="tree" type="button">Tree</button><button data-calc-tab="code" type="button">Code / Export</button><button id="calcBuild" type="button">Build tree</button><button id="plannerSupplies" type="button" title="Operating supplies and printable build checklist">Supplies</button></nav>
+      <div class="calculatorModes" role="group" aria-label="Calculator mode"><button id="calculatorModeBasic" data-calculator-mode="basic" type="button">Basic</button><button id="calculatorModeFactory" data-calculator-mode="factory" type="button">Factory</button><p id="calculatorModeHint"></p></div><div id="calculatorActiveSettings" class="calculatorActiveSettings" hidden><span></span><button data-calculator-mode="factory" type="button">Review in Factory</button></div><nav class="gtnhCalcTabs" aria-label="Calculator views"><button data-calc-tab="planner" class="active" type="button">Settings</button><button data-calc-tab="tree" type="button">Tree</button><button data-calc-tab="code" type="button">Code / Export</button><button id="calcBuild" type="button">Build tree</button><button id="plannerSupplies" type="button" title="Operating supplies and printable build checklist">Supplies</button></nav>
       <p id="plannerStatus" role="status" aria-live="polite"></p><main class="gtnhCalcWorkspace"><section class="gtnhCalcCol" data-calc-panel="planner"><h3>Target and settings</h3><details id="calculatorMigration" hidden><summary>Previous Calculator draft and backups</summary><p id="calculatorMigrationNotes"></p><div class="gtnhCalcActions"><button type="button" id="calculatorImportLegacy">Load previous Calculator draft</button><button type="button" id="calculatorRestoreDraft" hidden>Restore workspace before import</button><button type="button" id="calculatorBackupLegacy">Download untouched legacy backup</button></div></details>
       <label class="gtnhCalcField" for="calcTarget">Product<input id="calcTarget" data-state="target" list="plannerGoods" autocomplete="off" placeholder="Choose from NEI, or enter a name / ID"><datalist id="plannerGoods"></datalist></label><button id="calculatorChooseGood" class="calculatorChooseGood" data-pick-field="calcTarget" type="button" aria-haspopup="dialog">Choose item / fluid from NEI</button><div id="calculatorSelectedGood" class="calculatorSelectedGood" hidden><span class="pickerIcon" aria-hidden="true"></span><span><b></b><small></small></span></div>
       <label class="gtnhCalcField" for="calcAmount">Amount<input id="calcAmount" type="number" min="0.000001" step="any" data-state="amount"></label>
@@ -266,7 +273,7 @@ export function installPlanner() {
       ${select("routeMode", "calcRouteMode", "Automatic route policy", [["ask","Choose when multiple routes exist"],["lowest_energy","Lowest base energy per output"],["lowest_tier","Lowest recipe voltage"],["fastest","Fastest per target output"],["lowest_eut","Lowest EU/t"],["fewest_inputs","Fewest consumed inputs"],["manual","Only locked routes"]])}
       <div data-factory-only>${select("machineMode", "calcMachineMode", "Machine mode", [["auto","Compute machines for target rate"],["fixed","Check fixed root machine capacity"]])}<p class="plannerHint">Automatic policies compare individual base recipes. Upstream energy and machine-specific bonuses are excluded.</p>
       <label class="gtnhCalcField" for="calcMachineCount">Root machine count<input id="calcMachineCount" type="number" min="1" step="1" data-state="machineCount"></label></div>
-      <div id="plannerPlanTools"></div><details id="plannerFactory" data-factory-only><summary>Additional factory outputs</summary><p>All outputs use the amount mode above. Materials, finite inventory and recipe machine requirements are shared. Co-products are listed separately; times are per output.</p><label class="gtnhCalcField" for="plannerFactoryGood">Output name or exact ID<input id="plannerFactoryGood" list="plannerFactoryGoods" autocomplete="off"><datalist id="plannerFactoryGoods"></datalist></label><button type="button" data-pick-field="plannerFactoryGood" aria-haspopup="dialog">Choose factory output from NEI</button><button id="plannerAddTarget" type="button">Add factory output</button><div id="plannerFactoryTargets"></div></details>
+      <details id="plannerBalanceSettings" data-factory-only><summary>Recycling and material balance</summary>${select("balanceMode", "calcBalanceMode", "Calculation method", [["recursive","Recursive expansion (existing plan behavior)"],["steady_state","Guided steady-state balance (guaranteed recipes)"]])}<p>Steady-state mode uses continuous rates, exact selected recipes and supplied boundaries. Selecting it starts at full dependency depth. Ambiguous, negative, non-unique or chance-dependent balances remain blocked.</p><div id="plannerLoopSeeds"></div></details><div id="plannerPlanTools"></div><details id="plannerFactory" data-factory-only><summary>Additional factory outputs</summary><p>All outputs use the amount mode above. Materials, finite inventory and recipe machine requirements are shared. Co-products are listed separately; times are per output.</p><label class="gtnhCalcField" for="plannerFactoryGood">Output name or exact ID<input id="plannerFactoryGood" list="plannerFactoryGoods" autocomplete="off"><datalist id="plannerFactoryGoods"></datalist></label><button type="button" data-pick-field="plannerFactoryGood" aria-haspopup="dialog">Choose factory output from NEI</button><button id="plannerAddTarget" type="button">Add factory output</button><div id="plannerFactoryTargets"></div></details>
       <details id="plannerInventory" data-factory-only><summary>Stock on hand (total jobs)</summary><p>Enter native item counts or L of fluid (1000 L = 1 bucket). Stock is shared across branches and deducted once per job. Continuous rates and reusable startup stock remain separate.</p><label class="gtnhCalcField" for="plannerStockGood">Material name or exact ID<input id="plannerStockGood" list="plannerStockGoods" autocomplete="off"><datalist id="plannerStockGoods"></datalist></label><button type="button" data-pick-field="plannerStockGood" aria-haspopup="dialog">Choose stock item from NEI</button><label class="gtnhCalcField" for="plannerStockAmount">Stock quantity<input id="plannerStockAmount" type="number" min="0" step="any" value="1"></label><button id="plannerAddStock" type="button">Set stock quantity</button><div id="plannerInventoryList"></div></details>
       <details><summary>Supply and expansion settings</summary><div class="gtnhCalcChecks">${Object.entries({waterFree:"Supply water freely",steamFree:"Supply steam freely",cellsReusable:"Expand returned-cell stock details",expandCircuits:"Expand circuit production",expandMachines:"Expand machine production",expandPlatesWires:"Expand plates, wires and cables",reuseByproducts:"Reuse earlier co-products (order affects totals)"}).map(([key,label])=>`<label><input type="checkbox" data-setting="${key}"> ${label}</label>`).join("")}</div><p>Only actually returned containers/tools are reusable; consumed empty cells remain requirements.</p><button id="plannerResetChoices" type="button">Clear route and supply overrides</button></details>
       <div class="gtnhCalcActions"><button id="calcUseSearch" type="button">Use search text</button><button id="calcClear" type="button">Clear</button></div></section>
@@ -314,9 +321,12 @@ export function installPlanner() {
       }
       if (button.dataset.defaultMachines) { setInstalledMachines(button.dataset.defaultMachines, undefined); return; }
       switch (button.id) {
+        case "plannerEditLoopStock": setMode("factory"); tab("planner"); overlay.querySelector("#plannerBalanceSettings").open = true; overlay.querySelector("[data-loop-seed]")?.focus(); break;
         case "calculatorImportLegacy":
           if (legacyDraft?.state) {
-            read(); workspaceBackup = serializePlan(state, dataset());
+            read();
+            try { workspaceBackup = serializePlan(state, dataset()); }
+            catch (failure) { migrationNotes = [`Previous draft was not loaded: ${failure.message} Fix the current draft so it can be backed up first.`]; render(); break; }
             try { localStorage.setItem(`gtnh_atlas_before_material_import_${datasetId}`, workspaceBackup); }
             catch { migrationNotes = ["Previous workspace retained for this tab only. Export a JSON backup before leaving."]; }
             state = structuredClone(legacyDraft.state); built = true; calculate(); sync(); save(); render();
@@ -329,7 +339,12 @@ export function installPlanner() {
         case "gtnhCalcClose": close(); break;
         case "calcBuild": build(); tab("tree"); break;
         case "plannerSupplies": supplies.open(); break;
-        case "calcUseSearch": state.target = document.getElementById("search").value.trim(); sync(); save(); break;
+        case "calcUseSearch": {
+          const query = document.getElementById("search").value.trim(), good = catalog()?.resolve(query);
+          const select = item => { state.target = item.id; state.unit = catalog().describe(item).unit; built = false; plan = null; error = ""; sync(); save(); render(); };
+          if (good) select(good); else if (catalog()) openItemPicker(catalog(), select, { query });
+          break;
+        }
         case "plannerShowMore": displayNodeLimit += 250; render(); break;
         case "calcClear": state = { ...structuredClone(defaultPlannerState), uiMode: state.uiMode }; plan = null; built = false; error = ""; sync(); save(); render(); break;
         case "plannerResetChoices": state.routeChoices = {}; state.machineConfigs = {}; state.rawOverrides = []; state.oreChoices = {}; state.lockedRoutes = {}; save(); calculate(); render(); break;
@@ -368,11 +383,18 @@ export function installPlanner() {
           const good = catalog()?.resolve(state.target);
           if (good && (catalog().describe(good).unit === "L" ? ["items", "stacks"].includes(state.unit) : ["L", "buckets"].includes(state.unit))) { state.unit = catalog().describe(good).unit; overlay.querySelector("#calcUnit").value = state.unit; save(); }
         }
+        if (event.target.id === "calcBalanceMode" && state.balanceMode === "steady_state") { state.depth = "full"; overlay.querySelector("#calcDepth").value = "full"; save(); }
         built = false; plan = null; render();
       }
     });
     overlay.addEventListener("change", async event => {
       const input = event.target;
+      if (input.dataset.loopSeed) {
+        const quantity = Number(input.value);
+        if (!input.checkValidity() || !Number.isFinite(quantity) || quantity < 0) { overlay.querySelector("#plannerStatus").textContent = "Circulating stock must be nonnegative; items require whole counts. Previous value retained."; input.value = state.loopSeeds[input.dataset.loopSeed] ?? ""; return; }
+        if (quantity) state.loopSeeds[input.dataset.loopSeed] = quantity; else delete state.loopSeeds[input.dataset.loopSeed];
+        save(); calculate(); render(); return;
+      }
       if (input.dataset.installedMachines) {
         const id = input.dataset.installedMachines;
         if (!input.checkValidity()) {

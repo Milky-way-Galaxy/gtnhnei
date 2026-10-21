@@ -33,14 +33,15 @@ export function exportRecipeYaml(catalog, query, index = 0) {
     input: toMap(balance.inputs), output: toMap(balance.outputs), inputs: recipe.inputs, outputs: recipe.outputs, yaml };
 }
 
-function csv(rows) {
+function csv(rows, balance) {
+  if (balance) rows.forEach((row, index) => row.push(...(index === 0 ? ["Balance mode", "Balance status"] : [balance.mode, balance.status])));
   const quote = value => `"${String(value ?? "").replaceAll('"', '""')}"`;
   return rows.map(row => row.map(quote).join(",")).join("\r\n");
 }
 export function planCsv(plan) {
   return csv([["Dataset", "ID", "Material", "Amount", "Unit", "Reason"], ...plan.materials.map(row =>
     [plan.dataset.id, row.id, row.name, row.amount, row.unit + (plan.isRate ? "/s" : ""), row.reason])]
-  );
+  , plan.balance);
 }
 export function machinesCsv(plan) {
   const capacity = new Map(plan.capacityAnalysis?.rows.map(row => [row.recipeId, row]) || []);
@@ -48,9 +49,10 @@ export function machinesCsv(plan) {
     ...plan.steps.map(step => [plan.dataset.id, step.recipeId, step.machine, step.performance?.model || "generic", step.performance?.ruleset,
       step.batches, step.performance?.durationTicks, step.performance?.parallels, step.performance?.eut, step.count, step.installedCount,
       plan.isRate ? step.installedSource : "", capacity.get(step.recipeId)?.utilization,
-      plan.isRate ? plan.capacityAnalysis.limitingRecipeIds.includes(step.recipeId) : "", step.installedEut, plan.isRate ? "" : step.energy])]);
+      plan.isRate ? plan.capacityAnalysis.limitingRecipeIds.includes(step.recipeId) : "", step.installedEut, plan.isRate ? "" : step.energy])], plan.balance);
 }
 export function exportPlanYaml(plan) {
+  if (plan.balance?.status === "blocked") return `# Steady-state balance blocked: ${plan.balance.reason}\n# No executable recycling plan exported. Resolve the balance or explicitly choose recursive calculation.\n`;
   if (!plan.steps.length) return "# Build a resolved production plan first.\n";
   const idsByName = new Map();
   for (const step of plan.steps) for (const io of [...step.recipe.inputs,...step.recipe.outputs]) {
@@ -58,6 +60,7 @@ export function exportPlanYaml(plan) {
   }
   const label = io => idsByName.get(io.name.toLowerCase())?.size > 1 ? `${io.name} [${io.id}]` : io.name;
   const lines = [`# Dataset: ${plan.dataset.id}`, "# Quantities are base recipes; chance outputs use expected values.", "# Planner installed counts and custom machine profiles are not applied to this base-recipe export.", "# Review machine-specific modifiers and byproduct/recycling links before solving."];
+  if (plan.balance) lines.push("# Steady-state selected-recipe balance; circulating stock/startup order must be supplied and verified separately.");
   for (const step of plan.steps) {
     const recipe = step.recipe, balance = recipeBalance(recipe);
     if (recipe.durationTicks === null || recipe.eut === null) { lines.push(`# OMITTED ${recipe.id}: timing unknown (${recipe.machine})`); continue; }

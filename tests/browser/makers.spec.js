@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(() => expect(exceptions).toEqual([]));
 async function start(page) {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolMatCalc").click();
+  await page.evaluate(() => window.GTNH_MATCALC.open());
   await page.locator("#matTarget").fill(target);
 }
 test("explicit material routes override maker defaults and exact-ID choices isolate duplicate names", async ({ page }) => {

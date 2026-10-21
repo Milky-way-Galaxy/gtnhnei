@@ -29,12 +29,16 @@ export function buildSupplyPlan(plan, { seconds = 3600, basis = "requested", che
   if (plan.isRate && basis === "installed") notes.push("Scales the whole output mix to the conditional known-stage capacity ceiling. Assumes supplied inputs, transport and remaining recipe conditions.");
   if (plan.unresolved?.length) notes.push("Unresolved dependencies remain boundary supplies. This is not a complete raw-resource bill.");
   if (plan.hasUnknownPower) notes.push("Energy covers known recipe power only.");
+  if (plan.balance?.status === "blocked") notes.push(`Steady-state balancing is blocked: ${plan.balance.reason} These are recursive boundary estimates.`);
+  else if (plan.balance?.loops?.length) notes.push("Circulating startup stock is user-declared additional stock. Its sufficiency and the startup sequence need verification.");
   const all = [...consumption, ...startup];
   return { dataset: plan.dataset, isRate: plan.isRate, seconds: plan.isRate ? seconds : null, basis, factor,
     consumption, startup, surplus: rows(plan.byproducts, "surplus", multiplier),
     outputs: plan.targets.map(target => ({ id: target.id, name: target.name, unit: target.unit, amount: multiply(target.requested, multiplier) })),
     knownEnergy: plan.isRate ? multiply(plan.knownAverageEut, multiplier * 20) : plan.knownEnergy,
-    partial: !!plan.hasUnknownPower, capacityPartial: plan.isRate && basis === "installed" && !!plan.capacityAnalysis.partial,
+    balance: plan.balance ? { mode: plan.balance.mode, status: plan.balance.status } : undefined,
+    partial: !!(plan.hasUnknownPower || plan.unresolved?.length || plan.truncated || plan.balance?.status === "blocked"),
+    capacityPartial: plan.isRate && basis === "installed" && !!(plan.capacityAnalysis.partial || plan.capacityAnalysis.unknownStages || plan.capacityAnalysis.hasUnresolvedRoutes || plan.balance?.status === "blocked"),
     completed: all.filter(row => row.checked).length, total: all.length, notes };
 }
 export function supplyCsv(supply) {
@@ -42,5 +46,6 @@ export function supplyCsv(supply) {
   const header = ["Dataset", "Projection", "Duration (seconds)", "Rate scale", "Section", "ID", "Material", "Amount", "Unit", "Native stack size", "Full stacks", "Remaining items", "Buckets", "Prepared"];
   const rows = [header, ...["consumption", "startup", "surplus"].flatMap(kind => supply[kind].map(row =>
     [supply.dataset.id, supply.isRate ? supply.basis : "total craft", supply.seconds, supply.factor, kind, row.id, row.name, row.amount, row.unit, row.packing?.stackSize, row.packing?.stacks, row.packing?.remainder, row.packing?.buckets, row.checked]))];
+  if (supply.balance) rows.forEach((row, index) => row.push(...(index === 0 ? ["Balance mode", "Balance status"] : [supply.balance.mode, supply.balance.status])));
   return rows.map(row => row.map(quote).join(",")).join("\r\n");
 }

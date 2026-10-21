@@ -12,7 +12,10 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } }
+    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    ...(process.env.ATLAS_FIREFOX === "1" ? [
+      { name: "firefox", use: { ...devices["Desktop Firefox"], launchOptions: {} } }
+    ] : [])
   ],
   webServer: { command: "node tools/serve.js --staged", url: "http://127.0.0.1:4173/gtnhnei/", reuseExistingServer: !process.env.CI }
 });

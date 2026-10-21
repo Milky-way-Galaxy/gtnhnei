@@ -1,4 +1,7 @@
 #gtnhCalcOverlay { z-index: 99980; }
+#gtnhCalcOverlay .gtnhCalcPanel { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+#gtnhCalcOverlay .gtnhCalcPanel > :not(.gtnhCalcWorkspace) { flex-shrink: 0; }
+#gtnhCalcOverlay .gtnhCalcWorkspace { flex: 1 1 auto; min-height: 0; min-width: 0; }
 #gtnhCalcOverlay label { display: flex; flex-direction: column; gap: 6px; }
 #gtnhCalcOverlay input, #gtnhCalcOverlay select { width: 100%; min-width: 0; padding: 9px; color: #eaf2ff; background: #111f30; border: 1px solid #3a536b; border-radius: 8px; font-size: 16px; }
 #gtnhCalcOverlay .gtnhCalcChecks label { flex-direction: row; align-items: center; }
@@ -43,13 +46,36 @@
 .plannerImport { padding: 8px; border: 1px solid #3a536b; border-radius: 8px; }
 #gtnhCalcOverlay #calcCodeOut { min-height: 280px; width: 100%; background: #091523; color: #eaf2ff; padding: 12px; }
 #gtnhCalcOverlay :focus-visible { outline: 2px solid #74d7ff; outline-offset: 2px; }
+#gtnhCalcOverlay [hidden] { display: none !important; }
+#gtnhCalcOverlay[data-calculator-mode=basic] [data-factory-only] { display: none !important; }
+.calculatorModes { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #34506a; flex-shrink: 0; }
+.calculatorModes button { min-width: 88px; min-height: 44px; }
+.calculatorModes button[aria-pressed=true] { background: #163f4c !important; color: #acf1dd !important; border-color: #75d3ca !important; }
+.calculatorModes p { flex: 1 1 240px; margin: 0; color: #adc8d9; font-size: 13px; }
+.calculatorActiveSettings { margin: 4px 14px; padding: 8px 12px; border-left: 3px solid #e4b976; background: #342d20; color: #ffe0a8; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.calculatorActiveSettings span { flex: 1 1 250px; }
+#calculatorMigration { margin: 12px 0; padding: 10px; border: 1px solid #557486; border-radius: 8px; }
+.calculatorChooseGood { width: 100%; min-height: 48px; margin: 6px 0 12px; background: #173f51 !important; color: #b4f2e4 !important; border-color: #76cbd0 !important; }
+.calculatorSelectedGood { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding: 12px; background: #102d3b; border: 1px solid #3b665e; border-radius: 9px; }
+.calculatorSelectedGood small { display: block; overflow-wrap: anywhere; color: #a8c6d3; margin-top: 4px; }
+.plannerDiagnostics { padding: 12px; margin: 12px 0; border: 1px solid #516d7e; border-radius: 10px; background: #102536; }
+.plannerDiagnostics h4 { margin: 0 0 8px; }
+.plannerDiagnostics li { margin: 12px 0; overflow-wrap: anywhere; }
+.plannerDiagnostics small { display: block; color: #a8c6d3; overflow-wrap: anywhere; }
+.plannerCycleInspector article { margin: 10px 0; padding: 10px; background: #342b20; border-left: 3px solid #d3b37b; overflow-wrap: anywhere; }
+.plannerBalanceNotice { padding: 12px; margin: 12px 0; border: 1px solid #6cbda7; border-radius: 10px; background: #123d39; }
+.plannerBalanceNotice[data-balance-status=blocked] { border-color: #d3a678; background: #3c2c20; color: #ffe1b7; }
+#plannerBalanceSettings { margin: 12px 0; padding: 10px; border: 1px solid #516d7e; border-radius: 9px; }
+#plannerLoopSeeds fieldset { margin: 12px 0; border: 1px solid #7c9a9b; min-width: 0; padding: 10px; }
+#plannerLoopSeeds legend, #plannerLoopSeeds p, #plannerLoopSeeds small { overflow-wrap: anywhere; }
+@media (max-width: 780px) { .calculatorModes p { flex-basis: 100%; font-size: 12px; } .calculatorActiveSettings { max-height: 120px; overflow: auto; flex-shrink: 0; } }
 @media (max-width: 780px) {
  #gtnhCalcOverlay .gtnhCalcWorkspace { display: block; }
  #gtnhCalcOverlay [data-calc-panel] { display: none !important; }
  #gtnhCalcOverlay[data-mobile-tab=planner] [data-calc-panel=planner], #gtnhCalcOverlay[data-mobile-tab=tree] [data-calc-panel=tree], #gtnhCalcOverlay[data-mobile-tab=code] [data-calc-panel=code] { display: block !important; }
  #gtnhCalcOverlay .gtnhCalcPanel { display: flex; flex-direction: column; }
  #gtnhCalcOverlay .gtnhCalcWorkspace { overflow-y: auto; min-height: 0; }
- #gtnhCalcOverlay .gtnhCalcCol { overflow: visible; max-height: none; }
+ #gtnhCalcOverlay .gtnhCalcCol { overflow: visible; max-height: none; height: auto; }
  #gtnhCalcOverlay .gtnhCalcTabs { flex-shrink: 0; }
  .plannerTable td:first-child { min-width: 145px; }
 }

@@ -62,6 +62,25 @@ than claiming coverage of every later server/config update.
 
 ## Authentic extraction
 
+Rechecked 2026-10-21: the upstream data branches are `2.8.0-v4`, `2.8.0-v5`,
+`2.8.0-v6`, `2.9.0-v7` and `main`. The official 2.8.4 release asset is the pack
+archive `2.8.4.zip`, not a verified Atlas recipe/atlas export. No 2.8.4 database
+was substituted. The exporter instructions require joining an actual matching
+Minecraft/GTNH world, loading NEI, running `/nesql`, and processing that export
+with the matching .NET tool. A matching exported world database is not present
+in this workspace.
+
+The NESQL exporter plugin tree at
+[`b5b896e`](https://github.com/ShadowTheAge/nesql-exporter/tree/b5b896ebd9bcf4cfe1f4fad19ccdc7de8414ee57)
+has no Galacticraft/NASA-specific exporter. Extending custom-handler coverage
+may therefore also be necessary; a fresh extraction has not been tested here.
+Neither installed dataset contains NASA Workbench construction recipes.
+
+Calculator → Plan checks can save a local JSON coverage report for a good with
+no production entry. It includes the exact dataset checksum, pinned source,
+good ID and production/usage counts. It does not post an issue or assume a
+gathered resource must have a manufacturing recipe.
+
 Use the actual requested GTNH installation, including its configs and mod set.
 Upstream instructions: https://github.com/ShadowTheAge/gtnh/blob/main/export/README.md.
 Build https://github.com/ShadowTheAge/nesql-exporter, follow its required runtime

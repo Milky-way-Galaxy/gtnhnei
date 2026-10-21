@@ -16,7 +16,7 @@ export function machineProfileHtml(step, config, datasetId) {
   const select = (field, label, values, value) => `<label>${label}<select data-profile-field="${field}">${values.map(([id, name]) => `<option value="${id}" ${id === value ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label>`;
   const modes = [["generic", "Generic · manual overclocks"], ["gt5", "GT5 · voltage and power checked"]];
   if (ebfRecipeHeat(step.recipe) !== null) modes.push(["ebf", "Electric Blast Furnace · heat and power checked"]);
-  return `<div class="plannerProfile" data-profile="${esc(step.recipeId)}">
+  return `<div class="plannerProfile" data-factory-only data-profile="${esc(step.recipeId)}">
     ${select("model", "Machine calculation", modes, config.model || "generic")}
     ${numeric("parallels", "Parallel lanes", config.parallels || 1, 1, isEbf ? 1 : 4096)}
     ${checked ? select("ruleset", "Calculation reference", Object.entries(machineRulesets), config.ruleset || defaultRuleset(datasetId)) +

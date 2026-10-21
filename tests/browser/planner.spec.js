@@ -10,7 +10,7 @@ test.afterEach(() => expect(exceptions).toEqual([]));
 async function start(page) {
   await page.goto("./");
   await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   await page.locator("#calcTarget").fill(target);
   await page.locator("#calcAmount").fill("2000");
   await page.locator("#calcUnit").selectOption("L");
@@ -68,7 +68,7 @@ test("machine profiles explicitly change rate, energy and parallel capacity", as
 });
 test("material calculator uses the same ID-based calculation and preserves cell consumption", async ({ page }) => {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolMatCalc").click();
+  await page.evaluate(() => window.GTNH_MATCALC.open());
   await page.locator("#matTarget").fill(target);
   await page.locator("#matAmount").fill("2");
   await page.locator("#matRoute").fill("1");
@@ -120,7 +120,7 @@ test("legacy zero-amount drafts retain route choices and explicit saved settings
     localStorage.setItem("gtnh_material_calc_state_v4",JSON.stringify({target:"Iron Ingot",cellsReusable:false,ignoreCircuits:false}));
   });
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   const state=await page.evaluate(()=>window.GTNH_CALC.getState());
   expect(state.amount).toBe(1); expect(state.settings.waterFree).toBe(false); expect(state.lockedRoutes["iron ingot"]).toBe(4);
   const material=await page.evaluate(()=>window.GTNH_MATCALC.getState());
@@ -148,7 +148,7 @@ test("stock on hand reduces a real job, survives reload/export, and can be remov
   const exported = await page.locator("#calcCodeOut").inputValue();
   expect(JSON.parse(exported).settings.inventory[chlorineId]).toBe(1500);
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcBuild").click();
   expect(await page.evaluate(() => window.GTNH_CALC.getPlan().root.batches)).toBe(1);
   await page.locator('[data-calc-tab="planner"]').click();
   await page.locator("#plannerInventory > summary").click();
@@ -177,14 +177,14 @@ test("fixed machine rates show actual installed power and startup stock without 
 });
 test("both calculators convert native item stacks and reject fluid stacks", async ({ page }) => {
   await page.goto("./"); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click();
   await page.locator("#calcTarget").fill("i:minecraft:bucket:0");
   await page.locator("#calcAmount").fill("2");
   await page.locator("#calcUnit").selectOption("stacks");
   await page.locator("#calcBuild").click();
   expect(await page.evaluate(() => window.GTNH_CALC.getPlan().requested)).toBe(32);
   await page.locator("#gtnhCalcClose").click();
-  await page.locator("#toolMatCalc").click();
+  await page.evaluate(() => window.GTNH_MATCALC.open());
   await page.locator("#matTarget").fill("i:minecraft:bucket:0");
   await page.locator("#matAmount").fill("2");
   await page.locator("#matAmountMode").selectOption("stacks");
@@ -217,7 +217,7 @@ test("factory outputs reuse real co-products and preserve all targets in format 
   await page.locator("#plannerImport").setInputFiles({name:"factory.json",mimeType:"application/json",buffer:Buffer.from(text)});
   expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().targets.length)).toBe(2);
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
-  await page.locator("#toolCalc").click(); await page.locator("#calcBuild").click();
+  await page.locator("#toolCalc").click(); await page.locator("#calculatorModeFactory").click(); await page.locator("#calcBuild").click();
   expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().knownAverageEut)).toBe(48);
 });
 test("repeated factory outputs convert units before rounding and remain editable on mobile", async ({ page }) => {

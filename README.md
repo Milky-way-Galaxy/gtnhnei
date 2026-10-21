@@ -81,16 +81,29 @@ known limitations of the bundled legacy test suites.
 
 ## Production planning
 
-The Planner calculates recursive materials, route/OreDict alternatives, expected
+One **Calculator** offers **Basic** and **Factory** modes with a shared draft.
+Choose products, factory outputs and inventory through the NEI icon picker,
+using partial search, favorites or recent items instead of remembering exact names.
+Fluid selections set litres automatically. Mode changes retain advanced settings
+and show when they still affect a Basic result.
+
+The calculator computes recursive materials, route/OreDict alternatives, expected
 chance yields, startup stock, machine requirements and base energy. Factory plans
 combine up to 20 outputs with shared inventory and optional ordered co-product
 reuse. Whole batches and continuous rates, native item stacks, fixed-machine
 capacity/power checks and explicit overclock/parallel profiles are supported.
 Route choices show net yields and energy per output; recipe details expose
-exported machine metadata. The separate Material Calculator shares the engine.
+exported machine metadata. Legacy Material Calculator APIs remain available.
 **Compare production routes** opens mobile-friendly cards with machine/voltage
 filters, energy per net output, throughput, expected chance yields, ingredients,
 startup stock and exported conditions. Choosing a card uses its exact recipe ID.
+Full-plan previews show actual material and known-power changes before applying
+the candidate. Plan checks expose unresolved routes and circular dependencies.
+Opt-in guided steady-state balances support guaranteed selected-recipe loops,
+requiring explicit circulating stock and rejecting unsupported balances.
+New numerical semantics use portable plan format 4; formats 1–3 remain readable.
+See the [unified calculator guide](docs/unified-calculator.md) for migration,
+the real returned-cell regression and precise limits.
 Opt-in [GT5 reference profiles](docs/machine-models.md) constrain overclocks by
 voltage/power and calculate Electric Blast Furnace heat discounts, coil heat
 and voltage bonuses. Rate factories report shared-stage bottlenecks, utilization

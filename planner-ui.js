@@ -13,6 +13,7 @@ import { openItemPicker } from "./item-picker.js";
 import { filterPlanMaterials, filterPlanNodes } from "./plan-result-filters.js";
 import { recipePlanState } from "./recipe-plan.js";
 import { planDiagnostics } from "./plan-diagnostics.js";
+import { bindSearchExamples } from "./search-examples.js";
 const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 const quantityFormat = new Intl.NumberFormat("en", { maximumSignificantDigits: 7 });
 const fmt = number => number === null || number === undefined ? "unknown" : quantityFormat.format(number);
@@ -22,6 +23,7 @@ const quantityLabel = (amount, unit, rate) => `${fmt(amount)} ${amount === 1 ? (
 export function installPlanner() {
   let previousFocus = null, displayNodeLimit = 250, planTools, legacyDraft, workspaceBackup = null, migrationNotes = [], storageWarning = "";
   let recipeDraftBackup = null;
+  let productExamples;
   const resultView = { materialQuery: "", materialType: "all", nodeQuery: "", attentionOnly: false }, nodeOpen = new Map();
   let state = structuredClone(defaultPlannerState), datasetId = null, plan = null, error = "", built = false, codeTab = "summary";
   const catalog = () => window.GTNH_CATALOG;
@@ -132,6 +134,7 @@ export function installPlanner() {
     const root = document.getElementById("gtnhCalcOverlay");
     for (const input of root.querySelectorAll("[data-state]")) input.value = state[input.dataset.state];
     for (const input of root.querySelectorAll("[data-setting]")) input.checked = !!state.settings[input.dataset.setting];
+    productExamples?.refresh();
   }
   function tab(name) {
     const root = document.getElementById("gtnhCalcOverlay"); root.dataset.mobileTab = name;
@@ -343,6 +346,7 @@ export function installPlanner() {
       <section class="gtnhCalcCol" data-calc-panel="tree"><div id="calcTree"></div></section>
       <section class="gtnhCalcCol" data-calc-panel="code"><h3>Exports and import</h3><div class="gtnhCodeTabs">${["summary","json","yaml","csv","errors"].map(name=>`<button type="button" data-planner-owned data-planner-code="${name}">${name.toUpperCase()}</button>`).join("")}</div><label id="calcCodeLabel" for="calcCodeOut">Summary</label><textarea id="calcCodeOut" readonly></textarea><div class="gtnhCalcActions"><button id="calcCopyCode" data-planner-owned type="button">Copy</button><button id="calcDownloadJson" data-planner-owned type="button">Download JSON</button><button id="plannerDownloadCsv" data-planner-owned type="button">Download CSV</button><button id="plannerDownloadMachines" data-planner-owned type="button">Download machines CSV</button><button id="plannerDownloadSvg" data-planner-owned type="button">Download SVG</button><label class="plannerImport">Import plan<input id="plannerImport" type="file" accept=".json,application/json"></label></div><p>JSON plans are tied to their recipe dataset. CSV contains materials; SVG is a standalone dependency diagram. YAML uses base recipe values and requires review before gtnh-flow solving.</p></section></main><footer class="calculatorActions"><button id="calcBuild" type="button">Calculate</button><button id="plannerSupplies" type="button" title="Operating supplies and printable build checklist">Checklist</button><span>Update results after changing settings.</span></footer></section>`;
     document.body.appendChild(overlay);
+    productExamples = bindSearchExamples(overlay.querySelector("#calcTarget"), catalog);
     overlay.addEventListener("click", async event => {
       const button = event.target.closest("button"); if (!button) return;
       if (button.dataset.calculatorMode) { setMode(button.dataset.calculatorMode); if (button.hasAttribute("data-review-factory")) tab("planner"); return; }
@@ -569,7 +573,7 @@ export function installPlanner() {
     const focusTarget = preferred.getClientRects().length ? preferred : document.getElementById("gtnhCalcClose");
     focusTarget.focus({ preventScroll: true });
   }
-  function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); (previousFocus?.isConnected ? previousFocus : document.getElementById("toolCalc"))?.focus(); }
+  function close() { document.getElementById("gtnhCalcOverlay")?.classList.remove("show"); productExamples?.pause(); (previousFocus?.isConnected ? previousFocus : document.getElementById("toolCalc"))?.focus(); }
   function applySavedState(next) { load(); state = normalizePlannerState(next); built = true; calculate(); save(); open(); showResults(); }
   installSharedPlanNotice({ dataset: () => catalog()?.dataset, apply: applySavedState, download });
   window.GTNH_CALC = { open, close, build, setMode,

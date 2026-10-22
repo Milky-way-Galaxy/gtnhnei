@@ -17,7 +17,7 @@ This project is made for GTNH players who want a faster way to search recipes, c
 The toolbar stays in one row: the active **GTNH version**, **Calculator**,
 **Library**, and **More** (⋯). The version dropdown keeps each verified dataset's
 recipes, icons and saved work separate. Unavailable exports cannot be selected.
-**More** contains Offline, Help, Feedback and About Atlas. About Atlas can be
+**More** contains Theme, Offline, Help, Feedback and About Atlas. About Atlas can be
 opened and closed repeatedly; its existing visibility preference is retained.
 
 An item's name stays above its **Recipes / Uses**, **Plan** and favorite controls.
@@ -26,6 +26,10 @@ Search filters show an active count and a reset even when collapsed.
 
 See [the interface guide](docs/interface.md) and
 [calculator guide](docs/unified-calculator.md) for details.
+
+Choose **Graphite** for the neutral palette, **Atlas Classic** for the previous
+navy/teal colors, or **NEI Classic** for game-style gray recipe panels and beveled
+slots. Theme choices are saved on this device and work offline.
 
 ## Features
 

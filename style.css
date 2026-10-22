@@ -62,7 +62,7 @@ summary { cursor: pointer; }
 .badge.eu { color: var(--good); }
 .badge.time { color: var(--warn); }
 /* Keep authentic slot positions and dimensions; large recipes scroll locally. */
-.neiRecipeBody { display: grid; grid-template-columns: max-content 38px max-content; gap: 8px; align-items: center; justify-content: start; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+.neiRecipeBody { display: grid; grid-template-columns: max-content 38px max-content; gap: 8px; align-items: center; justify-content: start; justify-content: safe center; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .neiIoSide { display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: none; padding: 6px; }
 .neiSubGrid { display: grid; grid-template-columns: repeat(var(--nei-cols), 36px); gap: 2px; width: max-content; }
 .neiGridLabel { color: var(--muted); font-size: 11px; font-weight: 600; margin: 0; }

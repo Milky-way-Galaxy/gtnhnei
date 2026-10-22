@@ -5,6 +5,7 @@ import { checkOfflineUpdate } from "./offline.js";
 import { getPreference, setPreference } from "./preferences.js";
 import { createPopupMenu } from "./popup-menu.js";
 import { installIntro, openAtlasIntro } from "./seo-intro-close.js";
+import { openThemePicker } from "./theme-ui.js";
 
 let help;
 function populateVersions(body, menu) {
@@ -48,15 +49,21 @@ function install() {
   createPopupMenu(document.getElementById("toolNei"), { id: "gtnhNeiDrop", label: "Recipe version", populate: populateVersions });
   const moreButton = document.getElementById("toolMore");
   const more = createPopupMenu(moreButton, { id: "atlasToolsMenu", label: "More tools" });
-  more.element.innerHTML = '<button id="toolOffline" type="button" role="menuitem" aria-haspopup="dialog">Offline</button><button id="toolHelp" type="button" role="menuitem" aria-haspopup="dialog" title="Help (?)">Help &amp; shortcuts</button><button id="gtfbOpen" type="button" role="menuitem" aria-haspopup="dialog">Feedback</button><button id="toolAbout" type="button" role="menuitem" aria-controls="seoIntro">About Atlas</button>';
+  more.element.innerHTML = '<button id="toolTheme" type="button" role="menuitem" aria-haspopup="dialog">Theme</button><button id="toolOffline" type="button" role="menuitem" aria-haspopup="dialog">Offline</button><button id="toolHelp" type="button" role="menuitem" aria-haspopup="dialog" title="Help (?)">Help &amp; shortcuts</button><button id="gtfbOpen" type="button" role="menuitem" aria-haspopup="dialog">Feedback</button><button id="toolAbout" type="button" role="menuitem" aria-controls="seoIntro">About Atlas</button>';
   more.element.addEventListener("click", event => {
     const button = event.target.closest("button"); if (!button) return;
     more.close(true);
+    if (button.id === "toolTheme") openThemePicker();
     if (button.id === "toolOffline") openOfflineManager();
     if (button.id === "toolHelp") showHelp();
     if (button.id === "gtfbOpen") { if (window.GTNH_FEEDBACK) window.GTNH_FEEDBACK.open(); else notify("Feedback is still loading. Try again shortly."); }
     if (button.id === "toolAbout") openAtlasIntro(moreButton);
   });
+  const updateTheme = () => {
+    const api = window.GTNH_THEME, theme = api?.themes.find(entry => entry.id === api.current);
+    if (theme) document.getElementById("toolTheme").textContent = `Theme · ${theme.label}`;
+  };
+  window.addEventListener("atlas-theme-changed", updateTheme); updateTheme();
   installIntro();
   document.getElementById("toolCalc").addEventListener("click", () => { if (window.GTNH_CALC) window.GTNH_CALC.open(); else notify("Planner is loading."); });
   document.getElementById("toolFav").addEventListener("click", () => openItemLibrary());

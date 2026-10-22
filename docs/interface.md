@@ -12,7 +12,7 @@ mobile; large crafting recipes and diagrams scroll within their own regions.
   The dataset source is available at the end of the list.
 - **Calculator** opens the current version's production plan.
 - **Library** contains favorites and recent items, with JSON backup tools.
-- **More** (⋯) contains Offline, Help & shortcuts, Feedback, and About Atlas.
+- **More** (⋯) contains Theme, Offline, Help & shortcuts, Feedback, and About Atlas.
   The button also indicates an available offline app update.
 
 Menus support Up/Down, Home/End, Enter, Escape, Tab and outside-click dismissal.
@@ -24,6 +24,21 @@ About Atlas reopens the introduction and focuses its labelled Close button.
 Closing remembers the existing `gtnh_atlas_intro_hidden_v1` preference. It does
 not add another toolbar row. Feedback uses a native modal dialog with labelled
 fields and restores focus when dismissed.
+
+## Themes
+
+More → Theme switches immediately between Graphite (the default neutral palette),
+Atlas Classic (the previous navy/teal colors), and NEI Classic (game-style gray
+recipe panels and beveled input/output slots). Each theme keeps the compact
+navigation and current controls. The choice is saved for this device across pack
+versions and offline reloads. If browser storage is unavailable, the dialog says
+that the selection lasts for this tab.
+
+NEI Classic is inspired by the game's inventory UI, rather than a complete
+replica of every GTNH machine GUI. It uses the same verified item/fluid quantities,
+probabilities, slot positions and icon atlas as the other themes. Large crafting
+grids scroll locally, including 9×9 recipes. The palette is applied by a small
+local script before styles paint; it does not wait for the recipe database.
 
 ## Recipe browsing
 

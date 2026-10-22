@@ -138,14 +138,17 @@ test("authentic 9 by 9 recipes retain every slot and scroll within the card on p
   await expect(card).toHaveCount(1); await expect(grid.locator(".neiSlot")).toHaveCount(81);
   const actual = await grid.locator(".neiSlot").evaluateAll(slots => slots.flatMap((slot, index) => slot.classList.contains("emptySlot") ? [] : [index]));
   expect(actual).toEqual([...new Set(source.occupied)].sort((a, b) => a - b));
-  for (const width of [320, 1440]) {
-    await page.setViewportSize({ width, height: 844 });
-    expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(9);
-    expect(await page.locator("#recipePage").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-    if (width === 320) {
-      const body = card.locator(".neiRecipeBody");
-      expect(await body.evaluate(el => { el.scrollLeft = el.scrollWidth; return el.scrollLeft; })).toBeGreaterThan(0);
-      expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true);
+  for (const theme of ["graphite", "atlas-classic", "nei-classic"]) {
+    await page.evaluate(theme => window.GTNH_THEME.select(theme), theme);
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(9);
+      expect(await page.locator("#recipePage").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      if (width === 320) {
+        const body = card.locator(".neiRecipeBody");
+        expect(await body.evaluate(el => { el.scrollLeft = el.scrollWidth; return el.scrollLeft; })).toBeGreaterThan(0);
+        expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true);
+      }
     }
   }
 });

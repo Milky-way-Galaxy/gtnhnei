@@ -1,11 +1,13 @@
-#searchFilters { padding: 5px 10px; border-bottom: 1px solid #2a4058; flex: 0 0 auto; font-size: 13px; }
-#searchFilters summary { cursor: pointer; padding: 4px; color: #a7d9ed; }
+#searchFilters { padding: 0 10px; border-bottom: 1px solid var(--line); flex: none; font-size: 12px; }
+#searchFilters summary { cursor: pointer; min-height: 36px; padding: 8px 0; color: var(--muted); }
+#searchFilterBadge { color: var(--accent); margin-left: 8px; }
+#filterQuickReset { margin-left: 8px; min-height: 32px; padding: 3px 8px; font-size: 12px; }
+#filterQuickReset[hidden] { display: none; }
 .searchFilterFields { display: flex; gap: 8px; flex-wrap: wrap; padding: 7px 0; align-items: end; }
-.searchFilterFields label { display: flex; flex-direction: column; gap: 5px; flex: 1 1 125px; min-width: 0; }
-.searchFilterFields select { width: 100%; min-height: 38px; padding: 5px; background: #12283b; color: #edf6ff; border: 1px solid #39576b; border-radius: 7px; }
-.searchFilterFields .filterCheck { flex-direction: row; align-items: center; padding: 8px 0; }
-#breadcrumb a, #breadcrumb button { display: inline-block; margin-left: 10px; color: #9bdcff; }
+.searchFilterFields label { display: flex; flex-direction: column; gap: 5px; flex: 1 1 125px; min-width: 0; color: var(--muted); }
+.searchFilterFields select { width: 100%; min-height: 44px; padding: 8px; color: var(--text); font-size: 16px; }
+.searchFilterFields .filterCheck { flex-direction: row; align-items: center; min-height: 44px; padding: 8px 0; }
 #grid .slot { padding: 0; }
-#grid .slot:focus-visible { outline: 2px solid #7be0ff; outline-offset: 1px; }
-@media (max-width: 600px) { .searchFilterFields select { font-size: 16px; min-height: 44px; } }
-.neiProbability { position: absolute; top: 0; left: 0; padding: 1px 2px; border-radius: 3px; font-size: 9px; line-height: 1.1; font-weight: 800; color: #fff3bf; background: #302712e8; pointer-events: none; z-index: 3; }
+#grid .slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.neiProbability { position: absolute; top: 0; left: 0; padding: 1px 2px; border-radius: 2px; font-size: 9px; line-height: 1.1; font-weight: 700; color: #fff3bf; background: #302712e8; pointer-events: none; z-index: 3; }
+@media (max-width: 700px) { #searchFilters[open] { max-height: 35dvh; overflow: auto; } }

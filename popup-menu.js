@@ -12,6 +12,13 @@ export function createPopupMenu(trigger, { id, label, populate }) {
   trigger.setAttribute("aria-controls", id); trigger.setAttribute("aria-expanded", "false");
   let opened = false;
   const items = () => [...menu.querySelectorAll('[role^="menuitem"]')].filter(item => !item.disabled && item.getAttribute("aria-disabled") !== "true" && !item.hidden);
+  function focusItem(item) {
+    if (!item) return;
+    item.focus({ preventScroll: true });
+    const bounds = menu.getBoundingClientRect(), row = item.getBoundingClientRect();
+    if (row.top < bounds.top + 4) menu.scrollTop -= bounds.top + 4 - row.top;
+    else if (row.bottom > bounds.bottom - 4) menu.scrollTop += row.bottom - bounds.bottom + 4;
+  }
   function position() {
     if (!opened) return;
     const viewport = window.visualViewport;
@@ -25,6 +32,7 @@ export function createPopupMenu(trigger, { id, label, populate }) {
     const bounds = menu.getBoundingClientRect();
     menu.style.left = `${Math.max(left + edge, Math.min(r.left, left + width - bounds.width - edge))}px`;
     menu.style.top = `${upwards ? Math.max(top + edge, r.top - gap - bounds.height) : r.bottom + gap}px`;
+    if (menu.contains(document.activeElement)) focusItem(document.activeElement);
   }
   function closed() {
     opened = false; menu.hidden = true; trigger.setAttribute("aria-expanded", "false");
@@ -40,12 +48,12 @@ export function createPopupMenu(trigger, { id, label, populate }) {
     activeMenu?.close();
     populate?.(menu, api);
     menu.querySelectorAll('[role^="menuitem"]').forEach(item => { item.tabIndex = -1; });
-    opened = true; activeMenu = api; menu.hidden = false;
+    opened = true; activeMenu = api; menu.hidden = false; menu.scrollTop = 0;
     trigger.setAttribute("aria-expanded", "true");
     if (native) menu.showPopover();
     position();
     const choices = items();
-    (last ? choices.at(-1) : menu.querySelector('[aria-checked="true"]:not(:disabled)') || choices[0])?.focus({ preventScroll: true });
+    focusItem(last ? choices.at(-1) : menu.querySelector('[aria-checked="true"]:not(:disabled)') || choices[0]);
   }
   const api = { element: menu, open, close, destroy() { close(); controller.abort(); menu.remove(); } };
   const controller = new AbortController(), listen = (node, event, handler) => node.addEventListener(event, handler, { signal: controller.signal });
@@ -61,7 +69,7 @@ export function createPopupMenu(trigger, { id, label, populate }) {
     if (event.key === "ArrowUp") index = (current - 1 + choices.length) % choices.length;
     if (event.key === "Home") index = 0;
     if (event.key === "End") index = choices.length - 1;
-    if (index !== undefined) { event.preventDefault(); choices[index]?.focus(); }
+    if (index !== undefined) { event.preventDefault(); focusItem(choices[index]); }
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); }
     if (event.key === "Tab") { close(true); /* Continue Tab navigation from the trigger. */ }
   });

@@ -33,13 +33,24 @@ body > .app { flex: 1 1 0; min-height: 0; height: auto; }
 .topbar #search, .topbar > button { height: 44px; font-size: 16px; }
 #search::placeholder { color: var(--atlas-muted); }
 #status { flex: none; font-size: 12px; padding: 5px 10px; }
-.atlasGridLimitPanel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; flex: none; margin: 0 8px 7px; padding: 6px 9px; border-radius: 4px; }
-.atlasGridLimitText { font-size: 11px; gap: 8px; }
-.atlasGridLimitBtns { gap: 5px; margin-top: 0; }
-.atlasGridLimitBtns button { white-space: nowrap; min-height: 36px; font-size: 12px; padding: 5px 9px; }
-#breadcrumb { overflow-wrap: anywhere; flex: none; }
-#breadcrumb button, #breadcrumb a { min-height: 36px; height: auto; padding: 7px 9px; margin: 4px 4px 0 0; border: 1px solid var(--atlas-border); border-radius: 7px; }
-#breadcrumb a { text-decoration: none; }
+.searchSummary { display: flex; align-items: center; flex: none; min-width: 0; min-height: 44px; border-bottom: 1px solid var(--atlas-border); }
+.searchSummary #status { flex: 1; min-width: 0; border: 0; }
+.atlasGridLimitPanel { display: flex; align-items: center; flex: none; padding: 4px 8px 4px 0; border: 0; margin: 0; }
+.atlasGridLimitBtns { gap: 4px; margin: 0; }
+.atlasGridLimitBtns button { white-space: nowrap; min-height: 36px; font-size: 12px; padding: 5px 8px; }
+.app[data-view=recipes] #searchFilters { display: none; }
+#breadcrumb { overflow-wrap: anywhere; flex: none; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.recipeItemHeading { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 240px; }
+#recipeItemName { margin: 0; min-width: 0; font-size: 18px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
+.recipeItemActions { display: flex; align-items: center; gap: 6px; flex: none; }
+#breadcrumb button { min-height: 44px; height: auto; padding: 6px 10px; margin: 0; font-size: 13px; }
+.recipeViewModes { display: flex; }
+.recipeViewModes button:first-child { border-radius: 4px 0 0 4px; }
+.recipeViewModes button:last-child { border-radius: 0 4px 4px 0; border-left: 0; }
+#breadcrumb [aria-pressed=true] { color: var(--accent); background: var(--accent-soft); }
+#breadcrumb #planCurrentItem { border-color: var(--accent); }
+#breadcrumb #favoriteCurrentItem, #breadcrumb #recipeMoreActions { min-width: 44px; padding: 4px 8px; font-size: 22px; line-height: 1; }
+#recipeItemMenu a { border: 0; color: var(--text); font-size: 14px; }
 button, a, summary, input, select { touch-action: manipulation; }
 button, summary { cursor: pointer; }
 
@@ -53,7 +64,7 @@ button, summary { cursor: pointer; }
 .atlasDialogBody { padding: 16px 20px; line-height: 1.5; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .atlasDialog button { min-height: 44px; height: auto; padding: 8px 12px; }
 .atlasDialog label { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; font-size: 13px; color: var(--atlas-muted); }
-.atlasDialog input { color: var(--text); background: var(--bg); border: 1px solid var(--atlas-border); border-radius: 4px; min-height: 44px; padding: 9px; width: 100%; font-size: 16px; }
+.atlasDialog input { color: var(--text); background: var(--bg); border: 1px solid var(--control-line); border-radius: 4px; min-height: 44px; padding: 9px; width: 100%; font-size: 16px; }
 .atlasDialog a { color: var(--accent); overflow-wrap: anywhere; }
 .atlasDialog p { overflow-wrap: anywhere; }
 .atlasDialog [hidden] { display: none !important; }
@@ -131,7 +142,7 @@ button, summary { cursor: pointer; }
 .routeChoice h3 small { display: inline; }
 .routeMetrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
 .routeMetrics > div { background: var(--atlas-surface); padding: 7px; border-radius: 6px; font-size: 12px; }
-.routeMetrics b { display: block; color: var(--atlas-muted); font-size: 16px; margin-top: 3px; }
+.routeMetrics b { display: block; color: var(--text); font-size: 16px; margin-top: 3px; }
 .routeIngredients { display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px; }
 .routeIngredients ul { padding-left: 18px; }
 .routeIngredients li { margin-bottom: 7px; }
@@ -146,11 +157,13 @@ button, summary { cursor: pointer; }
   #gtnhToolStrip { gap: 4px; padding: 4px; }
   #gtnhToolStrip > button { padding: 7px 9px; }
   .topbar { padding: 6px; gap: 4px; }
-  .atlasGridLimitText { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .atlasGridLimitText span { font-size: 10px; }
-  #recipePage { padding: 10px; gap: 10px; }
-  .atlasGridLimitBtns { display: flex; flex-wrap: wrap; }
-  .atlasGridLimitBtns button { white-space: nowrap; min-height: 36px; flex: 1; }
+  .searchSummary #status { font-size: 11px; padding-left: 8px; }
+  #breadcrumb { gap: 8px; padding: 8px; }
+  .recipeItemHeading { flex-basis: 100%; }
+  #recipeItemName { font-size: 17px; }
+  .recipeItemActions { width: 100%; gap: 5px; }
+  #breadcrumb #recipeMoreActions { margin-left: auto; }
+  #recipePage { padding: 8px; gap: 8px; }
   .atlasDialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 6px; }
   .atlasDialogHead, .atlasDialogBody { padding: 14px; }
   .atlasHelpGrid { grid-template-columns: 1fr; gap: 0; }
@@ -176,8 +189,8 @@ button, summary { cursor: pointer; }
 
 /* Recipe workbench: browsing controls stay outside the lazy card scroll area. */
 .app:not([data-view=recipes]) #recipeWorkbench { display: none; }
-#recipeWorkbench { flex: none; margin: 4px 10px; border: 1px solid var(--atlas-border); border-radius: 4px; background: var(--atlas-surface); }
-#recipeWorkbench summary { min-height: 40px; padding: 10px 12px; color: var(--atlas-muted); font-size: 13px; }
+#recipeWorkbench { flex: none; margin: 0; border-bottom: 1px solid var(--atlas-border); background: var(--bg); }
+#recipeWorkbench summary { min-height: 40px; padding: 10px; color: var(--atlas-muted); font-size: 13px; }
 #recipeFilterBadge { float: right; color: var(--atlas-accent); font-size: 12px; }
 .recipeFilterFields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding: 0 12px 10px; }
 .recipeFilterFields label { display: flex; flex-direction: column; flex: 1 1 170px; min-width: 0; gap: 6px; color: var(--atlas-muted); font-size: 12px; }

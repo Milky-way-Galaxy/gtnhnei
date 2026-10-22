@@ -55,3 +55,17 @@ test("exact IDs resolve one good and recipe chance outputs show their probabilit
   await page.locator("#grid .slot").click();
   await expect(page.locator("#recipePage .neiProbability").filter({hasText:"25%"}).first()).toBeVisible();
 });
+
+test("saved search filters stay visible and can be reset without opening the filter panel", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("gtnh_atlas_search_filters_gtnh-2.8.0", JSON.stringify({ type: "fluid", mod: "gregtech", sort: "name", productionOnly: true })));
+  await ready(page);
+  await expect(page.locator("#searchFilterBadge")).toHaveText("4 active");
+  await expect(page.locator("#searchFilters")).not.toHaveAttribute("open", "");
+  await page.locator("#filterQuickReset").click();
+  await expect(page.locator("#searchFilterBadge")).toBeEmpty();
+  await expect(page.locator("#filterQuickReset")).toBeHidden();
+  await expect(page.locator("#filterType")).toHaveValue("all");
+  await expect(page.locator("#filterMod")).toHaveValue("");
+  await expect(page.locator("#filterSort")).toHaveValue("default");
+  expect(JSON.parse(await page.evaluate(() => localStorage.getItem("gtnh_atlas_search_filters_gtnh-2.8.0")))).toEqual({ type: "all", mod: "", sort: "default", productionOnly: false });
+});

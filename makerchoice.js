@@ -515,6 +515,9 @@ import { makerChoiceFor, makerRouteIndex } from "./maker-state.js";
       const icons = root.querySelectorAll("[data-gtnh-icon-name], [data-gtnhIconName]");
 
       for (const el of icons) {
+        // The unified planner owns its route decisions. A global maker default
+        // can be unset even when this plan has an exact valid recipe selected.
+        if (el.closest("[data-plan-icon], #calculatorSelectedGood")) continue;
         const name = cleanName(el.dataset.gtnhIconName || el.dataset.gtnhIconName || "");
         if (!name) continue;
 

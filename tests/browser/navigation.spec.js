@@ -56,7 +56,7 @@ test("long version lists scroll inside short viewports without exposing unverifi
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width);
     expect(box.y).toBeGreaterThanOrEqual(0); expect(box.y + box.height).toBeLessThanOrEqual(size.height);
     expect(await menu.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-    await page.keyboard.press("End"); await expect(menu.getByRole("menuitem", { name: /Dataset source/ })).toBeFocused();
+    await page.keyboard.press("End"); await expect(menu.getByRole("menuitem", { name: /dataset source/i })).toBeFocused();
     expect(await menu.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
     await page.screenshot({ path: info.outputPath(`versions-${size.width}.png`) });
     await page.keyboard.press("Escape");
@@ -83,4 +83,18 @@ test("version menus remain usable without native popover support", async ({ page
   await expect(page.locator('#gtnhNeiDrop [aria-checked="true"]')).toBeFocused();
   await page.keyboard.press("Escape"); await expect(page.locator("#gtnhNeiDrop")).toBeHidden();
   await expect(page.locator("#toolNei")).toBeFocused();
+});
+
+test("an active version late in a long list opens scrolled into view", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 360 });
+  await page.evaluate(() => {
+    window.GTNH_DATASETS.manifest.datasets.unshift(...Array.from({ length: 20 }, (_, i) => ({ id: `unverified-test-${i}`, label: `Unverified archive ${i}`, available: false, reason: "UI fixture; no data." })));
+  });
+  await page.locator("#toolNei").click();
+  const menu = page.locator("#gtnhNeiDrop"), selected = menu.locator('[aria-checked="true"]');
+  await expect(selected).toBeFocused();
+  const list = await menu.boundingBox(), row = await selected.boundingBox();
+  expect(row.y).toBeGreaterThanOrEqual(list.y); expect(row.y + row.height).toBeLessThanOrEqual(list.y + list.height);
+  expect(await menu.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press("Escape"); await expect(page.locator("#toolNei")).toBeFocused();
 });

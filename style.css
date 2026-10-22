@@ -9,6 +9,7 @@
   --text: #ececec;
   --muted: #b4b7bb;
   --line: #45484c;
+  --control-line: #74787e;
   --accent: #d9ae57;
   --accent-soft: #d9ae571a;
   --good: #b0cfab;
@@ -20,6 +21,7 @@
   --tooltip-muted: var(--muted);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
 body { padding: 4px; }
 button, input, select, textarea { font: inherit; color: var(--text); }
@@ -28,7 +30,7 @@ button:not(:disabled):hover { background: var(--panel4); border-color: #74787e; 
 button:active { background: var(--panel4); }
 button:disabled { opacity: .5; cursor: default; }
 a { color: var(--accent); }
-input, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+input, select, textarea { background: var(--bg); border: 1px solid var(--control-line); border-radius: 4px; }
 input[type=checkbox] { accent-color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button, a, summary, input, select { touch-action: manipulation; }
@@ -85,8 +87,6 @@ summary { cursor: pointer; }
 .seoIntro h1 { margin: 0; font-weight: 600; }
 #seoIntro.seoIntro.seoIntroHidden { display: none; }
 .atlasGridLimitPanel { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; background: var(--bg); }
-.atlasGridLimitText { display: flex; align-items: baseline; gap: 8px; }
-.atlasGridLimitText b { font-weight: 500; color: var(--text); }
 .atlasGridLimitBtns { display: flex; flex-wrap: wrap; gap: 4px; }
 .atlasGridLimitBtns button { min-height: 36px; font-size: 12px; }
 .atlasGridLimitBtns button[aria-pressed=true] { color: var(--accent); border-color: var(--accent); }

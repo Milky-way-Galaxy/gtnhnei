@@ -22,6 +22,8 @@ import { appendRecipeDetails } from "./recipe-details.js";
 import { loadVerifiedDatabase } from "./database-cache.js";
 import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
 import { getPreference, setPreference } from "./preferences.js";
+import { createPopupMenu } from "./popup-menu.js";
+let itemActionsMenu;
 import { onRetry, setLoadState } from "./loaderguard.js";
 
 // Debug/integration imports must share the same module identity as the app.
@@ -132,17 +134,14 @@ function mountGridLimitControls(status, total) {
   const limit = getMaxGridTotal();
   const mode = getGridLimitMode();
 
+  panel.title = `Render limit: ${limit} of ${total ?? "?"} matches`;
   panel.innerHTML = `
-    <div class="atlasGridLimitText">
-      <b>Item grid</b>
-      <span>up to ${limit} of ${total ?? "?"} matches</span>
-    </div>
     <div class="atlasGridLimitBtns">
       <button type="button" data-grid-limit="more" aria-label="Load more matching items">More</button>
-      <button type="button" data-grid-limit="1000">1000</button>
-      <button type="button" data-grid-limit="2500">2500</button>
-      <button type="button" data-grid-limit="5000">5000</button>
-      <button type="button" data-grid-limit="auto">${mode === "auto" ? "Auto ✓" : "Auto"}</button>
+      <button type="button" data-grid-limit="1000" title="Render up to 1,000 matches" aria-label="Render up to 1,000 matches">1000</button>
+      <button type="button" data-grid-limit="2500" title="Render up to 2,500 matches">2500</button>
+      <button type="button" data-grid-limit="5000" title="Render up to 5,000 matches">5000</button>
+      <button type="button" data-grid-limit="auto" aria-pressed="${mode === "auto"}" title="Adjust rendered matches for this screen">${mode === "auto" ? "Auto ✓" : "Auto"}</button>
     </div>
   `;
 
@@ -434,6 +433,7 @@ function renderSearchGrid(push = true) {
   if (push) pushView({ type: "grid" });
   currentView = { type: "grid" };
   document.querySelector(".app").dataset.view = "grid";
+  itemActionsMenu?.close();
 
   grid.style.display = "grid";
   recipePage.style.display = "none";
@@ -537,24 +537,38 @@ function renderRecipes(obj, mode, push = true, linkedRecipeId = null) {
   grid.style.display = "none";
   recipePage.style.display = "grid";
   machineTabs.style.display = "flex";
-  breadcrumb.style.display = "block";
+  breadcrumb.style.display = "flex";
 
-  breadcrumb.textContent = `${mode} → ${nameOf(obj)}`;
-  const link = document.createElement("a"); link.id = "itemPermalink"; link.textContent = "Permalink";
-  link.href = recipePermalink(location.href, { datasetId: window.GTNH_CATALOG.dataset.id, goodId: obj.id, mode }); breadcrumb.appendChild(link);
-  const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan this";
-  plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); breadcrumb.appendChild(plan);
-  const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.textContent = "Compare versions";
-  compare.addEventListener("click", () => openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production")); breadcrumb.appendChild(compare);
+  itemActionsMenu?.destroy();
+  breadcrumb.replaceChildren();
+  const heading = document.createElement("div"); heading.className = "recipeItemHeading";
+  const icon = document.createElement("span"); icon.className = "icon"; icon.setAttribute("aria-hidden", "true"); setIcon(icon, obj.iconId);
+  const name = document.createElement("h2"); name.id = "recipeItemName"; name.textContent = nameOf(obj);
+  heading.append(icon, name); breadcrumb.appendChild(heading);
+  const actions = document.createElement("div"); actions.className = "recipeItemActions";
+  const modes = document.createElement("div"); modes.className = "recipeViewModes"; modes.setAttribute("role", "group"); modes.setAttribute("aria-label", "Recipe view");
+  for (const [view, label] of [["Production", "Recipes"], ["Usage", "Uses"]]) {
+    const button = document.createElement("button"); button.type = "button"; button.textContent = label;
+    button.setAttribute("aria-pressed", String(mode === view));
+    if (mode !== view) { button.id = "toggleRecipeView"; button.addEventListener("click", () => renderRecipes(obj, view)); }
+    modes.appendChild(button);
+  }
+  actions.appendChild(modes);
+  const plan = document.createElement("button"); plan.type = "button"; plan.id = "planCurrentItem"; plan.textContent = "Plan";
+  plan.addEventListener("click", () => window.GTNH_CALC?.planItem?.(obj.id)); actions.appendChild(plan);
   if (/^[if]:/.test(obj.id)) {
     const favorite = document.createElement("button"); favorite.id = "favoriteCurrentItem"; favorite.type = "button";
-    const sync = () => { const saved = isFavorite(obj.id); favorite.textContent = saved ? "★ Favorited" : "☆ Favorite"; favorite.setAttribute("aria-pressed", String(saved)); };
-    favorite.addEventListener("click", () => { toggleFavorite(obj.id); sync(); }); sync(); breadcrumb.appendChild(favorite);
+    const sync = () => { const saved = isFavorite(obj.id); favorite.textContent = saved ? "★" : "☆"; favorite.setAttribute("aria-pressed", String(saved)); favorite.setAttribute("aria-label", "Favorite " + nameOf(obj)); favorite.title = saved ? "Remove from favorites" : "Add to favorites"; };
+    favorite.addEventListener("click", () => { toggleFavorite(obj.id); sync(); }); sync(); actions.appendChild(favorite);
   }
-
-  const switchView = document.createElement("button"); switchView.type = "button"; switchView.id = "toggleRecipeView";
-  switchView.textContent = mode === "Production" ? "Show usages" : "Show recipes";
-  switchView.addEventListener("click", () => renderRecipes(obj, mode === "Production" ? "Usage" : "Production")); breadcrumb.appendChild(switchView);
+  const more = document.createElement("button"); more.type = "button"; more.id = "recipeMoreActions"; more.textContent = "⋯"; more.setAttribute("aria-label", "More recipe actions");
+  actions.appendChild(more); breadcrumb.appendChild(actions);
+  itemActionsMenu = createPopupMenu(more, { id: "recipeItemMenu", label: "More recipe actions" });
+  const link = document.createElement("a"); link.id = "itemPermalink"; link.role = "menuitem"; link.textContent = "Item permalink";
+  link.href = recipePermalink(location.href, { datasetId: window.GTNH_CATALOG.dataset.id, goodId: obj.id, mode });
+  link.addEventListener("click", () => itemActionsMenu.close(true)); itemActionsMenu.element.appendChild(link);
+  const compare = document.createElement("button"); compare.type = "button"; compare.id = "compareCurrentItem"; compare.role = "menuitem"; compare.textContent = "Compare versions";
+  compare.addEventListener("click", () => { itemActionsMenu.close(true); openVersionComparison(window.GTNH_CATALOG, obj.id, mode === "Usage" ? "consumption" : "production"); }); itemActionsMenu.element.appendChild(compare);
   if (linkedRecipeId) {
     const found = currentRecipes.some(recipe => recipe.id === linkedRecipeId);
     if (found) { recipeFilters.exactRecipeId = linkedRecipeId; recipeFilters.query = linkedRecipeId; recipeWorkbench.setQuery(linkedRecipeId); }
@@ -1004,7 +1018,7 @@ function openProduction(obj, linkedRecipeId = null) {
   recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
-  breadcrumb.style.display = "block";
+  breadcrumb.style.display = "flex";
   recipePage.innerHTML = '<div class="empty">Loading recipe...</div>';
   requestAnimationFrame(() => renderRecipes(obj, "Production", true, linkedRecipeId));
 }
@@ -1013,7 +1027,7 @@ function openUsage(obj, linkedRecipeId = null) {
   recipePage.style.display = "grid";
   grid.style.display = "none";
   machineTabs.style.display = "none";
-  breadcrumb.style.display = "block";
+  breadcrumb.style.display = "flex";
   recipePage.innerHTML = '<div class="empty">Loading usage...</div>';
   requestAnimationFrame(() => renderRecipes(obj, "Usage", true, linkedRecipeId));
 }

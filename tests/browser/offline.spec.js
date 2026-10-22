@@ -6,7 +6,7 @@ for (const version of ["2.8.0", "2.9.0"]) test(`a saved ${version} version reloa
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   await page.goto(`./?dataset=gtnh-${version}&item=${encodeURIComponent(iron)}`); await ready(page);
   await page.locator("#favoriteCurrentItem").click();
-  await page.locator("#toolOffline").click(); await page.locator("#offlineSave").click();
+  await page.locator("#toolMore").click(); await page.locator("#toolOffline").click(); await page.locator("#offlineSave").click();
   await expect(page.locator("#offlineStatus")).toContainText("Saved. You can reload", { timeout: 60000 });
   await expect(page.locator("#offlineDetails")).toContainText("ready for offline");
   await page.keyboard.press("Escape");
@@ -38,7 +38,7 @@ test("offline app updates wait for acceptance, reload safely and retire old shel
     window.updateRegistration = await navigator.serviceWorker.register(new URL("service-worker.js?new-build-test=1", location.href), { type: "module", scope: new URL("./", location.href).pathname, updateViaCache: "none" });
   });
   await expect.poll(() => page.evaluate(() => !!window.updateRegistration.waiting)).toBe(true);
-  await page.locator("#toolOffline").click(); await expect(page.locator("#offlineUpdate")).toBeVisible();
+  await page.locator("#toolMore").click(); await page.locator("#toolOffline").click(); await expect(page.locator("#offlineUpdate")).toBeVisible();
   const navigation = page.waitForEvent("framenavigated", frame => frame === page.mainFrame());
   await page.locator("#offlineUpdate").click(); await navigation; await ready(page);
   expect(await page.evaluate(() => localStorage.getItem("atlas-update-preserve-test"))).toBe("keep");

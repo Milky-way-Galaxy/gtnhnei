@@ -51,3 +51,11 @@ test("diagnostic review clears a hiding tree filter and navigation fits a 320px 
  const close=await page.locator("#gtnhCalcClose").boundingBox(); expect(close.y).toBeGreaterThanOrEqual(0);
  expect(await page.locator(".gtnhCalcPanel").evaluate(el=>el.scrollTop)).toBe(0);
 });
+
+test("plan-owned icons do not claim an unset global maker invalidates an exact route", async ({ page }) => {
+  const before = await page.evaluate(() => ({ state: window.GTNH_CALC.getState(), plan: window.GTNH_CALC.getPlan() }));
+  expect(before.plan.root.recipeId).toBe(recipe);
+  await page.evaluate(() => window.dispatchEvent(new Event("resize"))); // Runs the real maker decoration pass synchronously.
+  await expect(page.locator(".plannerGoodIcon.makerChoiceIconMissing, #calculatorSelectedGood .makerChoiceMiniBtn")).toHaveCount(0);
+  expect(await page.evaluate(() => ({ state: window.GTNH_CALC.getState(), plan: window.GTNH_CALC.getPlan() }))).toEqual(before);
+});

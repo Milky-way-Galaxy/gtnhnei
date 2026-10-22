@@ -12,6 +12,25 @@ This project is made for GTNH players who want a faster way to search recipes, c
 
 ---
 
+## Navigation
+
+The toolbar stays in one row: the active **GTNH version**, **Calculator**,
+**Library**, and **More** (⋯). The version dropdown keeps each verified dataset's
+recipes, icons and saved work separate. Unavailable exports cannot be selected.
+**More** contains Theme, Offline, Help, Feedback and About Atlas. About Atlas can be
+opened and closed repeatedly; its existing visibility preference is retained.
+
+An item's name stays above its **Recipes / Uses**, **Plan** and favorite controls.
+Item permalinks and version comparison are under **More recipe actions** (⋯).
+Search filters show an active count and a reset even when collapsed.
+
+See [the interface guide](docs/interface.md) and
+[calculator guide](docs/unified-calculator.md) for details.
+
+Choose **Graphite** for the neutral palette, **Atlas Classic** for the previous
+navy/teal colors, or **NEI Classic** for game-style gray recipe panels and beveled
+slots. Theme choices are saved on this device and work offline.
+
 ## Features
 
 - **GTNH NEI-style search**
@@ -110,7 +129,7 @@ and voltage bonuses. Rate factories report shared-stage bottlenecks, utilization
 and the capacity ceiling of the complete output mix. Installed counts can be
 overridden per recipe and exported as a machines CSV.
 
-**Supplies** turns a built plan into a gathering checklist. Rate plans project
+**Checklist** turns a calculated plan into a gathering checklist. Rate plans project
 consumption, output and known energy for a chosen operating duration at either
 the requested mix or the conditional installed-capacity ceiling. Native stacks
 and buckets accompany exact base quantities. Startup stock is not multiplied by

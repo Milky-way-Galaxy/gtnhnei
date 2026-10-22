@@ -1,0 +1,59 @@
+/* Palettes change presentation only; recipe slots retain their real dimensions. */
+:root[data-theme=atlas-classic] {
+  --bg: #0b1320;
+  --panel: #111c29;
+  --panel2: #172536;
+  --panel3: #213147;
+  --panel4: #2b3f56;
+  --text: #e8eef7;
+  --muted: #aab8ca;
+  --line: #3b506b;
+  --control-line: #7389a1;
+  --accent: #79dfce;
+  --accent-soft: #79dfce1a;
+  --good: #b0dba9;
+  --warn: #edd282;
+  --danger: #ffb1aa;
+  --tooltip-bg: #111c29;
+  --tooltip-line: #7389a1;
+}
+:root[data-theme=nei-classic] { --accent: #d8d8d8; --accent-soft: #ffffff14; }
+:root[data-theme=nei-classic] .recipe {
+  --bg: #b4b4b4;
+  --panel: #c6c6c6;
+  --panel2: #b4b4b4;
+  --panel3: #8b8b8b;
+  --panel4: #bdbdbd;
+  --text: #1b1b1b;
+  --muted: #454545;
+  --line: #888;
+  --control-line: #5c5c5c;
+  --accent: #323b77;
+  --good: #234a26;
+  --warn: #644200;
+  --atlas-surface: #c6c6c6;
+  --atlas-muted: #454545;
+  --atlas-border: #888;
+  background: #c6c6c6;
+  color: #1b1b1b;
+  border: 2px solid;
+  border-color: #f5f5f5 #555 #555 #f5f5f5;
+  border-radius: 0;
+}
+:root[data-theme=nei-classic] .recipe .neiSlot { border: 2px solid; border-color: #373737 #fff #fff #373737; border-radius: 0; background: #8b8b8b; }
+:root[data-theme=nei-classic] .recipe .neiArrow { color: #555; text-shadow: 1px 1px #eee; }
+:root[data-theme=nei-classic] .recipe .badge { background: #d3d3d3; border-color: #8a8a8a; border-radius: 0; }
+:root[data-theme=nei-classic] .recipeDetails { background: transparent; }
+:root[data-theme=nei-classic] .recipeActions button, :root[data-theme=nei-classic] .recipeActions a { border-color: #666; color: #303030; background: #d0d0d0; border-radius: 0; }
+#atlasThemeDialog { width: min(540px, calc(100vw - 16px)); }
+.themeOptions { border: 0; padding: 0; margin: 0; min-width: 0; }
+.themeOptions legend { margin-bottom: 8px; color: var(--muted); font-size: 13px; }
+#atlasThemeDialog .themeOption { display: flex; flex-direction: row; align-items: center; gap: 12px; min-height: 76px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+#atlasThemeDialog .themeOption:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+#atlasThemeDialog input[type=radio] { width: 20px; height: 20px; min-height: 20px; flex: none; margin: 0; accent-color: var(--accent); }
+.themeOption b { display: block; color: var(--text); font-size: 14px; font-weight: 600; }
+.themeOption small { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; margin-top: 4px; }
+.themePreview { width: 40px; height: 40px; flex: none; border: 1px solid #d9ae57; border-radius: 3px; background: #26282b; }
+[data-theme-option=atlas-classic] .themePreview { background: #111c29; border-color: #79dfce; }
+[data-theme-option=nei-classic] .themePreview { background: #8b8b8b; border: 5px solid; border-color: #373737 #fff #fff #373737; border-radius: 0; box-shadow: 0 0 0 1px #666; }
+@media (max-width: 360px) { #atlasThemeDialog .themeOption { gap: 8px; } .themePreview { width: 28px; height: 36px; } }

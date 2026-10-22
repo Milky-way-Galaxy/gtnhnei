@@ -1,15 +1,15 @@
-#versionCompareDialog { width: min(1100px, 96vw); max-height: 92dvh; box-sizing: border-box; overflow: auto; background: #091b2b; color: #edf5ff; border: 1px solid #47647e; border-radius: 12px; padding: 18px; }
+#versionCompareDialog { width: min(1100px, 96vw); max-height: 92dvh; box-sizing: border-box; overflow: auto; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 18px; }
 #versionCompareDialog::backdrop { background: #000b; }
 #versionCompareDialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #versionCompareDialog h2 { margin: 0; }
-#versionCompareDialog button, #versionCompareDialog select { min-height: 44px; padding: 8px 12px; color: #edf5ff; background: #173149; border: 1px solid #47647e; border-radius: 6px; }
+#versionCompareDialog button, #versionCompareDialog select { min-height: 44px; padding: 8px 12px; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; }
 #versionCompareDialog button:disabled { opacity: .5; }
 #versionCompareDialog label { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 #versionCompareDialog summary { min-height: 44px; padding: 8px; box-sizing: border-box; cursor: pointer; }
-#versionCompareDialog small { display: block; overflow-wrap: anywhere; color: #b8cada; }
-#versionCompareDialog details { border: 1px solid #304e68; border-radius: 6px; margin: 8px 0; }
+#versionCompareDialog small { display: block; overflow-wrap: anywhere; color: var(--muted); }
+#versionCompareDialog details { border: 1px solid var(--line); border-radius: 6px; margin: 8px 0; }
 #versionCompareDialog pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; }
 .versionCompareActions { display: flex; gap: 8px; flex-wrap: wrap; }
 .versionComparePair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 10px; }
-#versionCompareSummary { padding: 12px; background: #173149; font-weight: 600; }
+#versionCompareSummary { padding: 12px; background: var(--panel2); font-weight: 600; }
 @media (max-width: 680px) { .versionComparePair { grid-template-columns: minmax(0, 1fr); } #versionCompareDialog { padding: 12px; } }

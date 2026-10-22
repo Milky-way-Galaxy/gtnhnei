@@ -105,7 +105,8 @@
       el = document.createElement("div");
       el.id = "gtfbToast";
       el.className = "gtfbToast";
-      document.body.appendChild(el);
+      el.setAttribute("role", "status");
+      (qs("#gtfbOverlay") || document.body).appendChild(el);
     }
 
     el.textContent = msg;
@@ -237,51 +238,6 @@
     await copyText(body);
     toast("Report copied. Paste it into GitHub if the body is empty.");
     window.open(issueUrl(type), "_blank", "noopener,noreferrer");
-  }
-
-  function findNav() {
-    const direct =
-      qs("#gtnhTopStrip") ||
-      qs(".gtnhTopStrip") ||
-      qs(".topStrip") ||
-      qs(".mainNav") ||
-      qs(".toolStrip") ||
-      qs("nav");
-
-    if (direct) return direct;
-
-    const candidates = qsa("div, header, section")
-      .filter(el => {
-        const btns = qsa("button", el);
-        if (btns.length < 3 || btns.length > 14) return false;
-        const t = btns.map(b => text(b.textContent).toLowerCase()).join(" ");
-        return t.includes("nei") && (t.includes("planner") || t.includes("calc") || t.includes("favorites"));
-      })
-      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-
-    return candidates[0] || null;
-  }
-
-  function ensureButton() {
-    if (qs("#gtfbOpen")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "gtfbOpen";
-    btn.type = "button";
-    btn.textContent = "Feedback";
-    btn.title = "Report bugs, suggest features, and view public reports.";
-    btn.addEventListener("click", () => open("bug"));
-
-    const nav = findNav();
-
-    if (nav) {
-      const help = qsa("button", nav).find(b => text(b.textContent).toLowerCase() === "help");
-      if (help && help.parentElement === nav) help.insertAdjacentElement("afterend", btn);
-      else nav.appendChild(btn);
-    } else {
-      btn.className = "gtfbFab";
-      document.body.appendChild(btn);
-    }
   }
 
   function bugHtml() {
@@ -660,18 +616,19 @@
     let ov = qs("#gtfbOverlay");
     if (ov) return ov;
 
-    ov = document.createElement("div");
+    ov = document.createElement("dialog");
     ov.id = "gtfbOverlay";
+    ov.setAttribute("aria-labelledby", "gtfbTitle");
     ov.className = "gtfbOverlay";
 
     ov.innerHTML = `
       <div class="gtfbPanel">
         <header class="gtfbHead">
           <div>
-            <h2>Feedback</h2>
+            <h2 id="gtfbTitle">Feedback</h2>
             <p>Report bugs, suggest features, search public reports, and vote with GitHub 👍 reactions.</p>
           </div>
-          <button class="gtfbClose" type="button" aria-label="Close">×</button>
+          <button class="gtfbClose" type="button" aria-label="Close feedback">×</button>
         </header>
 
         <nav class="gtfbTabs">
@@ -690,7 +647,12 @@
       </div>
     `;
 
+    qsa(".gtfbField", ov).forEach(field => {
+      const label = qs("label", field), input = qs("input, select, textarea", field);
+      if (label && input?.id) label.htmlFor = input.id;
+    });
     document.body.appendChild(ov);
+    ov.addEventListener("close", () => ov.classList.remove("show"));
 
     ov.addEventListener("click", e => {
       if (e.target === ov) close();
@@ -755,7 +717,7 @@
     activeTab = tab;
     const ov = ensureOverlay();
 
-    qsa("[data-tab]", ov).forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    qsa("[data-tab]", ov).forEach(b => { b.classList.toggle("active", b.dataset.tab === tab); b.setAttribute("aria-pressed", String(b.dataset.tab === tab)); });
     qsa("[data-view]", ov).forEach(v => v.classList.toggle("active", v.dataset.view === tab));
 
     if (tab === "reports") {
@@ -771,31 +733,21 @@
   }
 
   function open(tab = "bug") {
-    ensureOverlay().classList.add("show");
-    setTab(tab);
+    const overlay = ensureOverlay();
+    setTab(tab); overlay.classList.add("show");
+    if (!overlay.open) overlay.showModal();
   }
 
   function close() {
-    qs("#gtfbOverlay")?.classList.remove("show");
+    qs("#gtfbOverlay")?.close();
   }
 
   function start() {
-    ensureButton();
     ensureOverlay();
     setTab("bug");
 
     const cached = readCache();
     if (cached) issues = cached;
-
-    setTimeout(() => ensureButton(), 800);
-    setTimeout(() => ensureButton(), 1800);
-
-    const mo = new MutationObserver(() => {
-      clearTimeout(window.__gtfbNavTimer);
-      window.__gtfbNavTimer = setTimeout(ensureButton, 200);
-    });
-
-    mo.observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener("keydown", e => {
       if (e.key === "Escape") close();

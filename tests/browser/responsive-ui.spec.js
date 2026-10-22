@@ -75,15 +75,80 @@ test("duplicate names retain visible exact IDs and support keyboard selection", 
   await page.keyboard.press("Enter"); await expect(page.locator("#calcTarget")).toHaveValue(id);
   await expect(page.locator("#calcUnit")).toHaveValue(id.startsWith("f:") ? "L" : "items");
 });
-test("hiding the intro keeps its restore action compact and preserves the saved preference", async ({ page }) => {
+test("About Atlas reopens and closes repeatedly and preserves the existing visibility preference", async ({ page }) => {
   await ready(page); await page.locator("#seoIntroClose").click();
   await expect(page.locator("#seoIntro")).toBeHidden();
-  await expect(page.locator("#seoIntroShow")).toBeVisible();
-  if (page.viewportSize().width <= 700) {
-    const restore = await page.locator("#seoIntroShow").boundingBox(), version = await page.locator("#toolDb").boundingBox();
-    expect(Math.abs(restore.y - version.y)).toBeLessThan(24);
-  }
+  await expect(page.locator("#seoIntroShow")).toHaveCount(0);
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
   await expect(page.locator("#seoIntro")).toBeHidden();
-  await page.locator("#seoIntroShow").click(); await expect(page.locator("#seoIntro")).toBeVisible();
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await page.locator("#toolMore").click();
+    await page.getByRole("menuitem", { name: "About Atlas" }).click();
+    await expect(page.locator("#seoIntro")).toBeVisible();
+    await expect(page.locator("#seoIntroClose")).toBeFocused();
+    await page.locator("#seoIntroClose").click();
+    await expect(page.locator("#seoIntro")).toBeHidden();
+    await expect(page.locator("#toolMore")).toBeFocused();
+  }
+  expect(await page.evaluate(() => localStorage.getItem("gtnh_atlas_intro_hidden_v1"))).toBe("1");
+});
+
+test("recipe headings and primary actions stay visible without sideways dragging", async ({ page }, info) => {
+  await ready(page, "?dataset=gtnh-2.9.0&item=i%3ABotania%3Astorage%3A3&view=usage");
+  await expect(page.locator("#recipeItemName")).toHaveText("Block of Mana Diamond");
+  for (const width of [320, 360, 393, 430, 768, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const locator of [page.locator("#recipeItemName"), page.locator("#toggleRecipeView"), page.locator("#planCurrentItem"), page.locator("#favoriteCurrentItem"), page.locator("#recipeMoreActions")]) {
+      const box = await locator.boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+    expect(await page.locator("#breadcrumb").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 393, height: 844 });
+  await page.locator("#recipeMoreActions").click(); await expect(page.locator("#recipeItemMenu")).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(page.locator("#recipeMoreActions")).toBeFocused();
+  await page.locator("#toggleRecipeView").click(); await expect(page.locator("#recipeItemName")).toHaveText("Block of Mana Diamond");
+  await page.locator("#planCurrentItem").click();
+  await expect(page.locator("#plannerOverview")).toBeFocused();
+  // Authentic 2.9 Compressor route: one block, 15 s, 2 EU/t, 600 EU.
+  expect(await page.evaluate(() => ({ energy: window.GTNH_CALC.getPlan().knownEnergy, time: window.GTNH_CALC.getPlan().rootTimeSeconds }))).toEqual({ energy: 600, time: 15 });
+  await expect(page.locator(".plannerDataset")).toContainText("1 item · GTNH 2.9.0");
+  const material = await page.locator("#plannerMaterialRows tbody tr").first().boundingBox();
+  expect(material.y).toBeGreaterThanOrEqual(0); expect(material.y + material.height).toBeLessThan(780);
+  expect(await page.locator(".gtnhCalcWorkspace").evaluate(el => el.scrollTop)).toBe(0);
+  await page.screenshot({ path: info.outputPath("compact-material-results.png") });
+});
+
+test("authentic 9 by 9 recipes retain every slot and scroll within the card on phones", async ({ page }) => {
+  await ready(page, "?dataset=gtnh-2.9.0");
+  const source = await page.evaluate(async () => {
+    const { Recipe, RecipeIoType } = await import(window.GTNH_MODULE_URL("./dist/repository.js"));
+    const repo = window.GTNH_CATALOG.repository;
+    for (const pointer of repo.recipes) {
+      const recipe = repo.GetObject(pointer, Recipe), dims = recipe.recipeType.dimensions;
+      if (dims[0] !== 9 || dims[1] !== 9) continue;
+      const output = recipe.items.find(io => io.type === RecipeIoType.ItemOutput);
+      if (!output) continue;
+      return { recipeId: recipe.id, goodId: output.goods.id,
+        occupied: recipe.items.filter(io => [RecipeIoType.ItemInput, RecipeIoType.OreDictInput].includes(io.type)).map(io => io.slot) };
+    }
+    throw new Error("The verified 2.9 dataset has no 9 by 9 recipe to check.");
+  });
+  await ready(page, `?dataset=gtnh-2.9.0&item=${encodeURIComponent(source.goodId)}&recipe=${encodeURIComponent(source.recipeId)}`);
+  const card = page.locator("#recipePage .recipe"), grid = card.locator(".neiSubGrid").first();
+  await expect(card).toHaveCount(1); await expect(grid.locator(".neiSlot")).toHaveCount(81);
+  const actual = await grid.locator(".neiSlot").evaluateAll(slots => slots.flatMap((slot, index) => slot.classList.contains("emptySlot") ? [] : [index]));
+  expect(actual).toEqual([...new Set(source.occupied)].sort((a, b) => a - b));
+  for (const theme of ["graphite", "atlas-classic", "nei-classic"]) {
+    await page.evaluate(theme => window.GTNH_THEME.select(theme), theme);
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(9);
+      expect(await page.locator("#recipePage").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      if (width === 320) {
+        const body = card.locator(".neiRecipeBody");
+        expect(await body.evaluate(el => { el.scrollLeft = el.scrollWidth; return el.scrollLeft; })).toBeGreaterThan(0);
+        expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true);
+      }
+    }
+  }
 });

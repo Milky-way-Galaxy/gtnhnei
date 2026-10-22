@@ -211,7 +211,7 @@ test("factory outputs reuse real co-products and preserve all targets in format 
   expect(result.targets.length).toBe(2); expect(result.targets[1].root.status).toBe("from-byproduct");
   expect(result.knownAverageEut).toBe(48); expect(result.knownInstalledEut).toBe(60);
   expect(result.byproductsUsed.find(row=>row.name==="Hydrogen").amount).toBe(100);
-  await expect(page.locator("#calcTree")).toContainText("Factory: 2 outputs");
+  await expect(page.locator("#plannerOverview h4")).toHaveText("Factory · 2 outputs");
   await page.locator('[data-calc-tab="code"]').click(); await page.locator('[data-planner-code="json"]').click();
   const text=await page.locator("#calcCodeOut").inputValue();
   expect(JSON.parse(text).schemaVersion).toBe(2); expect(JSON.parse(text).settings.additionalTargets[0].target).toBe(hydrogen);

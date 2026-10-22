@@ -5,11 +5,16 @@ modes. Both use the same calculation engine and the same current draft. Mode
 changes retain outputs, routes, stock, profiles and exports. Basic mode shows a
 notice when additional factory settings still contribute to the results.
 
-The desktop workspace has settings beside results, with **Code / Export** replacing
+The desktop workspace has settings beside results, with **Export** replacing
 the results pane when selected. At 980px and below, **Settings**, **Results** and
-**Code / Export** show one panel at a time. **Build tree** and **Supplies** remain
+**Export** show one panel at a time. **Calculate** and **Checklist** remain
 in the bottom action bar while the content scrolls. Recipe cards use available
 desktop columns and keep large crafting grids inside their own scroll areas.
+Basic / Factory shares the title row. Results start with the product, quantity,
+version, known energy/time and materials. Warnings about unknown power, recipe
+conditions and insufficient machine capacity remain visible. Calculation
+assumptions and supplied boundaries can be expanded below the materials.
+New plans open at their result heading instead of scrolling to a dependency.
 Short viewports use compact header spacing. Chrome on Android is asked to resize
 the content viewport with its on-screen keyboard, so that layout can respond;
 other browsers may ignore the hint. Automated resizing checks do not establish
@@ -17,7 +22,7 @@ physical-keyboard behavior on every phone.
 
 ## Choose a product without remembering its name
 
-Choose **item / fluid from NEI** to browse the active version's icons. Search
+Choose **Browse items & fluids** to browse the active version's icons. Search
 partial words, use `@mod`, filter items/fluids and mods, or choose Favorites or
 Recent. Only 60 results render per page. Arrow keys move between icons and Enter
 selects one. Escape returns to the calculator without replacing its target.

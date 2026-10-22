@@ -9,7 +9,10 @@ for(const [dataset,recipe] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_QQ=="],["gtn
   await expect(page.locator(".recipeLinkNotice")).toContainText("Showing the linked recipe");
   const href=await page.locator("[data-recipe-link]").getAttribute("href"),url=new URL(href);
   expect(url.searchParams.get("dataset")).toBe(dataset);expect(url.searchParams.get("recipe")).toBe(recipe);
-  await page.locator("#showAllLinkedRecipes").click();expect(await page.locator("#recipePage .recipe").count()).toBeGreaterThan(1);
+  await page.locator("#showAllLinkedRecipes").click();
+  // Recipe cards render in chunks. A completed click does not mean that the
+  // asynchronous list rebuild has attached its first batch yet.
+  await expect(page.locator("#recipePage .recipe").nth(1)).toBeAttached();
   await page.locator(`[data-plan-recipe="${recipe}"]`).click();
   expect(await page.evaluate(id=>window.GTNH_CALC.getState().routeChoices[id],item)).toBe(recipe);
   expect(await page.evaluate(()=>window.GTNH_CALC.getPlan().knownEnergy)).toBe(19200);
@@ -18,7 +21,7 @@ for(const [dataset,recipe] of [["gtnh-2.8.0","r~7CR1mklsMhyejhfODug_QQ=="],["gtn
 test("absent recipe links recover and item links strip unrelated private plan fragments",async({page})=>{
  await page.goto(`./?item=${encodeURIComponent(item)}&recipe=absent&ref=old#plan=invalid`);
  await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
- await expect(page.locator(".recipeLinkNotice")).toContainText("absent for this item and version");expect(await page.locator("#recipePage .recipe").count()).toBeGreaterThan(1);
+ await expect(page.locator(".recipeLinkNotice")).toContainText("absent for this item and version");await expect(page.locator("#recipePage .recipe").nth(1)).toBeAttached();
  const itemHref=await page.locator("#itemPermalink").getAttribute("href"),recipeHref=await page.locator("[data-recipe-link]").first().getAttribute("href");
  for(const href of [itemHref,recipeHref]) {const url=new URL(href);expect(url.hash).toBe("");expect(url.searchParams.has("ref")).toBe(false);}
  expect(new URL(itemHref).searchParams.has("recipe")).toBe(false);

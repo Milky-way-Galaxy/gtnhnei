@@ -6,6 +6,7 @@ import { getPreference, setPreference } from "./preferences.js";
 import { createPopupMenu } from "./popup-menu.js";
 import { installIntro, openAtlasIntro } from "./seo-intro-close.js";
 import { openThemePicker } from "./theme-ui.js";
+import { rotatingExamples, setRotatingExamples } from "./search-examples.js";
 
 let help;
 function populateVersions(body, menu) {
@@ -54,11 +55,15 @@ function install() {
     const button = event.target.closest("button"); if (!button) return;
     more.close(true);
     if (button.id === "toolTheme") openThemePicker();
+    if (button.id === "toolSearchExamples") { setRotatingExamples(!rotatingExamples()); updateExamples(); }
     if (button.id === "toolOffline") openOfflineManager();
     if (button.id === "toolHelp") showHelp();
     if (button.id === "gtfbOpen") { if (window.GTNH_FEEDBACK) window.GTNH_FEEDBACK.open(); else notify("Feedback is still loading. Try again shortly."); }
     if (button.id === "toolAbout") openAtlasIntro(moreButton);
   });
+  const examples = document.createElement("button"); examples.id = "toolSearchExamples"; examples.type = "button"; examples.setAttribute("role", "menuitemcheckbox");
+  const updateExamples = () => { examples.textContent = "Rotating search examples"; examples.setAttribute("aria-checked", String(rotatingExamples())); };
+  updateExamples(); more.element.querySelector("#toolTheme").after(examples);
   const updateTheme = () => {
     const api = window.GTNH_THEME, theme = api?.themes.find(entry => entry.id === api.current);
     if (theme) document.getElementById("toolTheme").textContent = `Theme · ${theme.label}`;

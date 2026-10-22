@@ -71,10 +71,7 @@
       st.targetName,
       st.item,
       document.getElementById("calcTarget")?.value,
-      document.querySelector("[name='target']")?.value,
-      document.querySelector("input[placeholder*='Target' i]")?.value,
-      document.querySelector("input[placeholder*='item' i]")?.value,
-      document.querySelector("input[placeholder*='fluid' i]")?.value
+      document.querySelector("[name='target']")?.value
     ];
 
     for (const x of candidates) {
@@ -82,7 +79,7 @@
       if (s) return s;
     }
 
-    return "epichlorohydrin";
+    return "";
   }
 
   function getRouteIndex(target) {
@@ -123,7 +120,7 @@
     try {
       const api = window.GTNHNEI_FLOW_EXPORT_API;
 
-      if (api?.yamlForRecipe) {
+      if (target && api?.yamlForRecipe) {
         const st = getState();
         const result = api.yamlForRecipe(target, getRouteIndex(target), {
           targetAmount: st.targetAmount || st.amount || 1
@@ -139,7 +136,7 @@
     if (fromUi) return fromUi;
 
     return `# No YAML found.
-# Build tree first, then open Code / Export -> gtnh-flow.
+# Calculate a plan, then open Export -> gtnh-flow.
 `;
   }
 
@@ -293,7 +290,7 @@
         <div class="gtnhFlowBrowserHead">
           <div>
             <h3>gtnh-flow</h3>
-            <p>Running gtnh-flow in browser, then Graphviz SVG rendered by Viz.js.</p>
+            <p>Flow diagram for your calculated plan.</p>
           </div>
           <span class="gtnhFlowBrowserBadge">browser</span>
         </div>
@@ -313,7 +310,7 @@
 
         <div id="gtnhFlowBrowserViewer" class="gtnhFlowBrowserViewer">
           <div class="gtnhFlowBrowserPlaceholder">
-            This will load Python + gtnh-flow. First run can take a while on mobile.
+            The first run downloads the solver and needs an internet connection.
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { ItemLibrary } from "./item-library.js";
 import { createDialog, escapeHtml as esc, notify, downloadText } from "./ui-dialog.js";
+import { clearSearchHistory } from "./search-examples.js";
 let dialog, tab = "favorites", visible = 60, matches = [], clearedFavorites = null;
 const library = () => {
   if (!window.GTNH_CATALOG) throw new Error("Recipe data is still loading.");
@@ -10,7 +11,7 @@ function changed() {
   if (dialog?.open) render();
 }
 export function recordVisit(id, mode) {
-  try { library().visit(id, mode); } catch { /* Recipe navigation works when storage is blocked or damaged. */ }
+  try { library().visit(id, mode); window.dispatchEvent(new Event("gtnh-library-changed")); } catch { /* Recipe navigation works when storage is blocked or damaged. */ }
 }
 export function isFavorite(id) {
   try { return library().read().favorites.some(entry => entry.id === id); } catch { return false; }
@@ -77,7 +78,7 @@ export function openItemLibrary(initialTab = "favorites") {
       if (button.dataset.libraryTab) { tab = button.dataset.libraryTab; visible = 60; render(); }
       if (button.dataset.libraryAdd !== undefined) toggleFavorite(matches[Number(button.dataset.libraryAdd)].id);
       if (button.id === "libraryMore") { visible += 60; render(); }
-      if (button.id === "libraryClearRecent") { try { library().clearRecent(); render(); } catch (error) { notify(error.message); } }
+      if (button.id === "libraryClearRecent") { try { library().clearRecent(); clearSearchHistory(window.GTNH_CATALOG.dataset); render(); } catch (error) { notify(error.message); } }
       if (button.id === "libraryClearFavorites") { try { clearedFavorites = library().clearFavorites(); changed(); } catch (error) { notify(error.message); } }
       if (button.id === "libraryUndoClear") { try { library().restoreFavorites(clearedFavorites || []); clearedFavorites = null; changed(); } catch (error) { notify(error.message); } }
       if (button.id === "libraryExport") { try { downloadText("gtnh-atlas-item-library.json", library().rawBackup()); } catch (error) { notify(error.message); } }

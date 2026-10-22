@@ -23,6 +23,7 @@ import { loadVerifiedDatabase } from "./database-cache.js";
 import { recordVisit, toggleFavorite, isFavorite } from "./library-ui.js";
 import { getPreference, setPreference } from "./preferences.js";
 import { createPopupMenu } from "./popup-menu.js";
+import { bindSearchExamples, rememberSearch } from "./search-examples.js";
 let itemActionsMenu;
 import { onRetry, setLoadState } from "./loaderguard.js";
 
@@ -53,6 +54,8 @@ let allGoods = [];
 let allItems = [];
 let searchFilters = { ...defaultSearchFilters };
 let timer = null;
+let historyTimer;
+let searchExamples;
 let tipTimer = null;
 let activeTipAnchor = null;
 let activeTipObj = null;
@@ -385,6 +388,8 @@ async function load() {
     }
     setLoadState("catalog", "Preparing item lookup indexes…");
     window.GTNH_CATALOG = await RecipeCatalog.build(repo, dataset, yieldToBrowser);
+    searchExamples?.destroy();
+    searchExamples = bindSearchExamples(search, () => window.GTNH_CATALOG, { prefix: "Search: " });
     searchFilters = mountSearchFilters(window.GTNH_CATALOG, filters => { searchFilters = filters; renderSearchGrid(currentView.type !== "grid"); });
     resolveDataReady();
     // Install dependent APIs in registration order before enabling the UI.
@@ -392,6 +397,7 @@ async function load() {
     renderSearchGrid(false);
     window.GTNH_DATABASE_LOAD.startupMs = performance.now() - started;
     setLoadState("ready", `Loaded ${allGoods.length} items/fluids`);
+    searchExamples.refresh();
     const params = new URLSearchParams(location.search), linkedId = params.get("item");
     if (linkedId) {
       const linked = window.GTNH_CATALOG.resolve(linkedId);
@@ -447,6 +453,10 @@ function renderSearchGrid(push = true) {
   const matched = exact instanceof Item || exact instanceof Fluid ? [exact] : exact instanceof OreDict ? exact.items.filter(Boolean) :
     !q ? allGoods : allGoods.filter(obj => repo.IsObjectMatchingSearch(obj, newQuery));
   searchResults = filterGoods(matched, searchFilters);
+  clearTimeout(historyTimer);
+  if (q.length >= 2 && searchResults.length) historyTimer = setTimeout(() => {
+    if (search.value.trim() === q) rememberSearch(window.GTNH_CATALOG.dataset, q);
+  }, 1000);
 
   grid.innerHTML = "";
   renderedGridCount = 0;

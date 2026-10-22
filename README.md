@@ -26,6 +26,9 @@ Search filters show an active count and a reset even when collapsed.
 
 See [the interface guide](docs/interface.md) and
 [calculator guide](docs/unified-calculator.md) for details.
+The [feature status](docs/feature-status.md) separates completed work, current
+limits and blocked data coverage. Empty-field search examples use recent searches
+and items; toggle rotation under **More → Rotating search examples**.
 
 Choose **Graphite** for the neutral palette, **Atlas Classic** for the previous
 navy/teal colors, or **NEI Classic** for game-style gray recipe panels and beveled

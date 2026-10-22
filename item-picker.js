@@ -1,6 +1,7 @@
 import { SearchQuery } from "./dist/searchQuery.js";
 import { ItemLibrary } from "./item-library.js";
 import { createDialog, escapeHtml as esc } from "./ui-dialog.js";
+import { bindSearchExamples, recentExampleGoods } from "./search-examples.js";
 
 export function pickerGoods(catalog, { query = "", type = "all", mod = "", source = "all", productionOnly = false } = {}, saved = {}) {
   const raw = query.trim(), parsed = new SearchQuery(raw);
@@ -13,6 +14,7 @@ export function pickerGoods(catalog, { query = "", type = "all", mod = "", sourc
 }
 
 let dialog, activeCatalog, onSelect, matches = [], page = 0, source = "all", saved = {}, warning = "";
+let examples;
 const PAGE_SIZE = 60;
 function render() {
   matches = pickerGoods(activeCatalog, { query: dialog.querySelector("#pickerSearch").value,
@@ -24,13 +26,18 @@ function render() {
   grid.querySelectorAll("[data-pick-good]").forEach(button => activeCatalog && window.GTNHNEI_ICON_API?.setIconByName(button.querySelector(".pickerIcon"), button.dataset.pickGood));
   dialog.querySelectorAll("[data-picker-source]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.pickerSource === source)));
   dialog.querySelector("#pickerPrevious").disabled = page === 0; dialog.querySelector("#pickerNext").disabled = start + PAGE_SIZE >= matches.length;
-  dialog.querySelector("#pickerStatus").textContent = `${activeCatalog.dataset.label} · ${matches.length.toLocaleString("en")} match(es)${matches.length ? ` · ${start + 1}–${Math.min(start + PAGE_SIZE, matches.length)}` : ""}. ${warning}`;
+  dialog.querySelector("#pickerStatus").textContent = `${activeCatalog.dataset.label} · ${matches.length.toLocaleString("en")} ${matches.length === 1 ? "match" : "matches"}${matches.length ? ` · ${start + 1}–${Math.min(start + PAGE_SIZE, matches.length)}` : ""}${warning ? " · " + warning : ""}`;
+  const recent = dialog.querySelector("#pickerQuickRecent");
+  recent.hidden = !!dialog.querySelector("#pickerSearch").value || source !== "all" || !recent.childElementCount;
 }
 function ensure() {
   if (dialog) return;
-  dialog = createDialog("itemPickerDialog", "Choose from NEI", "Pick an icon or search part of a name. IDs and units are filled in for you.");
+  dialog = createDialog("itemPickerDialog", "Choose from NEI", "Browse icons or search part of a name. Choose an item to set its product and unit.");
   dialog.querySelector(".atlasDialogBody").innerHTML = '<div class="pickerSearchBar"><label>Search items and fluids<input id="pickerSearch" type="search" autocomplete="off" placeholder="Partial name, @mod or item ID"></label><button id="pickerReset" type="button">Reset</button></div><nav class="atlasDialogTabs" aria-label="Item picker sources"><button type="button" data-picker-source="all">All items</button><button type="button" data-picker-source="favorites">★ Favorites</button><button type="button" data-picker-source="recent">Recent</button></nav><div class="pickerFilters"><label>Type<select id="pickerType"><option value="all">Items and fluids</option><option value="item">Items</option><option value="fluid">Fluids</option></select></label><label>Mod<select id="pickerMod"><option value="">All mods</option></select></label><label class="pickerCheck"><input id="pickerProduction" type="checkbox"> Has recipes</label></div><p id="pickerStatus" role="status" aria-live="polite"></p><div id="pickerGrid" class="pickerGrid" aria-label="Matching items and fluids"></div><div class="atlasDialogActions"><button type="button" id="pickerPrevious">Previous page</button><button type="button" id="pickerNext">Next page</button></div>';
   let timer;
+  const recent = document.createElement("div"); recent.id = "pickerQuickRecent"; recent.className = "pickerQuickRecent"; recent.setAttribute("role", "group"); recent.setAttribute("aria-label", "Recently used items"); recent.hidden = true;
+  dialog.querySelector(".pickerSearchBar").after(recent);
+  examples = bindSearchExamples(dialog.querySelector("#pickerSearch"), () => activeCatalog);
   dialog.querySelector("#pickerSearch").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => { page = 0; render(); }, 100); });
   dialog.addEventListener("change", event => {
     // A search input also emits change when it loses focus. Replacing result
@@ -38,12 +45,13 @@ function ensure() {
     if (!["pickerType", "pickerMod", "pickerProduction"].includes(event.target.id)) return;
     page = 0; render();
   });
-  dialog.addEventListener("close", () => clearTimeout(timer));
+  dialog.addEventListener("close", () => { clearTimeout(timer); examples.pause(); });
   dialog.addEventListener("click", event => {
     const button = event.target.closest("button"); if (!button) return;
-    if (button.dataset.pickGood) {
-      const good = activeCatalog.resolve(button.dataset.pickGood); if (!good) return;
+    if (button.dataset.pickGood || button.dataset.recentGood) {
+      const good = activeCatalog.resolve(button.dataset.pickGood || button.dataset.recentGood); if (!good) return;
       try { new ItemLibrary(activeCatalog, localStorage).visit(good.id, "production"); } catch { /* Choosing an item works without storage. */ }
+      window.dispatchEvent(new Event("gtnh-library-changed"));
       dialog.close(); onSelect(good); return;
     }
     if (button.dataset.pickerSource) { source = button.dataset.pickerSource; page = 0; render(); }
@@ -68,9 +76,16 @@ export function openItemPicker(catalog, select, { query = "" } = {}) {
   activeCatalog = catalog; onSelect = select; source = "all"; page = 0; warning = ""; saved = {};
   try { saved = new ItemLibrary(catalog, localStorage).read(); } catch { warning = "Saved items are unavailable; browsing still works."; }
   ensure();
+  const recent = dialog.querySelector("#pickerQuickRecent"); recent.replaceChildren();
+  for (const good of recentExampleGoods(catalog)) {
+    const button = document.createElement("button"); button.type = "button"; button.dataset.recentGood = good.id;
+    button.textContent = good.name; button.title = `${good.name} · ${good.mod || ""} · ${good.id}`;
+    button.setAttribute("aria-label", `Choose recent ${good.name} · ${good.mod || ""} · ${good.id}`); recent.appendChild(button);
+  }
   dialog.querySelector("#pickerSearch").value = catalog.resolve(query) ? "" : query;
   dialog.querySelector("#pickerType").value = "all"; dialog.querySelector("#pickerProduction").checked = false;
   const mods = dialog.querySelector("#pickerMod"); mods.innerHTML = '<option value="">All mods</option>';
   for (const mod of [...new Set(catalog.goods.map(good => good.mod).filter(Boolean))].sort()) { const option = document.createElement("option"); option.value = mod; option.textContent = mod; mods.appendChild(option); }
   render(); if (!dialog.open) dialog.showModal();
+  examples.refresh();
 }

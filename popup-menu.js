@@ -53,7 +53,7 @@ export function createPopupMenu(trigger, { id, label, populate }) {
     if (native) menu.showPopover();
     position();
     const choices = items();
-    focusItem(last ? choices.at(-1) : menu.querySelector('[aria-checked="true"]:not(:disabled)') || choices[0]);
+    focusItem(last ? choices.at(-1) : menu.querySelector('[role="menuitemradio"][aria-checked="true"]:not(:disabled)') || choices[0]);
   }
   const api = { element: menu, open, close, destroy() { close(); controller.abort(); menu.remove(); } };
   const controller = new AbortController(), listen = (node, event, handler) => node.addEventListener(event, handler, { signal: controller.signal });

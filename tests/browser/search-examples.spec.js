@@ -22,7 +22,10 @@ test("recent examples rotate each second without changing a real plan, and pause
   await field.focus(); const frozen = await field.getAttribute("placeholder"); await page.clock.runFor(2200); await expect(field).toHaveAttribute("placeholder", frozen);
   await field.fill("iron"); await page.clock.runFor(2200); await expect(field).toHaveValue("iron");
   expect(await page.evaluate(() => ({ state: window.GTNH_CALC.getState(), plan: window.GTNH_CALC.getPlan() }))).toEqual(before);
-  await page.locator("#clear").click(); await page.locator("#toolMore").click(); await page.locator("#toolSearchExamples").click();
+  await page.locator("#clear").click(); await page.locator("#toolMore").click();
+  // A checked preference is not a selected action: opening More starts at Theme.
+  await expect(page.locator("#toolTheme")).toBeFocused();
+  await page.locator("#toolSearchExamples").click();
   await page.locator("#toolMore").click(); await expect(page.locator("#toolSearchExamples")).toHaveAttribute("aria-checked", "false"); await page.keyboard.press("Escape");
   const stopped = await field.getAttribute("placeholder"); await page.clock.runFor(2200); await expect(field).toHaveAttribute("placeholder", stopped);
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();

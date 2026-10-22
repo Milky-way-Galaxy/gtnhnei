@@ -3,26 +3,29 @@ import { openOfflineManager } from "./offline-ui.js";
 import { createDialog, notify } from "./ui-dialog.js";
 import { checkOfflineUpdate } from "./offline.js";
 import { getPreference, setPreference } from "./preferences.js";
+import { createPopupMenu } from "./popup-menu.js";
+import { installIntro, openAtlasIntro } from "./seo-intro-close.js";
 
-let versionDialog, help;
-function openVersionPicker() {
-  if (!versionDialog) versionDialog = createDialog("gtnhNeiDrop", "Recipe version", "Recipes, icons, saved plans and item libraries stay with their version.");
-  const body = versionDialog.querySelector(".atlasDialogBody"), info = window.GTNH_DATASETS;
+let help;
+function populateVersions(body, menu) {
+  const info = window.GTNH_DATASETS;
   body.replaceChildren();
   if (!info) body.textContent = "Recipe datasets are still loading.";
   else {
     for (const dataset of info.manifest.datasets) {
       const button = document.createElement("button"); button.type = "button"; button.className = "atlasVersionOption";
-      button.textContent = `${dataset.id === info.active.id ? "✓ " : ""}${dataset.label}${dataset.available ? "" : " — unavailable"}`;
+      const name = document.createElement("span"), note = document.createElement("small");
+      name.textContent = `${dataset.id === info.active.id ? "✓ " : ""}${dataset.label}${dataset.available ? "" : " — unavailable"}`;
+      note.textContent = dataset.reason || (dataset.id === info.active.id ? "Current recipe dataset" : "Recipes, icons and saved plans for this version");
+      button.append(name, note);
       button.disabled = !dataset.available; button.title = dataset.reason || dataset.verification;
-      button.setAttribute("aria-pressed", String(dataset.id === info.active.id));
-      button.addEventListener("click", () => { if (dataset.id !== info.active.id) info.select(dataset.id); versionDialog.close(); });
+      button.setAttribute("role", "menuitemradio");
+      button.setAttribute("aria-checked", String(dataset.id === info.active.id));
+      button.addEventListener("click", () => { menu.close(true); if (dataset.id !== info.active.id) info.select(dataset.id); });
       body.appendChild(button);
-      const note = document.createElement("p"); note.className = "atlasMuted"; note.textContent = dataset.reason || dataset.verification; body.appendChild(note);
     }
-    const source = document.createElement("a"); source.href = info.active.source; source.textContent = "View the active dataset's pinned upstream source"; body.appendChild(source);
+    const source = document.createElement("a"); source.href = info.active.source; source.textContent = "Dataset source ↗"; source.role = "menuitem"; body.appendChild(source);
   }
-  versionDialog.showModal();
 }
 function showHelp() {
   if (!help) {
@@ -40,22 +43,32 @@ function showHelp() {
 }
 function install() {
   const strip = document.createElement("nav"); strip.id = "gtnhToolStrip"; strip.className = "gtnhToolStrip"; strip.setAttribute("aria-label", "GTNH Atlas tools");
-  strip.innerHTML = '<button id="toolNei" type="button" aria-haspopup="dialog">Version ▾</button><button id="toolCalc" class="workspacePrimary" type="button" title="Production Calculator (P)">Calculator</button><button id="toolFav" type="button" aria-haspopup="dialog" title="Favorites and recent items (L)">Library</button><button id="toolOffline" type="button" aria-haspopup="dialog">Offline</button><button id="toolHelp" type="button" aria-haspopup="dialog" title="Help (?)">Help</button><span id="toolDb" class="gtnhDbBadge">Loading recipes…</span>';
+  strip.innerHTML = '<button id="toolNei" type="button" title="Select recipe version"><span id="toolDb">Version</span> ▾</button><button id="toolCalc" type="button" title="Production Calculator (P)">Calculator</button><button id="toolFav" type="button" aria-haspopup="dialog" title="Favorites and recent items (L)">Library</button><button id="toolMore" type="button" aria-label="More tools" title="More tools">⋯</button>';
   document.querySelector(".app").prepend(strip);
-  document.getElementById("toolNei").addEventListener("click", openVersionPicker);
+  createPopupMenu(document.getElementById("toolNei"), { id: "gtnhNeiDrop", label: "Recipe version", populate: populateVersions });
+  const moreButton = document.getElementById("toolMore");
+  const more = createPopupMenu(moreButton, { id: "atlasToolsMenu", label: "More tools" });
+  more.element.innerHTML = '<button id="toolOffline" type="button" role="menuitem" aria-haspopup="dialog">Offline</button><button id="toolHelp" type="button" role="menuitem" aria-haspopup="dialog" title="Help (?)">Help &amp; shortcuts</button><button id="gtfbOpen" type="button" role="menuitem" aria-haspopup="dialog">Feedback</button><button id="toolAbout" type="button" role="menuitem" aria-controls="seoIntro">About Atlas</button>';
+  more.element.addEventListener("click", event => {
+    const button = event.target.closest("button"); if (!button) return;
+    more.close(true);
+    if (button.id === "toolOffline") openOfflineManager();
+    if (button.id === "toolHelp") showHelp();
+    if (button.id === "gtfbOpen") { if (window.GTNH_FEEDBACK) window.GTNH_FEEDBACK.open(); else notify("Feedback is still loading. Try again shortly."); }
+    if (button.id === "toolAbout") openAtlasIntro(moreButton);
+  });
+  installIntro();
   document.getElementById("toolCalc").addEventListener("click", () => { if (window.GTNH_CALC) window.GTNH_CALC.open(); else notify("Planner is loading."); });
   document.getElementById("toolFav").addEventListener("click", () => openItemLibrary());
-  document.getElementById("toolOffline").addEventListener("click", openOfflineManager);
-  document.getElementById("toolHelp").addEventListener("click", showHelp);
   const updateDataset = () => {
     const dataset = window.GTNH_DATASETS?.active;
-    if (dataset) { const badge = document.getElementById("toolDb"); badge.textContent = dataset.label; badge.title = dataset.verification; }
+    if (dataset) { const badge = document.getElementById("toolDb"); badge.textContent = dataset.label; document.getElementById("toolNei").setAttribute("aria-label", `Recipe version: ${dataset.label}`); badge.title = dataset.verification; }
   };
   window.addEventListener("gtnh-dataset-selected", updateDataset); updateDataset();
-  checkOfflineUpdate(() => { const button = document.getElementById("toolOffline"); button.textContent = "Update ready"; button.classList.add("workspaceUpdate"); }).catch(() => {});
+  checkOfflineUpdate(() => { const button = document.getElementById("toolOffline"); button.textContent = "Offline · update ready"; moreButton.classList.add("workspaceUpdate"); moreButton.setAttribute("aria-label", "More tools · update ready"); }).catch(() => {});
   if (getPreference("gtnhnei_help_seen") === "always") setTimeout(showHelp, 550);
   document.addEventListener("keydown", event => {
-    if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog]") || document.querySelector("dialog[open], #gtnhCalcOverlay.show, #gtnhMatCalcOverlay.show")) return;
+    if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable], dialog, [role=dialog], [role=menu]") || document.querySelector("dialog[open], #gtnhCalcOverlay.show, #gtnhMatCalcOverlay.show")) return;
     const key = event.key.toLowerCase();
     if (key === "p") { event.preventDefault(); document.getElementById("toolCalc").click(); }
     if (key === "l") { event.preventDefault(); openItemLibrary(); }

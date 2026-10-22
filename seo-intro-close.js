@@ -1,70 +1,25 @@
-/* === GTNH Atlas closeable intro === */
 import { getPreference, setPreference, removePreference } from "./preferences.js";
-(() => {
-  "use strict";
 
-  const KEY = "gtnh_atlas_intro_hidden_v1";
-
-  function qs(s, r = document) {
-    return r.querySelector(s);
-  }
-
-  function makeShowButton() {
-    if (qs("#seoIntroShow")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "seoIntroShow";
-    btn.type = "button";
-    btn.textContent = "Show intro";
-    btn.className = "seoIntroShow";
-
-    btn.addEventListener("click", () => {
-      removePreference(KEY);
-      const intro = qs("#seoIntro");
-      if (intro) intro.classList.remove("seoIntroHidden");
-      btn.remove();
-    });
-
-    const nav =
-      qs("#gtnhTopStrip") ||
-      qs(".gtnhTopStrip") ||
-      qs("nav") ||
-      qs(".topStrip");
-
-    if (nav) nav.appendChild(btn);
-    else document.body.prepend(btn);
-  }
-
-  function start() {
-    const intro = qs("#seoIntro");
-    if (!intro) return;
-
-    if (!qs("#seoIntroClose", intro)) {
-      const btn = document.createElement("button");
-      btn.id = "seoIntroClose";
-      btn.type = "button";
-      btn.className = "seoIntroClose";
-      btn.textContent = "×";
-      btn.setAttribute("aria-label", "Hide intro");
-
-      btn.addEventListener("click", () => {
-        setPreference(KEY, "1");
-        intro.classList.add("seoIntroHidden");
-        makeShowButton();
-      });
-
-      intro.prepend(btn);
-    }
-
-    if (getPreference(KEY) === "1") {
-      intro.classList.add("seoIntroHidden");
-      makeShowButton();
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
-})();
+const KEY = "gtnh_atlas_intro_hidden_v1";
+let returnFocus;
+export function installIntro() {
+  const intro = document.getElementById("seoIntro");
+  if (!intro || document.getElementById("seoIntroClose")) return;
+  const close = document.createElement("button");
+  close.id = "seoIntroClose"; close.className = "seoIntroClose"; close.type = "button";
+  close.textContent = "Close"; close.setAttribute("aria-label", "Close About Atlas");
+  close.addEventListener("click", () => {
+    setPreference(KEY, "1"); intro.classList.add("seoIntroHidden");
+    (returnFocus || document.getElementById("toolMore"))?.focus({ preventScroll: true });
+  });
+  intro.appendChild(close);
+  intro.classList.toggle("seoIntroHidden", getPreference(KEY) === "1");
+}
+export function openAtlasIntro(source) {
+  installIntro();
+  const intro = document.getElementById("seoIntro");
+  if (!intro) return;
+  returnFocus = source;
+  removePreference(KEY); intro.classList.remove("seoIntroHidden");
+  document.getElementById("seoIntroClose").focus({ preventScroll: true });
+}

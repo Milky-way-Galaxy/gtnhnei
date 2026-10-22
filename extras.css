@@ -1,4 +1,4 @@
-/* === GTNH NEI extras clean CSS v30 === */
+/* Startup feedback. Luna keeps its independent Easter egg styling below. */
 
 .bootLoader {
   position: fixed;
@@ -6,11 +6,8 @@
   z-index: 999999;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.14), transparent 34%),
-    radial-gradient(circle at 50% 85%, rgba(251, 140, 207, 0.12), transparent 34%),
-    #050914;
-  color: #eaf2ff;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .bootLoader.hide {
@@ -24,32 +21,32 @@
 }
 
 .bootNote {
-  color: #aebbd2;
+  color: var(--muted);
   font-size: 13px;
 }
 
 .bootLoader[data-state="error"] .bootMsg {
-  color: #ffb4c8;
+  color: var(--danger);
 }
 
 .bootBox {
   width: min(420px, calc(100vw - 34px));
   padding: 22px;
-  border-radius: 22px;
-  border: 1px solid rgba(125, 211, 252, 0.28);
-  background: linear-gradient(180deg, rgba(14, 25, 45, 0.96), rgba(5, 10, 22, 0.97));
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
   text-align: center;
 }
 
 .bootTitle {
   font-size: 24px;
-  font-weight: 950;
+  font-weight: 600;
   margin-bottom: 8px;
 }
 
 .bootMsg {
-  color: #aebbd2;
+  color: var(--muted);
   font-size: 14px;
   margin-bottom: 18px;
 }
@@ -67,7 +64,7 @@
   width: 45%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #38bdf8, #fb8ccf);
+  background: var(--accent);
   animation: bootMove 1.1s ease-in-out infinite;
 }
 

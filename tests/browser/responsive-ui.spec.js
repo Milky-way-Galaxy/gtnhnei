@@ -75,15 +75,20 @@ test("duplicate names retain visible exact IDs and support keyboard selection", 
   await page.keyboard.press("Enter"); await expect(page.locator("#calcTarget")).toHaveValue(id);
   await expect(page.locator("#calcUnit")).toHaveValue(id.startsWith("f:") ? "L" : "items");
 });
-test("hiding the intro keeps its restore action compact and preserves the saved preference", async ({ page }) => {
+test("About Atlas reopens and closes repeatedly and preserves the existing visibility preference", async ({ page }) => {
   await ready(page); await page.locator("#seoIntroClose").click();
   await expect(page.locator("#seoIntro")).toBeHidden();
-  await expect(page.locator("#seoIntroShow")).toBeVisible();
-  if (page.viewportSize().width <= 700) {
-    const restore = await page.locator("#seoIntroShow").boundingBox(), version = await page.locator("#toolDb").boundingBox();
-    expect(Math.abs(restore.y - version.y)).toBeLessThan(24);
-  }
+  await expect(page.locator("#seoIntroShow")).toHaveCount(0);
   await page.reload(); await expect(page.locator('#bootLoader[data-state="ready"]')).toBeAttached();
   await expect(page.locator("#seoIntro")).toBeHidden();
-  await page.locator("#seoIntroShow").click(); await expect(page.locator("#seoIntro")).toBeVisible();
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await page.locator("#toolMore").click();
+    await page.getByRole("menuitem", { name: "About Atlas" }).click();
+    await expect(page.locator("#seoIntro")).toBeVisible();
+    await expect(page.locator("#seoIntroClose")).toBeFocused();
+    await page.locator("#seoIntroClose").click();
+    await expect(page.locator("#seoIntro")).toBeHidden();
+    await expect(page.locator("#toolMore")).toBeFocused();
+  }
+  expect(await page.evaluate(() => localStorage.getItem("gtnh_atlas_intro_hidden_v1"))).toBe("1");
 });
